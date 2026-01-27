@@ -1,3 +1,6 @@
 spring:
   application:
     name: student-management
+
+  profiles:
+    default: dev

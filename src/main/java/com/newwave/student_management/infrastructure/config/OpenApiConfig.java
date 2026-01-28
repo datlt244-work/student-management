@@ -1,4 +1,4 @@
-package com.newwave.student_management.common.config;
+package com.newwave.student_management.infrastructure.config;
 
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;

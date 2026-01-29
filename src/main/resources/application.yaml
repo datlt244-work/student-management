@@ -5,6 +5,10 @@ spring:
   profiles:
     default: dev
 
+  security:
+    jwt:
+      expiration-seconds: 3600
+
 springdoc:
   api-docs:
     enabled: false

@@ -15,7 +15,6 @@ import java.util.UUID;
 @AllArgsConstructor
 @Table(name = "users", indexes = {
         @Index(name = "idx_users_email", columnList = "email"),
-        @Index(name = "idx_users_role", columnList = "role"),
         @Index(name = "idx_users_status", columnList = "status"),
         @Index(name = "idx_users_created_at", columnList = "created_at")
 })

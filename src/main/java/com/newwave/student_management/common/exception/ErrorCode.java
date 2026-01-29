@@ -11,6 +11,52 @@ public enum ErrorCode {
 
     // Validation errors - Generic (1000-1099)
     VALIDATION_ERROR(1000, "Validation error", HttpStatus.BAD_REQUEST),
+
+    // Validation errors - Email (1100-1119)
+    EMAIL_REQUIRED(1100, "Username is required", HttpStatus.BAD_REQUEST),
+    EMAIL_INVALID(1101, "Username must be between 3 and 50 characters", HttpStatus.BAD_REQUEST),
+    EMAIL_FORMAT_INVALID(1102, "Username can only contain letters, numbers, and underscores",
+            HttpStatus.BAD_REQUEST),
+    EMAIL_TOO_LONG(1103, "Email must be at most 255 characters", HttpStatus.BAD_REQUEST),
+
+    // Validation errors - Password (1120-1139)
+    PASSWORD_REQUIRED(1120, "Password is required", HttpStatus.BAD_REQUEST),
+    PASSWORD_INVALID(1121, "Password must be between 8 and 100 characters", HttpStatus.BAD_REQUEST),
+    PASSWORD_WEAK(1122, "Password must contain at least one uppercase letter, one lowercase letter, and one digit",
+            HttpStatus.BAD_REQUEST),
+
+
+    // Validation errors - Token (1180-1199)
+    TOKEN_REQUIRED(1180, "Token is required", HttpStatus.BAD_REQUEST),
+    TOKEN_INVALID(1181, "Token is invalid", HttpStatus.BAD_REQUEST),
+    TOKEN_EXPIRED(1182, "Token has expired", HttpStatus.UNAUTHORIZED),
+
+    // Business errors - User (1200-1299)
+    USER_EXISTED(1200, "User already exists", HttpStatus.CONFLICT),
+    USER_NOT_EXISTED(1201, "User not found", HttpStatus.NOT_FOUND),
+    USER_CREATION_FAILED(1202, "Failed to create user profile", HttpStatus.INTERNAL_SERVER_ERROR),
+
+    // Business errors - Address (1250-1269)
+    ADDRESS_NOT_FOUND(1250, "Address not found", HttpStatus.NOT_FOUND),
+    ADDRESS_LIMIT_EXCEEDED(1251, "Maximum number of addresses reached", HttpStatus.BAD_REQUEST),
+
+    // Authentication errors (1300-1399)
+    UNAUTHENTICATED(1300, "Invalid email or password", HttpStatus.UNAUTHORIZED),
+    UNAUTHORIZED(1301, "You do not have permission", HttpStatus.FORBIDDEN),
+    INVALID_CREDENTIALS(1302, "Invalid email or password", HttpStatus.UNAUTHORIZED),
+    ACCOUNT_NOT_ACTIVE(1303, "Account is not active. Please verify your email or contact support.",
+            HttpStatus.FORBIDDEN),
+    ACCOUNT_BLOCKED(1304, "Your account has been blocked. Please contact support.", HttpStatus.FORBIDDEN),
+    EMAIL_NOT_VERIFIED(1305, "Please verify your email before logging in", HttpStatus.FORBIDDEN),
+    RATE_LIMITED(1306, "Too many login attempts. Please try again later.", HttpStatus.TOO_MANY_REQUESTS),
+    EMAIL_ALREADY_VERIFIED(1307, "Email is already verified", HttpStatus.BAD_REQUEST),
+    EMAIL_RESEND_COOLDOWN(1308, "Please wait before resending verification email", HttpStatus.TOO_MANY_REQUESTS),
+    PASSWORD_RESET_COOLDOWN(1309, "Please wait before requesting password reset again",
+            HttpStatus.TOO_MANY_REQUESTS),
+    PASSWORD_MISMATCH(1310, "New password and confirm password do not match", HttpStatus.BAD_REQUEST),
+    INVALID_RESET_TOKEN(1311, "Invalid or expired password reset token", HttpStatus.BAD_REQUEST),
+    INCORRECT_PASSWORD(1312, "Current password is incorrect", HttpStatus.BAD_REQUEST),
+    SAME_PASSWORD(1313, "New password must be different from current password", HttpStatus.BAD_REQUEST),
     ;
 
     ErrorCode(int code, String message, HttpStatus statusCode) {

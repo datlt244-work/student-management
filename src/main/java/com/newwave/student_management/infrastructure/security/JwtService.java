@@ -33,7 +33,7 @@ public class JwtService {
                 .expirationTime(new Date(Instant.now().plus(expiration, ChronoUnit.SECONDS).toEpochMilli()))
                 .jwtID(UUID.randomUUID().toString())
                 .claim("userId", user.getUserId())
-                .claim("role", user.getRole())
+                .claim("role", user.getRole() != null ? user.getRole().getRoleName() : null)
                 .build();
 
         Payload payload = new Payload(jwtClaimsSet.toJSONObject());
@@ -47,5 +47,8 @@ public class JwtService {
         }
     }
 
+    public String generateRefreshToken() {
+        return UUID.randomUUID().toString();
+    }
 
 }

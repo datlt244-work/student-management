@@ -13,11 +13,18 @@ spring:
       hibernate:
         format_sql: false
 
+  # Redis configuration for Rate Limiting
   data:
     redis:
       host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT}
-      password: ${REDIS_PASSWORD}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 10
+          max-idle: 5
+          min-idle: 1
 
   security:
     jwt:

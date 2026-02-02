@@ -1,6 +1,41 @@
 version: "3.8"
 
 services:
+  # ==============================
+  # 1. SPRING BOOT BACKEND
+  # ==============================
+  backend:
+    build: .
+    container_name: student-backend
+    ports:
+      - "6868:6868"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: "6379"
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
+      SPRING_PROFILES_ACTIVE: prod
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      MINIO_URL: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET: ${MINIO_BUCKET_NAME:-student-management}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # ==============================
+  # 2. POSTGRESQL DATABASE
+  # ==============================
   db:
     image: postgres:15
     environment:
@@ -17,7 +52,12 @@ services:
       timeout: 3s
       retries: 20
     restart: unless-stopped
+    networks:
+      - app-network
 
+  # ==============================
+  # 3. REDIS CACHE
+  # ==============================
   redis:
     image: redis:7-alpine
     command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
@@ -29,7 +69,12 @@ services:
       timeout: 3s
       retries: 20
     restart: unless-stopped
+    networks:
+      - app-network
 
+  # ==============================
+  # 4. MINIO STORAGE
+  # ==============================
   minio:
     image: minio/minio:latest
     environment:
@@ -47,7 +92,13 @@ services:
       timeout: 3s
       retries: 20
     restart: unless-stopped
+    networks:
+      - app-network
 
 volumes:
   postgres_data:
   minio_data:
+
+networks:
+  app-network:
+    driver: bridge

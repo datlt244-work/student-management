@@ -1,0 +1,25 @@
+name: Deploy to Self-Hosted Runner
+on:
+  push:
+    branches: [ "main" ]
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+      - name: Build with Maven
+        run: ./mvnw clean package -DskipTests
+      - name: Create .env file
+        run: echo "${{ secrets.ENV_FILE }}" > .env
+      - name: Deploy with Docker Compose
+        run: |
+          docker compose down
+          docker compose up -d --build
+          docker image prune -f

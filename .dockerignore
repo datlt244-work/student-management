@@ -1,0 +1,33 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.idea
+.vscode
+*.iml
+*.ipr
+*.iws
+
+# Build output (we build inside container)
+target/
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# Environment & local config
+.env
+.env.*
+!.env.example
+
+# Documentation
+*.md
+LICENSE
+
+# Test & misc
+**/__pycache__
+**/*.log
+**/.DS_Store

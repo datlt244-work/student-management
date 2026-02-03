@@ -25,9 +25,6 @@ public class User extends JpaBaseEntity {
     @Column(name = "user_id")
     private UUID userId;
 
-    @Column(unique = true)
-    private String username;
-
     @Column(length = 50, unique = true, nullable = false)
     private String email;
 

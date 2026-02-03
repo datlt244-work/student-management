@@ -75,6 +75,16 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- Flyway for database migrations -->
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-database-postgresql</artifactId>
+		</dependency>
+
 		<!-- Source: https://mvnrepository.com/artifact/io.minio/minio -->
 		<dependency>
 			<groupId>io.minio</groupId>

@@ -20,6 +20,9 @@ public class TokenRedisService implements ITokenRedisService {
     private static final String LOCK_KEY_PREFIX = "auth:login:lock:";
     private static final String REFRESH_KEY_PREFIX = "auth:refresh:";
     private static final String REFRESH_TOKEN_TO_USER_PREFIX = "auth:refresh-token:";
+    private static final String ACCESS_BLACKLIST_PREFIX = "auth:access:blacklist:";
+    private static final String RESET_COUNT_PREFIX = "auth:reset:count:";
+    private static final String RESET_TOKEN_PREFIX = "auth:reset:token:";
 
     private final StringRedisTemplate stringRedisTemplate;
 
@@ -117,6 +120,56 @@ public class TokenRedisService implements ITokenRedisService {
             String tokenKey = REFRESH_TOKEN_TO_USER_PREFIX + refreshToken;
             stringRedisTemplate.delete(tokenKey);
         }
+    }
+
+    @Override
+    public void blacklistAccessToken(String jti, long expiresInSeconds) {
+        if (jti == null || jti.isBlank() || expiresInSeconds <= 0) {
+            return;
+        }
+        String key = ACCESS_BLACKLIST_PREFIX + jti;
+        stringRedisTemplate.opsForValue().set(key, "1", Duration.ofSeconds(expiresInSeconds));
+    }
+
+    @Override
+    public boolean isAccessTokenBlacklisted(String jti) {
+        if (jti == null || jti.isBlank()) {
+            return false;
+        }
+        String key = ACCESS_BLACKLIST_PREFIX + jti;
+        Boolean exists = stringRedisTemplate.hasKey(key);
+        return Boolean.TRUE.equals(exists);
+    }
+
+    @Override
+    public int incrementResetPasswordCount(String email, long windowSeconds) {
+        String normalized = normalize(email);
+        String key = RESET_COUNT_PREFIX + normalized;
+        Long count = stringRedisTemplate.opsForValue().increment(key);
+        if (count != null && count == 1L) {
+            stringRedisTemplate.expire(key, Duration.ofSeconds(windowSeconds));
+        }
+        return count == null ? 0 : count.intValue();
+    }
+
+    @Override
+    public void deleteResetPasswordToken(UUID userId) {
+        if (userId == null) {
+            return;
+        }
+        String key = RESET_TOKEN_PREFIX + userId;
+        stringRedisTemplate.delete(key);
+    }
+
+    @Override
+    public String createResetPasswordToken(UUID userId, long ttlSeconds) {
+        if (userId == null) {
+            return null;
+        }
+        String token = UUID.randomUUID().toString();
+        String key = RESET_TOKEN_PREFIX + userId;
+        stringRedisTemplate.opsForValue().set(key, token, Duration.ofSeconds(ttlSeconds));
+        return token;
     }
 
     private String normalize(String email) {

@@ -2,6 +2,7 @@ package com.newwave.student_management.domains.auth.service.impl;
 
 import com.newwave.student_management.common.exception.AppException;
 import com.newwave.student_management.common.exception.ErrorCode;
+import com.newwave.student_management.domains.auth.dto.request.ForgotPasswordRequest;
 import com.newwave.student_management.domains.auth.dto.request.LoginRequest;
 import com.newwave.student_management.domains.auth.dto.response.LoginResponse;
 import com.newwave.student_management.domains.auth.dto.request.RefreshTokenRequest;
@@ -18,6 +19,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.text.ParseException;
 
 @Service
 @Slf4j
@@ -28,6 +30,7 @@ public class AuthService implements IAuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final ITokenRedisService tokenRedisService;
+    private final com.newwave.student_management.common.service.MailService mailService;
 
     @Value("${spring.security.jwt.expiration-seconds:3600}")
     private long accessTokenExpiresIn;
@@ -141,5 +144,68 @@ public class AuthService implements IAuthService {
                 .role(user.getRole() != null ? user.getRole().getRoleName() : null)
                 .authenticated(true)
                 .build();
+    }
+
+    @Override
+    public void logout(String accessToken, String refreshToken) {
+        if (refreshToken != null && !refreshToken.isBlank()) {
+            var userId = tokenRedisService.getUserIdByRefreshToken(refreshToken);
+            tokenRedisService.deleteRefreshToken(userId, refreshToken);
+        }
+
+        if (accessToken == null || accessToken.isBlank()) {
+            return;
+        }
+
+        try {
+            var jwsObject = com.nimbusds.jose.JWSObject.parse(accessToken);
+            var claims = com.nimbusds.jwt.SignedJWT.parse(accessToken).getJWTClaimsSet();
+            String jti = claims.getJWTID();
+            var exp = claims.getExpirationTime();
+            if (jti != null && exp != null) {
+                long nowMillis = System.currentTimeMillis();
+                long remainingSeconds = Math.max(0, (exp.getTime() - nowMillis) / 1000);
+                tokenRedisService.blacklistAccessToken(jti, remainingSeconds);
+            }
+        } catch (ParseException e) {
+            log.warn("Failed to parse access token on logout", e);
+        }
+    }
+
+    @Override
+    public void forgotPassword(ForgotPasswordRequest request) {
+        String rawEmail = request.getEmail();
+        String email = rawEmail != null ? rawEmail.trim().toLowerCase() : null;
+
+        // Step 1: rate limit trước
+        int count = tokenRedisService.incrementResetPasswordCount(email, 15 * 60);
+        if (count > 3) {
+            throw new AppException(ErrorCode.PASSWORD_RESET_COOLDOWN);
+        }
+
+        // Step 2: tìm user
+        var optionalUser = userRepository.findByEmail(email);
+        if (optionalUser.isEmpty()) {
+            // Case A: user không tồn tại → vẫn trả success, không gửi email
+            return;
+        }
+
+        var user = optionalUser.get();
+
+        // Step 3: xóa token cũ + tạo token mới với TTL 15 phút
+        tokenRedisService.deleteResetPasswordToken(user.getUserId());
+        String resetToken = tokenRedisService.createResetPasswordToken(user.getUserId(), 15 * 60);
+
+        // Step 4: gửi email reset
+        String subject = "Reset mật khẩu - Student Management";
+        String resetLink = "https://your-frontend/reset-password?token=" + resetToken;
+        String content = "Xin chào,\n\n"
+                + "Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn.\n"
+                + "Nếu bạn là người thực hiện, vui lòng truy cập liên kết sau trong vòng 15 phút:\n\n"
+                + resetLink + "\n\n"
+                + "Nếu bạn không yêu cầu, bạn có thể bỏ qua email này.\n\n"
+                + "Trân trọng.";
+
+        mailService.sendSimpleMail(email, subject, content);
     }
 }

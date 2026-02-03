@@ -31,7 +31,9 @@ public class SecurityConfig {
     private String signerKey;
 
     private final String[] PUBLIC_POST_ENDPOINTS = {
-            "/auth/login"
+            "/auth/login",
+            "/auth/forgot-password",
+            "/auth/reset-password"
     };
 
     private final String[] PUBLIC_GET_ENDPOINTS = {

@@ -4,6 +4,7 @@ import com.newwave.student_management.common.exception.AppException;
 import com.newwave.student_management.common.exception.ErrorCode;
 import com.newwave.student_management.domains.auth.dto.request.LoginRequest;
 import com.newwave.student_management.domains.auth.dto.response.LoginResponse;
+import com.newwave.student_management.domains.auth.dto.request.RefreshTokenRequest;
 import com.newwave.student_management.domains.auth.entity.User;
 import com.newwave.student_management.domains.auth.entity.UserStatus;
 import com.newwave.student_management.domains.auth.repository.UserRepository;
@@ -84,6 +85,55 @@ public class AuthService implements IAuthService {
         return LoginResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
+                .expiresIn(accessTokenExpiresIn)
+                .userId(user.getUserId())
+                .email(user.getEmail())
+                .profilePictureUrl(user.getProfilePictureUrl())
+                .role(user.getRole() != null ? user.getRole().getRoleName() : null)
+                .authenticated(true)
+                .build();
+    }
+
+    @Override
+    public LoginResponse refreshToken(RefreshTokenRequest request) {
+        String refreshToken = request.getRefreshToken();
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new AppException(ErrorCode.TOKEN_REQUIRED);
+        }
+
+        // 2. Validate refresh token in Redis and get userId
+        var userId = tokenRedisService.getUserIdByRefreshToken(refreshToken);
+        if (userId == null) {
+            throw new AppException(ErrorCode.TOKEN_INVALID);
+        }
+
+        // 3. Load user info from database
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        // 4. Status checks
+        UserStatus status = user.getStatus();
+        if (status == UserStatus.PENDING_VERIFICATION || !user.isEmailVerified()) {
+            throw new AppException(ErrorCode.EMAIL_NOT_VERIFIED);
+        }
+        if (status == UserStatus.BLOCKED) {
+            throw new AppException(ErrorCode.ACCOUNT_BLOCKED);
+        }
+        if (status == UserStatus.INACTIVE) {
+            throw new AppException(ErrorCode.ACCOUNT_NOT_ACTIVE);
+        }
+
+        // 5. Xóa refresh token cũ
+        tokenRedisService.deleteRefreshToken(userId, refreshToken);
+
+        // 6. Generate new tokens
+        String newAccessToken = jwtService.generateToken(user);
+        String newRefreshToken = tokenRedisService.createAndStoreRefreshToken(user.getUserId());
+
+        // 7. Build response
+        return LoginResponse.builder()
+                .accessToken(newAccessToken)
+                .refreshToken(newRefreshToken)
                 .expiresIn(accessTokenExpiresIn)
                 .userId(user.getUserId())
                 .email(user.getEmail())

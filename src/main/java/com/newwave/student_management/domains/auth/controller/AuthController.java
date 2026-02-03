@@ -3,6 +3,7 @@ package com.newwave.student_management.domains.auth.controller;
 import com.newwave.student_management.common.dto.ApiResponse;
 import com.newwave.student_management.domains.auth.dto.request.LoginRequest;
 import com.newwave.student_management.domains.auth.dto.response.LoginResponse;
+import com.newwave.student_management.domains.auth.dto.request.RefreshTokenRequest;
 import com.newwave.student_management.domains.auth.service.IAuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -34,6 +35,17 @@ public class AuthController {
     ) {
         String clientIp = extractClientIp(httpServletRequest);
         return ApiResponse.success(authService.authenticate(request, clientIp));
+    }
+
+    @PostMapping("/refresh-token")
+    @Operation(
+            summary = "Làm mới access token",
+            description = "Nhận refresh token, validate trong Redis, lấy lại thông tin user và trả về cặp token mới."
+    )
+    public ApiResponse<LoginResponse> refreshToken(
+            @Valid @RequestBody RefreshTokenRequest request
+    ) {
+        return ApiResponse.success(authService.refreshToken(request));
     }
 
     private String extractClientIp(HttpServletRequest request) {

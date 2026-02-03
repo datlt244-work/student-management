@@ -19,6 +19,7 @@ public class TokenRedisService implements ITokenRedisService {
     private static final String FAIL_KEY_PREFIX = "auth:login:fail:";
     private static final String LOCK_KEY_PREFIX = "auth:login:lock:";
     private static final String REFRESH_KEY_PREFIX = "auth:refresh:";
+    private static final String REFRESH_TOKEN_TO_USER_PREFIX = "auth:refresh-token:";
 
     private final StringRedisTemplate stringRedisTemplate;
 
@@ -74,9 +75,48 @@ public class TokenRedisService implements ITokenRedisService {
     public String createAndStoreRefreshToken(UUID userId) {
         Objects.requireNonNull(userId, "userId");
         String refreshToken = UUID.randomUUID().toString();
-        String key = REFRESH_KEY_PREFIX + userId;
-        stringRedisTemplate.opsForValue().set(key, refreshToken, Duration.ofSeconds(refreshExpirationSeconds));
+        String userKey = REFRESH_KEY_PREFIX + userId;
+        String tokenKey = REFRESH_TOKEN_TO_USER_PREFIX + refreshToken;
+
+        // Lưu 2 chiều: userId -> token và token -> userId để validate nhanh
+        stringRedisTemplate.opsForValue().set(userKey, refreshToken, Duration.ofSeconds(refreshExpirationSeconds));
+        stringRedisTemplate.opsForValue().set(tokenKey, userId.toString(), Duration.ofSeconds(refreshExpirationSeconds));
         return refreshToken;
+    }
+
+    @Override
+    public UUID getUserIdByRefreshToken(String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            return null;
+        }
+        String tokenKey = REFRESH_TOKEN_TO_USER_PREFIX + refreshToken;
+        String userIdStr = stringRedisTemplate.opsForValue().get(tokenKey);
+        if (userIdStr == null || userIdStr.isBlank()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(userIdStr);
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid UUID stored for refresh token={}, value={}", refreshToken, userIdStr);
+            return null;
+        }
+    }
+
+    @Override
+    public void deleteRefreshToken(UUID userId, String refreshToken) {
+        if (userId == null && (refreshToken == null || refreshToken.isBlank())) {
+            return;
+        }
+
+        if (userId != null) {
+            String userKey = REFRESH_KEY_PREFIX + userId;
+            stringRedisTemplate.delete(userKey);
+        }
+
+        if (refreshToken != null && !refreshToken.isBlank()) {
+            String tokenKey = REFRESH_TOKEN_TO_USER_PREFIX + refreshToken;
+            stringRedisTemplate.delete(tokenKey);
+        }
     }
 
     private String normalize(String email) {

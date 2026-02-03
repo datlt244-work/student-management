@@ -12,4 +12,8 @@ public interface ITokenRedisService {
 
     String createAndStoreRefreshToken(UUID userId);
 
+    UUID getUserIdByRefreshToken(String refreshToken);
+
+    void deleteRefreshToken(UUID userId, String refreshToken);
+
 }

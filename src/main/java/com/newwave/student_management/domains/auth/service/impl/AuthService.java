@@ -87,7 +87,6 @@ public class AuthService implements IAuthService {
                 .expiresIn(accessTokenExpiresIn)
                 .userId(user.getUserId())
                 .email(user.getEmail())
-                .username(user.getUsername())
                 .profilePictureUrl(user.getProfilePictureUrl())
                 .role(user.getRole() != null ? user.getRole().getRoleName() : null)
                 .authenticated(true)

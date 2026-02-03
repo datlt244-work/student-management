@@ -22,7 +22,6 @@ public class LoginResponse {
 
     private UUID userId;
     private String email;
-    private String username;
     private String profilePictureUrl;
     private String role;
 

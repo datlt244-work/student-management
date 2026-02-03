@@ -13,9 +13,9 @@ public enum ErrorCode {
     VALIDATION_ERROR(1000, "Validation error", HttpStatus.BAD_REQUEST),
 
     // Validation errors - Email (1100-1119)
-    EMAIL_REQUIRED(1100, "Username is required", HttpStatus.BAD_REQUEST),
-    EMAIL_INVALID(1101, "Username must be between 3 and 50 characters", HttpStatus.BAD_REQUEST),
-    EMAIL_FORMAT_INVALID(1102, "Username can only contain letters, numbers, and underscores",
+    EMAIL_REQUIRED(1100, "Email is required", HttpStatus.BAD_REQUEST),
+    EMAIL_INVALID(1101, "Email must be between 3 and 50 characters", HttpStatus.BAD_REQUEST),
+    EMAIL_FORMAT_INVALID(1102, "Email format is invalid",
             HttpStatus.BAD_REQUEST),
     EMAIL_TOO_LONG(1103, "Email must be at most 255 characters", HttpStatus.BAD_REQUEST),
 

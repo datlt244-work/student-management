@@ -77,7 +77,6 @@
     "expiresIn": 3600,
     "userId": "uuid",
     "email": "user@example.com",
-    "username": "nguyenvana",
     "profilePictureUrl": null,
     "role": "STUDENT",
     "authenticated": true
@@ -134,8 +133,7 @@
 ```json
 {
   "email": "user@example.com",
-  "password": "Password123!",
-  "username": "nguyenvana"
+  "password": "Password123!"
 }
 ```
 
@@ -180,7 +178,6 @@
   "result": {
     "userId": "uuid",
     "email": "user@example.com",
-    "username": "nguyenvana",
     "status": "PENDING_VERIFICATION",
     "emailVerified": false,
     "message": "Registration successful. Please check your email to verify your account."
@@ -798,7 +795,6 @@ Email KHÔNG tồn tại (hacker thử):
   "result": {
     // ========== TỪ BẢNG USERS ==========
     "userId": "uuid-123",
-    "username": "nguyenvana",
     "email": "student@school.edu",
     "profilePictureUrl": "https://example.com/avatar.jpg",
     "role": "STUDENT",
@@ -836,7 +832,6 @@ Email KHÔNG tồn tại (hacker thử):
   "result": {
     // ========== TỪ BẢNG USERS ==========
     "userId": "uuid-456",
-    "username": "teacherb",
     "email": "teacher@school.edu",
     "profilePictureUrl": null,
     "role": "TEACHER",
@@ -873,7 +868,6 @@ Email KHÔNG tồn tại (hacker thử):
   "result": {
     // ========== TỪ BẢNG USERS ==========
     "userId": "uuid-789",
-    "username": "admin",
     "email": "admin@school.edu",
     "profilePictureUrl": null,
     "role": "ADMIN",
@@ -933,7 +927,6 @@ WHERE s.user_id = :userId;
 ```json
 {
   // ========== CẬP NHẬT BẢNG USERS ==========
-  "username": "nguyenvana_updated",
   "profilePictureUrl": "https://example.com/new-avatar.jpg",
   
   // ========== CẬP NHẬT BẢNG STUDENTS ==========
@@ -948,7 +941,6 @@ WHERE s.user_id = :userId;
 ```json
 {
   // ========== CẬP NHẬT BẢNG USERS ==========
-  "username": "teacherb_updated",
   "profilePictureUrl": "https://example.com/teacher-avatar.jpg",
   
   // ========== CẬP NHẬT BẢNG TEACHERS ==========
@@ -973,7 +965,6 @@ WHERE s.user_id = :userId;
      │                    │ 3. Validate request  │
      │                    │                      │
      │                    │ 4. Update User (nếu có field user)
-     │                    │    - Check username unique
      │                    │─────────────────────>│
      │                    │<─────────────────────│
      │                    │                      │
@@ -996,7 +987,6 @@ WHERE s.user_id = :userId;
   "result": {
     // ========== TỪ BẢNG USERS (đã update) ==========
     "userId": "uuid-123",
-    "username": "nguyenvana_updated",
     "email": "student@school.edu",
     "profilePictureUrl": "https://example.com/new-avatar.jpg",
     "role": "STUDENT",
@@ -1026,7 +1016,6 @@ WHERE s.user_id = :userId;
 
 | Role | Field | Editable by User |
 |------|-------|------------------|
-| ALL | username | ✅ |
 | ALL | profilePictureUrl | ✅ |
 | STUDENT | studentProfile.phone | ✅ |
 | STUDENT | studentProfile.address | ✅ |
@@ -1044,8 +1033,6 @@ WHERE s.user_id = :userId;
 
 | Code | Message | HTTP Status |
 |------|---------|-------------|
-| 1201 | Username already exists | 409 |
-| 1202 | Invalid username format | 400 |
 | 1401 | Cannot update studentProfile - you are not a Student | 403 |
 | 1402 | Cannot update teacherProfile - you are not a Teacher | 403 |
 | 1501 | Student profile not found | 404 |
@@ -1348,7 +1335,6 @@ WHERE s.user_id = :userId;
 {
   "email": "newuser@example.com",
   "password": "Password123!",
-  "username": "newuser",
   "roleId": 2,
   "status": "ACTIVE"
 }

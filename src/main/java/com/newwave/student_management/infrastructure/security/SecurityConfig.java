@@ -103,12 +103,12 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Cho phép các nguồn cụ thể
-        // Bạn nên thêm cả domain thật và localhost để tiện debug
-        configuration.setAllowedOrigins(java.util.List.of(
+        // Cho phép các origin sử dụng cả HTTP (local) và HTTPS (prod)
+        configuration.setAllowedOriginPatterns(java.util.List.of(
+                "https://api.admin-datlt244.io.vn",
                 "http://api.admin-datlt244.io.vn",
-                "http://localhost:8080",
-                "http://localhost:5173"
+                "http://localhost:*",
+                "https://localhost:*"
         ));
 
         // Cho phép tất cả các Method (GET, POST, PUT, DELETE, v.v.)

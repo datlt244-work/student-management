@@ -20,6 +20,9 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import javax.crypto.spec.SecretKeySpec;
 
@@ -94,6 +97,32 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+
+        // Cho phép các nguồn cụ thể
+        // Bạn nên thêm cả domain thật và localhost để tiện debug
+        configuration.setAllowedOrigins(java.util.List.of(
+                "http://api.admin-datlt244.io.vn",
+                "http://localhost:8080",
+                "http://localhost:5173"
+        ));
+
+        // Cho phép tất cả các Method (GET, POST, PUT, DELETE, v.v.)
+        configuration.setAllowedMethods(java.util.List.of("*"));
+
+        // Cho phép tất cả các Header (Rất quan trọng để gửi kèm Authorization token)
+        configuration.setAllowedHeaders(java.util.List.of("*"));
+
+        // Cho phép gửi kèm Credentials (như Cookie nếu có)
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 
 }

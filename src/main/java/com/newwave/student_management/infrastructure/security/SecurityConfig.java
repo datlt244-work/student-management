@@ -40,7 +40,8 @@ public class SecurityConfig {
     private final String[] PUBLIC_POST_ENDPOINTS = {
             "/auth/login",
             "/auth/forgot-password",
-            "/auth/reset-password"
+            "/auth/reset-password",
+            "/auth/refresh-token"
     };
 
     private final String[] PUBLIC_GET_ENDPOINTS = {

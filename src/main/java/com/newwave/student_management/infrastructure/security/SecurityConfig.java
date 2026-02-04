@@ -12,8 +12,10 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
@@ -29,6 +31,8 @@ public class SecurityConfig {
 
     @Value("${spring.security.jwt.signer-key}")
     private String signerKey;
+
+    private final JwtBlacklistValidator jwtBlacklistValidator;
 
     private final String[] PUBLIC_POST_ENDPOINTS = {
             "/auth/login",
@@ -63,9 +67,17 @@ public class SecurityConfig {
     @Bean
     public JwtDecoder jwtDecoder(){
         SecretKeySpec spec = new SecretKeySpec(signerKey.getBytes(), "HmacSHA256");
-        return NimbusJwtDecoder.withSecretKey(spec)
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(spec)
                 .macAlgorithm(MacAlgorithm.HS256)
                 .build();
+
+        // Default validators (exp, nbf, etc.) + blacklist validator (jti revoked)
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                JwtValidators.createDefault(),
+                jwtBlacklistValidator
+        ));
+
+        return decoder;
     }
 
     @Bean

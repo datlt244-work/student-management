@@ -14,8 +14,32 @@ spring:
     jwt:
       expiration-seconds: 3600
 
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    from: ${MAIL_FROM:${MAIL_USERNAME}}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+    default-encoding: UTF-8
+
 springdoc:
   api-docs:
     enabled: false
   swagger-ui:
     enabled: false
+
+app:
+  name: ${APP_NAME:Student Management}
+  frontend-url: ${APP_FRONTEND_URL:http://localhost:3000}
+  backend-url: ${APP_BACKEND_URL:http://localhost:6868/api/v1}
+
+# logging:
+#   level:
+#     org.springframework.mail: DEBUG
+#     org.eclipse.angus.mail: DEBUG # Vì log của bạn dùng angus-mail

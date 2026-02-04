@@ -19,6 +19,11 @@ public class TokenRedisService implements ITokenRedisService {
     private static final String FAIL_KEY_PREFIX = "auth:login:fail:";
     private static final String LOCK_KEY_PREFIX = "auth:login:lock:";
     private static final String REFRESH_KEY_PREFIX = "auth:refresh:";
+    private static final String REFRESH_TOKEN_TO_USER_PREFIX = "auth:refresh-token:";
+    private static final String ACCESS_BLACKLIST_PREFIX = "auth:access:blacklist:";
+    private static final String RESET_COUNT_PREFIX = "auth:reset:count:";
+    private static final String RESET_TOKEN_PREFIX = "auth:reset:token:";
+    private static final String RESET_TOKEN_TO_USER_PREFIX = "auth:reset:token-to-user:";
 
     private final StringRedisTemplate stringRedisTemplate;
 
@@ -74,9 +79,136 @@ public class TokenRedisService implements ITokenRedisService {
     public String createAndStoreRefreshToken(UUID userId) {
         Objects.requireNonNull(userId, "userId");
         String refreshToken = UUID.randomUUID().toString();
-        String key = REFRESH_KEY_PREFIX + userId;
-        stringRedisTemplate.opsForValue().set(key, refreshToken, Duration.ofSeconds(refreshExpirationSeconds));
+        String userKey = REFRESH_KEY_PREFIX + userId;
+        String tokenKey = REFRESH_TOKEN_TO_USER_PREFIX + refreshToken;
+
+        // Lưu 2 chiều: userId -> token và token -> userId để validate nhanh
+        stringRedisTemplate.opsForValue().set(userKey, refreshToken, Duration.ofSeconds(refreshExpirationSeconds));
+        stringRedisTemplate.opsForValue().set(tokenKey, userId.toString(), Duration.ofSeconds(refreshExpirationSeconds));
         return refreshToken;
+    }
+
+    @Override
+    public UUID getUserIdByRefreshToken(String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            return null;
+        }
+        String tokenKey = REFRESH_TOKEN_TO_USER_PREFIX + refreshToken;
+        String userIdStr = stringRedisTemplate.opsForValue().get(tokenKey);
+        if (userIdStr == null || userIdStr.isBlank()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(userIdStr);
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid UUID stored for refresh token={}, value={}", refreshToken, userIdStr);
+            return null;
+        }
+    }
+
+    @Override
+    public void deleteRefreshToken(UUID userId, String refreshToken) {
+        if (userId == null && (refreshToken == null || refreshToken.isBlank())) {
+            return;
+        }
+
+        if (userId != null) {
+            String userKey = REFRESH_KEY_PREFIX + userId;
+            stringRedisTemplate.delete(userKey);
+        }
+
+        if (refreshToken != null && !refreshToken.isBlank()) {
+            String tokenKey = REFRESH_TOKEN_TO_USER_PREFIX + refreshToken;
+            stringRedisTemplate.delete(tokenKey);
+        }
+    }
+
+    @Override
+    public void blacklistAccessToken(String jti, long expiresInSeconds) {
+        if (jti == null || jti.isBlank() || expiresInSeconds <= 0) {
+            return;
+        }
+        String key = ACCESS_BLACKLIST_PREFIX + jti;
+        stringRedisTemplate.opsForValue().set(key, "1", Duration.ofSeconds(expiresInSeconds));
+    }
+
+    @Override
+    public boolean isAccessTokenBlacklisted(String jti) {
+        if (jti == null || jti.isBlank()) {
+            return false;
+        }
+        String key = ACCESS_BLACKLIST_PREFIX + jti;
+        Boolean exists = stringRedisTemplate.hasKey(key);
+        return Boolean.TRUE.equals(exists);
+    }
+
+    @Override
+    public int incrementResetPasswordCount(String email, long windowSeconds) {
+        String normalized = normalize(email);
+        String key = RESET_COUNT_PREFIX + normalized;
+        Long count = stringRedisTemplate.opsForValue().increment(key);
+        if (count != null && count == 1L) {
+            stringRedisTemplate.expire(key, Duration.ofSeconds(windowSeconds));
+        }
+        return count == null ? 0 : count.intValue();
+    }
+
+    @Override
+    public void deleteResetPasswordToken(UUID userId) {
+        if (userId == null) {
+            return;
+        }
+        String userKey = RESET_TOKEN_PREFIX + userId;
+        String token = stringRedisTemplate.opsForValue().get(userKey);
+        stringRedisTemplate.delete(userKey);
+        if (token != null && !token.isBlank()) {
+            stringRedisTemplate.delete(RESET_TOKEN_TO_USER_PREFIX + token);
+        }
+    }
+
+    @Override
+    public String createResetPasswordToken(UUID userId, long ttlSeconds) {
+        if (userId == null) {
+            return null;
+        }
+        String token = UUID.randomUUID().toString();
+        Duration ttl = Duration.ofSeconds(ttlSeconds);
+        String userKey = RESET_TOKEN_PREFIX + userId;
+        String tokenToUserKey = RESET_TOKEN_TO_USER_PREFIX + token;
+        stringRedisTemplate.opsForValue().set(userKey, token, ttl);
+        stringRedisTemplate.opsForValue().set(tokenToUserKey, userId.toString(), ttl);
+        return token;
+    }
+
+    @Override
+    public UUID getUserIdByResetToken(String token) {
+        if (token == null || token.isBlank()) {
+            return null;
+        }
+        String key = RESET_TOKEN_TO_USER_PREFIX + token;
+        String userIdStr = stringRedisTemplate.opsForValue().get(key);
+        if (userIdStr == null || userIdStr.isBlank()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(userIdStr);
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid UUID for reset token, value={}", userIdStr);
+            return null;
+        }
+    }
+
+    @Override
+    public void deleteAllRefreshTokensForUser(UUID userId) {
+        if (userId == null) {
+            return;
+        }
+        String userKey = REFRESH_KEY_PREFIX + userId;
+        String refreshToken = stringRedisTemplate.opsForValue().get(userKey);
+        if (refreshToken != null && !refreshToken.isBlank()) {
+            stringRedisTemplate.delete(REFRESH_TOKEN_TO_USER_PREFIX + refreshToken);
+        }
+        stringRedisTemplate.delete(userKey);
     }
 
     private String normalize(String email) {

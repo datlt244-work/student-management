@@ -26,4 +26,8 @@ public interface ITokenRedisService {
 
     String createResetPasswordToken(UUID userId, long ttlSeconds);
 
+    UUID getUserIdByResetToken(String token);
+
+    void deleteAllRefreshTokensForUser(UUID userId);
+
 }

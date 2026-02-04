@@ -5,6 +5,7 @@ import com.newwave.student_management.domains.auth.dto.request.LoginRequest;
 import com.newwave.student_management.domains.auth.dto.response.LoginResponse;
 import com.newwave.student_management.domains.auth.dto.request.RefreshTokenRequest;
 import com.newwave.student_management.domains.auth.dto.request.ForgotPasswordRequest;
+import com.newwave.student_management.domains.auth.dto.request.ResetPasswordRequest;
 import com.newwave.student_management.domains.auth.service.IAuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -80,6 +81,23 @@ public class AuthController {
                 java.util.Map.of(
                         "message", "If an account exists with this email, a password reset link has been sent.",
                         "cooldownMinutes", 15
+                )
+        );
+    }
+
+    @PostMapping("/reset-password")
+    @Operation(
+            summary = "Đặt lại mật khẩu",
+            description = "Dùng token từ email reset để đặt mật khẩu mới. Sau khi đổi, tất cả phiên đăng nhập bị hủy."
+    )
+    public ApiResponse<Object> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request
+    ) {
+        authService.resetPassword(request);
+        return ApiResponse.success(
+                java.util.Map.of(
+                        "message",
+                        "Password reset successfully. All sessions have been logged out. Please login again."
                 )
         );
     }

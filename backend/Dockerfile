@@ -5,18 +5,21 @@ FROM eclipse-temurin:21-jdk-alpine AS builder
 
 WORKDIR /app
 
-# Copy Maven wrapper and pom.xml
+# Copy các file cấu hình Maven từ thư mục hiện tại (backend/)
 COPY mvnw .
 COPY .mvn .mvn
 COPY pom.xml .
 
+# Cho phép chạy file mvnw
+RUN chmod +x mvnw
+
 # Download dependencies (cached layer)
 RUN ./mvnw dependency:go-offline -B
 
-# Copy source code
+# Copy mã nguồn
 COPY src src
 
-# Build JAR (skip tests for faster builds in production)
+# Build JAR
 RUN ./mvnw package -DskipTests -B
 
 # ============================================
@@ -26,27 +29,23 @@ FROM eclipse-temurin:21-jre-alpine
 
 WORKDIR /app
 
-# Install wget for healthcheck
+# Cài đặt wget cho healthcheck
 RUN apk add --no-cache wget
 
-# Create non-root user for security
+# Bảo mật: chạy với user không có quyền root
 RUN addgroup -g 1000 appgroup && adduser -u 1000 -G appgroup -D appuser
 
-# Copy JAR from builder
+# Copy file JAR đã build từ stage builder
 COPY --from=builder /app/target/*.jar app.jar
 
-# Switch to non-root user
 USER appuser
 
-# Expose application port
 EXPOSE 6868
 
-# Health check
+# Health check (Actuator)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
   CMD wget -qO- http://localhost:6868/api/v1/actuator/health || exit 1
 
-# Run application with prod profile
 ENTRYPOINT ["java", "-jar", "app.jar"]
 
-# Default: use prod profile
 ENV SPRING_PROFILES_ACTIVE=prod

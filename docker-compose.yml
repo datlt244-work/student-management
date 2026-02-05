@@ -1,11 +1,11 @@
-version: "3.8"
-
 services:
   # ==============================
   # 1. SPRING BOOT BACKEND
   # ==============================
   backend:
-    build: .
+    build:
+      context: ./backend  # Trỏ vào thư mục backend
+      dockerfile: Dockerfile
     container_name: student-backend
     ports:
       - "6868:6868"

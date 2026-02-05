@@ -1,4 +1,10 @@
 spring:
+  mail:
+    host: ${MAIL_HOST:localhost}
+    username: ${MAIL_USERNAME:false}
+    password: ${MAIL_PASSWORD:}
+    from: ${MAIL_FROM:noreply@localhost}
+
   datasource:
     url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:student_management}
     username: ${POSTGRES_USER:postgres}

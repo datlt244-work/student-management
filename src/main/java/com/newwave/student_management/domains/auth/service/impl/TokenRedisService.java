@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -82,9 +83,13 @@ public class TokenRedisService implements ITokenRedisService {
         String userKey = REFRESH_KEY_PREFIX + userId;
         String tokenKey = REFRESH_TOKEN_TO_USER_PREFIX + refreshToken;
 
-        // Lưu 2 chiều: userId -> token và token -> userId để validate nhanh
-        stringRedisTemplate.opsForValue().set(userKey, refreshToken, Duration.ofSeconds(refreshExpirationSeconds));
-        stringRedisTemplate.opsForValue().set(tokenKey, userId.toString(), Duration.ofSeconds(refreshExpirationSeconds));
+        Duration ttl = Duration.ofSeconds(refreshExpirationSeconds);
+        // User -> ZSET (score = expiry timestamp) tránh "rò rỉ bộ nhớ" khi Token Key hết TTL trước Set
+        long expiryTime = System.currentTimeMillis() + ttl.toMillis();
+        stringRedisTemplate.opsForZSet().add(userKey, refreshToken, expiryTime);
+        // Token -> userId (để validate nhanh)
+        stringRedisTemplate.opsForValue().set(tokenKey, userId.toString(), ttl);
+        cleanupExpiredTokensFromUserZSet(userKey);
         return refreshToken;
     }
 
@@ -108,18 +113,20 @@ public class TokenRedisService implements ITokenRedisService {
 
     @Override
     public void deleteRefreshToken(UUID userId, String refreshToken) {
-        if (userId == null && (refreshToken == null || refreshToken.isBlank())) {
+        if (refreshToken == null || refreshToken.isBlank()) {
             return;
         }
 
-        if (userId != null) {
-            String userKey = REFRESH_KEY_PREFIX + userId;
-            stringRedisTemplate.delete(userKey);
-        }
+        // Luôn xóa "con đường" token -> userId trước
+        String tokenKey = REFRESH_TOKEN_TO_USER_PREFIX + refreshToken;
+        String resolvedUserId = userId != null ? userId.toString() : stringRedisTemplate.opsForValue().get(tokenKey);
+        stringRedisTemplate.delete(tokenKey);
 
-        if (refreshToken != null && !refreshToken.isBlank()) {
-            String tokenKey = REFRESH_TOKEN_TO_USER_PREFIX + refreshToken;
-            stringRedisTemplate.delete(tokenKey);
+        // Xóa token khỏi ZSET user -> tokens (con đường ngược)
+        if (resolvedUserId != null && !resolvedUserId.isBlank()) {
+            String userKey = REFRESH_KEY_PREFIX + resolvedUserId;
+            stringRedisTemplate.opsForZSet().remove(userKey, refreshToken);
+            cleanupExpiredTokensFromUserZSet(userKey);
         }
     }
 
@@ -204,11 +211,29 @@ public class TokenRedisService implements ITokenRedisService {
             return;
         }
         String userKey = REFRESH_KEY_PREFIX + userId;
-        String refreshToken = stringRedisTemplate.opsForValue().get(userKey);
-        if (refreshToken != null && !refreshToken.isBlank()) {
-            stringRedisTemplate.delete(REFRESH_TOKEN_TO_USER_PREFIX + refreshToken);
+        Set<String> tokens = stringRedisTemplate.opsForZSet().range(userKey, 0, -1);
+        if (tokens != null && !tokens.isEmpty()) {
+            for (String token : tokens) {
+                stringRedisTemplate.delete(REFRESH_TOKEN_TO_USER_PREFIX + token);
+            }
         }
         stringRedisTemplate.delete(userKey);
+    }
+
+    /**
+     * Tự dọn các token đã hết hạn khỏi ZSET (score &lt; now).
+     * Giải quyết lệch pha TTL: Token Key mất trước khi có thể xóa khỏi Set → rò rỉ bộ nhớ.
+     */
+    private void cleanupExpiredTokensFromUserZSet(String userKey) {
+        if (userKey == null || userKey.isBlank()) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        stringRedisTemplate.opsForZSet().removeRangeByScore(userKey, 0, now);
+        Long size = stringRedisTemplate.opsForZSet().zCard(userKey);
+        if (size != null && size == 0) {
+            stringRedisTemplate.delete(userKey);
+        }
     }
 
     private String normalize(String email) {

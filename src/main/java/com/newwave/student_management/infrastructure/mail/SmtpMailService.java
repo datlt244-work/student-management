@@ -5,7 +5,7 @@ import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
@@ -15,8 +15,8 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "spring.mail.username")
-public class MailService {
+@ConditionalOnExpression("T(org.springframework.util.StringUtils).hasText('${spring.mail.username:}') && !'${spring.mail.username:}'.equalsIgnoreCase('false')")
+public class SmtpMailService implements IMailService {
 
     private final JavaMailSender mailSender;
 
@@ -32,9 +32,7 @@ public class MailService {
     @Value("${app.backend-url:http://localhost:6868/api/v1}")
     private String backendUrl;
 
-    /**
-     * Send password reset email
-     */
+    @Override
     @Async
     public void sendPasswordResetEmail(String toEmail, String fullName, String token) {
         try {
@@ -59,9 +57,7 @@ public class MailService {
         }
     }
 
-    /**
-     * Send generic email with custom subject and content
-     */
+    @Override
     @Async
     public void sendEmail(String toEmail, String subject, String htmlContent) {
         try {

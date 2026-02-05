@@ -12,7 +12,7 @@ import com.newwave.student_management.domains.auth.entity.UserStatus;
 import com.newwave.student_management.domains.auth.repository.UserRepository;
 import com.newwave.student_management.domains.auth.service.IAuthService;
 import com.newwave.student_management.domains.auth.service.ITokenRedisService;
-import com.newwave.student_management.infrastructure.mail.MailService;
+import com.newwave.student_management.infrastructure.mail.IMailService;
 import com.newwave.student_management.infrastructure.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,7 +33,7 @@ public class AuthService implements IAuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final ITokenRedisService tokenRedisService;
-    private final MailService mailService;
+    private final IMailService mailService;
 
     @Value("${spring.security.jwt.expiration-seconds:3600}")
     private long accessTokenExpiresIn;

@@ -3,6 +3,7 @@ package com.newwave.student_management.domains.auth.controller;
 import com.newwave.student_management.common.dto.ApiResponse;
 import com.newwave.student_management.domains.auth.dto.request.LoginRequest;
 import com.newwave.student_management.domains.auth.dto.response.LoginResponse;
+import com.newwave.student_management.domains.auth.dto.request.LogoutRequest;
 import com.newwave.student_management.domains.auth.dto.request.RefreshTokenRequest;
 import com.newwave.student_management.domains.auth.dto.request.ForgotPasswordRequest;
 import com.newwave.student_management.domains.auth.dto.request.ResetPasswordRequest;
@@ -54,17 +55,20 @@ public class AuthController {
     @PostMapping("/logout")
     @Operation(
             summary = "Đăng xuất",
-            description = "Xóa refresh token và (tùy chọn) blacklist access token hiện tại."
+            description = "Public endpoint. Xóa refresh token trong Redis và (tùy chọn) blacklist access token. "
+                    + "Cho phép gọi khi token hết hạn/không có để client xóa cookie mà không nhận 401."
     )
     public ApiResponse<String> logout(
             @RequestHeader(name = "Authorization", required = false) String authorizationHeader,
-            @Valid @RequestBody RefreshTokenRequest request
+            @RequestBody(required = false) LogoutRequest request
     ) {
         String accessToken = null;
         if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
             accessToken = authorizationHeader.substring(7);
         }
-        authService.logout(accessToken, request.getRefreshToken());
+        String refreshToken = (request != null && request.getRefreshToken() != null) ? request.getRefreshToken().trim() : null;
+        if (refreshToken != null && refreshToken.isEmpty()) refreshToken = null;
+        authService.logout(accessToken, refreshToken);
         return ApiResponse.success("Logged out successfully");
     }
 

@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 @ConditionalOnProperty(name = "spring.mail.username")
-public class MailService {
+public class SmtpMailService implements IMailService {
 
     private final JavaMailSender mailSender;
 
@@ -32,9 +32,7 @@ public class MailService {
     @Value("${app.backend-url:http://localhost:6868/api/v1}")
     private String backendUrl;
 
-    /**
-     * Send password reset email
-     */
+    @Override
     @Async
     public void sendPasswordResetEmail(String toEmail, String fullName, String token) {
         try {
@@ -59,9 +57,7 @@ public class MailService {
         }
     }
 
-    /**
-     * Send generic email with custom subject and content
-     */
+    @Override
     @Async
     public void sendEmail(String toEmail, String subject, String htmlContent) {
         try {

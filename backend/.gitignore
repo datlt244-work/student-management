@@ -1,0 +1,51 @@
+### --- Dự án Student Management --- ###
+
+# 1. Loại bỏ các file build của Java/Maven
+**/target/
+**/build/
+.mvn/wrapper/maven-wrapper.jar
+
+# Giữ lại các thư mục target quan trọng nếu có (quy tắc của bạn)
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# 2. Loại bỏ các file môi trường nhạy cảm (Cực kỳ quan trọng)
+.env
+.env.local
+**/backend/.env
+
+# 3. Loại bỏ cấu hình của các IDE (Dùng dấu **/ để áp dụng cho cả root và backend)
+### IntelliJ IDEA ###
+**/.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+### VS Code ###
+**/.vscode/
+
+### STS / Eclipse ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### NetBeans ###
+**/nbproject/private/
+**/nbbuild/
+**/dist/
+**/nbdist/
+**/.nb-gradle/
+
+# 4. Loại bỏ các file rác của hệ điều hành
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 5. Các file log
+*.log
+**/logs/

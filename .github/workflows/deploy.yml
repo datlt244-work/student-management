@@ -2,27 +2,37 @@ name: Deploy to Self-Hosted Runner
 on:
   push:
     branches: [ "main" ]
+
 jobs:
   deploy:
     runs-on: self-hosted
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
+          # Cập nhật đường dẫn cache cho đúng cấu trúc mới
           cache: maven
+          mvnd-relative-path: 'backend' 
+
       - name: Build with Maven
+        # Thêm dòng này để lệnh chạy bên trong thư mục backend
+        working-directory: backend
         run: |
           chmod +x mvnw
           ./mvnw clean package -DskipTests
-      # --------------------
-  
+
       - name: Create .env file
+        # Nếu file .env và docker-compose cũng nằm trong backend, hãy thêm working-directory
+        working-directory: backend
         run: echo "${{ secrets.ENV_FILE }}" > .env
+
       - name: Deploy with Docker Compose
+        working-directory: backend
         run: |
           docker compose down
           docker compose up -d --build

@@ -28,7 +28,16 @@ jobs:
 
       - name: Install dependencies
         working-directory: frontend
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Create .env.production file
+        working-directory: frontend
+        run: |
+          if [ -n "${{ secrets.FRONTEND_ENV_FILE }}" ]; then
+            echo "${{ secrets.FRONTEND_ENV_FILE }}" > .env.production
+          else
+            echo "VITE_API_URL=/api/v1" > .env.production
+          fi
 
       - name: Lint and type check
         working-directory: frontend
@@ -38,7 +47,7 @@ jobs:
 
       - name: Build frontend
         working-directory: frontend
-        run: pnpm build
+        run: pnpm build-only
 
       - name: Create .env.production file
         working-directory: frontend

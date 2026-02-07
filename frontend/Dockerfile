@@ -10,7 +10,7 @@ COPY package.json pnpm-lock.yaml ./
 
 # 2. Thay --frozen-lockfile bằng --no-frozen-lockfile nếu vẫn gặp lỗi không khớp
 # Nhưng vì đã cố định pnpm@10.4.1 ở trên, bạn có thể dùng --frozen-lockfile để an toàn
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --no-frozen-lockfile
 
 # Copy source code
 COPY . .

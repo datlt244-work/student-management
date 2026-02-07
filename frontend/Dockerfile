@@ -38,7 +38,10 @@ COPY --from=build-stage /app/.env.production /tmp/.env.production
 # Entrypoint script
 RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
     echo 'set -a' >> /docker-entrypoint.sh && \
-    echo '[ -f /tmp/.env.production ] && . /tmp/.env.production' >> /docker-entrypoint.sh && \
+    echo 'if [ -f /tmp/.env.production ]; then' >> /docker-entrypoint.sh && \
+    echo '  # Đọc file env, bỏ qua comment và export biến' >> /docker-entrypoint.sh && \
+    echo '  export $(grep -v "^#" /tmp/.env.production | xargs)' >> /docker-entrypoint.sh && \
+    echo 'fi' >> /docker-entrypoint.sh && \
     echo 'envsubst "$$VITE_NGINX_LISTEN_PORT $$VITE_NGINX_SERVER_NAME $$VITE_API_BASE_PATH $$VITE_BACKEND_CONTAINER_NAME $$VITE_BACKEND_CONTAINER_PORT" < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf' >> /docker-entrypoint.sh && \
     echo 'exec nginx -g "daemon off;"' >> /docker-entrypoint.sh && \
     chmod +x /docker-entrypoint.sh

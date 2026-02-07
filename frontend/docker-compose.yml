@@ -1,0 +1,28 @@
+# Docker Compose cho Frontend
+# Tự động đọc file .env.development trong thư mục frontend/ (được xử lý trong Dockerfile)
+# Chạy: docker-compose up -d (từ thư mục frontend/)
+# Lưu ý: Backend phải chạy trước để frontend có thể kết nối
+
+services:
+  # ==============================
+  # FRONTEND
+  # ==============================
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: student-frontend
+    ports:
+      - "80:80"
+    # Sử dụng network chung với backend để có thể giao tiếp
+    networks:
+      - app-network
+    restart: unless-stopped
+    # Frontend phụ thuộc vào backend service (chạy trong network chung)
+    # Lưu ý: Backend phải được start trước bằng docker-compose trong thư mục backend/
+
+networks:
+  app-network:
+    name: student-management-network
+    external: true
+

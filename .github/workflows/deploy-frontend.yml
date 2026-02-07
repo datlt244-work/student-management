@@ -1,0 +1,75 @@
+name: Deploy Frontend to Self-Hosted Runner
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/deploy-frontend.yml'
+
+jobs:
+  deploy-frontend:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+          run_install: false
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint and type check
+        working-directory: frontend
+        run: |
+          pnpm lint
+          pnpm type-check
+
+      - name: Build frontend
+        working-directory: frontend
+        run: pnpm build
+
+      - name: Create .env.production file
+        working-directory: frontend
+        run: |
+          if [ -n "${{ secrets.FRONTEND_ENV_FILE }}" ]; then
+            echo "${{ secrets.FRONTEND_ENV_FILE }}" > .env.production
+          else
+            echo "# Frontend production environment variables" > .env.production
+            echo "VITE_API_URL=/api/v1" >> .env.production
+          fi
+          echo "Created .env.production file"
+
+      - name: Ensure network exists
+        run: |
+          if ! docker network inspect student-management-network >/dev/null 2>&1; then
+            echo "Creating student-management-network..."
+            docker network create student-management-network
+          else
+            echo "Network student-management-network already exists"
+          fi
+
+      - name: Deploy with Docker Compose
+        working-directory: frontend
+        run: |
+          docker compose down
+          docker compose up -d --build
+          docker image prune -f
+
+      - name: Verify deployment
+        run: |
+          sleep 5
+          curl -f http://localhost:80 || exit 1
+

@@ -1,0 +1,33 @@
+server {
+    listen ${VITE_NGINX_LISTEN_PORT};
+    server_name ${VITE_NGINX_SERVER_NAME}; # Nhận diện domain của bạn
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # 1. Cấu hình cho Vue Router (SPA)
+    # Giúp F5 không bị lỗi 404 khi đang ở trang con (ví dụ /admin/users)
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # 2. Cấu hình Reverse Proxy cho API Backend
+    # Khi gọi admin-datlt244.io.vn/api/v1/... -> Chuyển vào container Backend
+    location ${VITE_API_BASE_PATH}/ {
+        # "${VITE_BACKEND_CONTAINER_NAME}" là container_name của backend (trong network chung)
+        # Port ${VITE_BACKEND_CONTAINER_PORT} là port nội bộ của container backend
+        proxy_pass http://${VITE_BACKEND_CONTAINER_NAME}:${VITE_BACKEND_CONTAINER_PORT}${VITE_API_BASE_PATH}/;
+        
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Trang lỗi
+    error_page 500 502 503 504 /50x.html;
+    location = /50x.html {
+        root /usr/share/nginx/html;
+    }
+}
+

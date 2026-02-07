@@ -31,9 +31,19 @@ jobs:
         working-directory: backend
         run: echo "${{ secrets.ENV_FILE }}" > .env
 
+      - name: Stop and remove existing containers
+        run: |
+          # Force stop and remove container if it exists
+          if docker ps -a --format '{{.Names}}' | grep -q '^student-backend$'; then
+            echo "Stopping and removing existing student-backend container..."
+            docker stop student-backend || true
+            docker rm -f student-backend || true
+          fi
+          # Also try docker compose down to clean up any other containers
+          cd backend && docker compose down --remove-orphans || true
+
       - name: Deploy with Docker Compose
         working-directory: backend
         run: |
-          docker compose down
           docker compose up -d --build
           docker image prune -f

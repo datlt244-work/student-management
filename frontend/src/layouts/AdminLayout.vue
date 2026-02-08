@@ -26,9 +26,6 @@ async function handleLogout() {
   try {
     await apiFetch('/auth/logout', {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${authStore.accessToken}`,
-      },
       body: JSON.stringify({
         refreshToken: authStore.refreshToken,
       }),

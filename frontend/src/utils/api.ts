@@ -136,7 +136,7 @@ export async function apiFetch(
   // Nếu 401 và có refresh token → thử refresh rồi retry
   if (response.status === 401 && authStore.refreshToken) {
     // Không retry cho chính endpoint refresh-token hoặc login
-    if (endpoint.includes('/auth/refresh-token') || endpoint.includes('/auth/login')) {
+    if (endpoint.includes('/auth/refresh-token') || endpoint.includes('/auth/login') || endpoint.includes('/auth/logout')) {
       return response
     }
 

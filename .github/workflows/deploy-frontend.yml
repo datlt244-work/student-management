@@ -10,14 +10,21 @@ on:
 jobs:
   deploy-frontend:
     runs-on: self-hosted
+    # Thêm defaults để không phải lặp lại working-directory
+    defaults:
+      run:
+        working-directory: frontend
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Chỉ cần setup Node để Lint/Typecheck (nếu muốn). 
+      # Nếu không cần lint ở đây (vì đã làm ở local/CI khác) thì có thể bỏ bước này để deploy nhanh hơn.
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 8
+          version: 9 # Dùng v9 hoặc v10 cho mới
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -26,95 +33,55 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: frontend/pnpm-lock.yaml
 
-      - name: Install dependencies
-        working-directory: frontend
-        run: pnpm install --no-frozen-lockfile
+      - name: Install dependencies (for Linting)
+        run: pnpm install --frozen-lockfile
 
       - name: Lint and type check
-        working-directory: frontend
         run: |
           pnpm lint
           pnpm type-check
 
+      # TẠO FILE ENV QUAN TRỌNG
+      # File này sẽ được Docker COPY vào và dùng để build
       - name: Create .env.production file
-        working-directory: frontend
         run: |
-          # Create .env.production file from secret (must be before build so it's included in Docker image)
-          SECRET_CONTENT="${{ secrets.FRONTEND_ENV_FILE }}"
-          if [ -z "${SECRET_CONTENT}" ] || [ "${SECRET_CONTENT}" = "" ]; then
-            echo "❌ ERROR: FRONTEND_ENV_FILE secret is not set or is empty"
-            echo "Please configure the FRONTEND_ENV_FILE secret in GitHub repository settings"
+          if [ -z "${{ secrets.FRONTEND_ENV_FILE }}" ]; then
+            echo "❌ ERROR: Secret FRONTEND_ENV_FILE is missing"
             exit 1
           fi
-          echo "✓ Using secret FRONTEND_ENV_FILE"
-          echo "${SECRET_CONTENT}" > .env.production
-          echo "Created .env.production file"
-          echo "File size: $(wc -c < .env.production) bytes"
-          echo "First 10 lines (for verification):"
-          head -10 .env.production
+          echo "${{ secrets.FRONTEND_ENV_FILE }}" > .env.production
+          echo "✓ .env.production created"
 
-      - name: Build frontend
-        working-directory: frontend
-        run: pnpm build-only
+      # --- BỎ BƯỚC pnpm build-only Ở ĐÂY (VÌ DOCKER SẼ LÀM) ---
 
       - name: Ensure network exists
+        # Chạy ở root (ngoài frontend dir) hoặc chỉ định shell
+        working-directory: . 
         run: |
-          if ! docker network inspect student-management-network >/dev/null 2>&1; then
-            echo "Creating student-management-network..."
-            docker network create student-management-network
-          else
-            echo "Network student-management-network already exists"
-          fi
-
-      - name: Stop and remove existing containers
-        run: |
-          # Force stop and remove container if it exists
-          if docker ps -a --format '{{.Names}}' | grep -q '^student-frontend$'; then
-            echo "Stopping and removing existing student-frontend container..."
-            docker stop student-frontend || true
-            docker rm -f student-frontend || true
-          fi
-          # Also try docker compose down to clean up any other containers
-          cd frontend && docker compose down --remove-orphans || true
+          docker network inspect student-management-network >/dev/null 2>&1 || \
+          docker network create student-management-network
 
       - name: Deploy with Docker Compose
-        working-directory: frontend
         run: |
-          docker compose up -d --build
+          # Dọn dẹp container cũ
+          docker compose down --remove-orphans
+          
+          # Build và chạy mới (Build sẽ lấy .env.production vừa tạo ở trên)
+          docker compose up -d --build --force-recreate
+          
+          # Xóa image rác
           docker image prune -f
-
-      - name: Wait for container to be ready
-        run: |
-          echo "Waiting for container to start..."
-          sleep 10
-          # Check if container is running
-          if ! docker ps --format '{{.Names}}' | grep -q '^student-frontend$'; then
-            echo "Container is not running, checking logs..."
-            docker logs student-frontend || true
-            exit 1
-          fi
-          echo "Container is running"
 
       - name: Verify deployment
         run: |
-          echo "Verifying deployment with retries..."
-          max_attempts=5
-          attempt=1
-          while [ $attempt -le $max_attempts ]; do
-            echo "Attempt $attempt of $max_attempts..."
-            if curl -f -s --max-time 5 http://localhost:80 > /dev/null 2>&1; then
-              echo "✓ Deployment verified successfully!"
-              exit 0
-            fi
-            if [ $attempt -lt $max_attempts ]; then
-              echo "Waiting 3 seconds before retry..."
-              sleep 3
-            fi
-            attempt=$((attempt + 1))
-          done
-          echo "⚠ Deployment verification failed after $max_attempts attempts"
-          echo "Container logs:"
-          docker logs student-frontend --tail 50 || true
-          # Don't fail the workflow, just warn
-          exit 0
+          echo "Waiting for container to start..."
+          sleep 5
+          
+          if ! docker ps | grep -q 'student-frontend'; then
+            echo "❌ Container failed to start. Logs:"
+            docker logs student-frontend
+            exit 1
+          fi
 
+          echo "✓ Container is running."
+          # Optional: Check curl localhost if needed

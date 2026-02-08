@@ -14,7 +14,7 @@ public enum ErrorCode {
 
     // Validation errors - Email (1100-1119)
     EMAIL_REQUIRED(1100, "Email is required", HttpStatus.BAD_REQUEST),
-    EMAIL_INVALID(1101, "Email must be between 3 and 50 characters", HttpStatus.BAD_REQUEST),
+    EMAIL_INVALID(1101, "Email is invalid. Must be a valid @fpt.edu.vn email", HttpStatus.BAD_REQUEST),
     EMAIL_FORMAT_INVALID(1102, "Email format is invalid",
             HttpStatus.BAD_REQUEST),
     EMAIL_TOO_LONG(1103, "Email must be at most 255 characters", HttpStatus.BAD_REQUEST),

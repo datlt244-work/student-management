@@ -55,7 +55,7 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception{
         http
                 .csrf(AbstractHttpConfigurer::disable)
-                .cors(Customizer.withDefaults())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(request -> request
                         .requestMatchers(HttpMethod.POST, PUBLIC_POST_ENDPOINTS).permitAll()
                         .requestMatchers(HttpMethod.GET, PUBLIC_GET_ENDPOINTS).permitAll()
@@ -109,6 +109,7 @@ public class SecurityConfig {
         configuration.setAllowedOriginPatterns(java.util.List.of(
                 "https://api.admin-datlt244.io.vn",
                 "http://api.admin-datlt244.io.vn",
+                "https://admin-datlt244.io.vn",
                 "http://localhost:*",
                 "https://localhost:*"
         ));

@@ -56,7 +56,13 @@ export const useAuthStore = defineStore('auth', () => {
 
     // Chọn storage dựa theo rememberMe
     const target = rememberMe ? localStorage : sessionStorage
+    const other = rememberMe ? sessionStorage : localStorage
     localStorage.setItem('rememberMe', String(rememberMe))
+
+    // Xóa stale credentials ở storage còn lại
+    other.removeItem('accessToken')
+    other.removeItem('refreshToken')
+    other.removeItem('user')
 
     target.setItem('accessToken', data.accessToken)
     target.setItem('refreshToken', data.refreshToken)

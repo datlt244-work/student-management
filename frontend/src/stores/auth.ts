@@ -8,17 +8,24 @@ export interface AuthUser {
   profilePictureUrl: string | null
 }
 
+function getStorage(): Storage {
+  // Nếu đã chọn rememberMe trước đó → dùng localStorage, ngược lại sessionStorage
+  return localStorage.getItem('rememberMe') === 'true' ? localStorage : sessionStorage
+}
+
 export const useAuthStore = defineStore('auth', () => {
-  const accessToken = ref<string | null>(localStorage.getItem('accessToken'))
-  const refreshToken = ref<string | null>(localStorage.getItem('refreshToken'))
+  const storage = getStorage()
+  const accessToken = ref<string | null>(storage.getItem('accessToken'))
+  const refreshToken = ref<string | null>(storage.getItem('refreshToken'))
   const user = ref<AuthUser | null>(loadUser())
 
   const isAuthenticated = computed(() => !!accessToken.value)
   const userRole = computed(() => user.value?.role?.toLowerCase() ?? null)
   const isAdmin = computed(() => userRole.value === 'admin')
+  const rememberedEmail = computed(() => localStorage.getItem('rememberedEmail') || '')
 
   function loadUser(): AuthUser | null {
-    const raw = localStorage.getItem('user')
+    const raw = getStorage().getItem('user')
     if (!raw) return null
     try {
       return JSON.parse(raw)
@@ -27,14 +34,17 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  function setAuth(data: {
-    accessToken: string
-    refreshToken: string
-    userId: string
-    email: string
-    role: string | null
-    profilePictureUrl: string | null
-  }) {
+  function setAuth(
+    data: {
+      accessToken: string
+      refreshToken: string
+      userId: string
+      email: string
+      role: string | null
+      profilePictureUrl: string | null
+    },
+    rememberMe: boolean = false,
+  ) {
     accessToken.value = data.accessToken
     refreshToken.value = data.refreshToken
     user.value = {
@@ -44,9 +54,20 @@ export const useAuthStore = defineStore('auth', () => {
       profilePictureUrl: data.profilePictureUrl,
     }
 
-    localStorage.setItem('accessToken', data.accessToken)
-    localStorage.setItem('refreshToken', data.refreshToken)
-    localStorage.setItem('user', JSON.stringify(user.value))
+    // Chọn storage dựa theo rememberMe
+    const target = rememberMe ? localStorage : sessionStorage
+    localStorage.setItem('rememberMe', String(rememberMe))
+
+    target.setItem('accessToken', data.accessToken)
+    target.setItem('refreshToken', data.refreshToken)
+    target.setItem('user', JSON.stringify(user.value))
+
+    // Lưu email để auto-fill lần sau (nếu rememberMe)
+    if (rememberMe) {
+      localStorage.setItem('rememberedEmail', data.email)
+    } else {
+      localStorage.removeItem('rememberedEmail')
+    }
   }
 
   function clearAuth() {
@@ -54,9 +75,13 @@ export const useAuthStore = defineStore('auth', () => {
     refreshToken.value = null
     user.value = null
 
-    localStorage.removeItem('accessToken')
-    localStorage.removeItem('refreshToken')
-    localStorage.removeItem('user')
+    // Xóa ở cả hai storage
+    for (const s of [localStorage, sessionStorage]) {
+      s.removeItem('accessToken')
+      s.removeItem('refreshToken')
+      s.removeItem('user')
+    }
+    localStorage.removeItem('rememberMe')
   }
 
   return {
@@ -66,8 +91,8 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     userRole,
     isAdmin,
+    rememberedEmail,
     setAuth,
     clearAuth,
   }
 })
-

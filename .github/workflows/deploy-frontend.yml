@@ -85,3 +85,17 @@ jobs:
 
           echo "✓ Container is running."
           # Optional: Check curl localhost if needed
+
+      - name: Deploy with Docker Compose
+        # Khai báo biến môi trường lấy từ GitHub Secrets
+        env:
+          CLOUDFLARE_TUNNEL_TOKEN: ${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}
+        run: |
+          # Dọn dẹp container cũ
+          docker compose down --remove-orphans
+          
+          # Chạy container mới + Truyền Token vào
+          # Lưu ý: Dòng dưới đây rất quan trọng để docker-compose nhận được biến
+          CLOUDFLARE_TUNNEL_TOKEN=$CLOUDFLARE_TUNNEL_TOKEN docker compose up -d --build --force-recreate
+          
+          docker image prune -f

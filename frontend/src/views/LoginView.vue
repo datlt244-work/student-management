@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiFetch } from '@/utils/api'
 import { useAuthStore } from '@/stores/auth'
@@ -11,6 +11,14 @@ const selectedRole = ref<'Student' | 'Teacher' | 'Admin'>('Student')
 const email = ref('')
 const password = ref('')
 const rememberMe = ref(false)
+
+// Auto-fill email nếu đã remember trước đó
+onMounted(() => {
+  if (authStore.rememberedEmail) {
+    email.value = authStore.rememberedEmail
+    rememberMe.value = true
+  }
+})
 const showPassword = ref(false)
 const isLoading = ref(false)
 const errorMessage = ref('')
@@ -48,14 +56,17 @@ async function handleLogin(e: Event) {
 
     // Lưu auth state vào store + localStorage
     const result = data.result || data
-    authStore.setAuth({
-      accessToken: result.accessToken,
-      refreshToken: result.refreshToken,
-      userId: result.userId,
-      email: result.email,
-      role: result.role,
-      profilePictureUrl: result.profilePictureUrl,
-    })
+    authStore.setAuth(
+      {
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+        userId: result.userId,
+        email: result.email,
+        role: result.role,
+        profilePictureUrl: result.profilePictureUrl,
+      },
+      rememberMe.value,
+    )
 
     // Redirect dựa theo role
     const role = result.role?.toLowerCase()
@@ -190,7 +201,7 @@ function handleGoogleLogin() {
               <label class="flex items-center gap-2 cursor-pointer group">
                 <input
                   v-model="rememberMe"
-                  class="h-4 w-4 rounded border-border-light dark:border-border-dark text-primary focus:ring-offset-0 focus:ring-primary/20 bg-transparent group-hover:border-primary transition-colors"
+                  class="h-4 w-4 rounded border-border-light dark:border-border-dark text-primary focus:ring-offset-0 focus:ring-primary/20 bg-white dark:bg-surface-dark checked:bg-primary checked:border-primary group-hover:border-primary transition-colors"
                   type="checkbox"
                 />
                 <span
@@ -199,9 +210,9 @@ function handleGoogleLogin() {
                   Remember me
                 </span>
               </label>
-              <a class="text-sm font-medium text-primary hover:text-primary-dark transition-colors" href="#">
+              <router-link class="text-sm font-medium text-primary hover:text-primary-dark transition-colors" :to="{ name: 'forgot-password' }">
                 Forgot Password?
-              </a>
+              </router-link>
             </div>
 
             <!-- Login Button -->

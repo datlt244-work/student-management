@@ -50,9 +50,33 @@ COPY --from=build-stage /app/.env.production /tmp/.env.production
 # Create entrypoint script to generate nginx.conf from template using .env.production
 RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
     echo 'set -a' >> /docker-entrypoint.sh && \
-    echo '. /tmp/.env.production' >> /docker-entrypoint.sh && \
+    echo '# Load environment variables from .env.production' >> /docker-entrypoint.sh && \
+    echo 'if [ -f /tmp/.env.production ]; then' >> /docker-entrypoint.sh && \
+    echo '  echo "Loading environment variables from .env.production..."' >> /docker-entrypoint.sh && \
+    echo '  while IFS= read -r line || [ -n "$line" ]; do' >> /docker-entrypoint.sh && \
+    echo '    # Skip comments and empty lines' >> /docker-entrypoint.sh && \
+    echo '    case "$line" in' >> /docker-entrypoint.sh && \
+    echo '      \\#*) continue ;;' >> /docker-entrypoint.sh && \
+    echo '      "") continue ;;' >> /docker-entrypoint.sh && \
+    echo '    esac' >> /docker-entrypoint.sh && \
+    echo '    # Export variable' >> /docker-entrypoint.sh && \
+    echo '    export "$line"' >> /docker-entrypoint.sh && \
+    echo '  done < /tmp/.env.production' >> /docker-entrypoint.sh && \
+    echo '  echo "Environment variables loaded"' >> /docker-entrypoint.sh && \
+    echo 'else' >> /docker-entrypoint.sh && \
+    echo '  echo "Warning: /tmp/.env.production not found, using defaults"' >> /docker-entrypoint.sh && \
+    echo '  export VITE_NGINX_LISTEN_PORT=80' >> /docker-entrypoint.sh && \
+    echo '  export VITE_NGINX_SERVER_NAME="admin-datlt244.io.vn localhost"' >> /docker-entrypoint.sh && \
+    echo '  export VITE_API_BASE_PATH="/api/v1"' >> /docker-entrypoint.sh && \
+    echo '  export VITE_BACKEND_CONTAINER_NAME="student-backend"' >> /docker-entrypoint.sh && \
+    echo '  export VITE_BACKEND_CONTAINER_PORT="6868"' >> /docker-entrypoint.sh && \
+    echo 'fi' >> /docker-entrypoint.sh && \
+    echo '# Generate nginx.conf from template' >> /docker-entrypoint.sh && \
+    echo 'echo "Generating nginx.conf from template..."' >> /docker-entrypoint.sh && \
     echo 'envsubst "$$VITE_NGINX_LISTEN_PORT $$VITE_NGINX_SERVER_NAME $$VITE_API_BASE_PATH $$VITE_BACKEND_CONTAINER_NAME $$VITE_BACKEND_CONTAINER_PORT" < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf' >> /docker-entrypoint.sh && \
-    echo 'rm /tmp/.env.production' >> /docker-entrypoint.sh && \
+    echo 'echo "nginx.conf generated successfully"' >> /docker-entrypoint.sh && \
+    echo 'cat /etc/nginx/conf.d/default.conf' >> /docker-entrypoint.sh && \
+    echo 'rm -f /tmp/.env.production' >> /docker-entrypoint.sh && \
     echo 'exec nginx -g "daemon off;"' >> /docker-entrypoint.sh && \
     chmod +x /docker-entrypoint.sh
 

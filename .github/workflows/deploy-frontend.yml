@@ -39,30 +39,18 @@ jobs:
       - name: Create .env.production file
         working-directory: frontend
         run: |
-          # Create .env.production file (must be before build so it's included in Docker image)
-          # Check if secret exists and is not empty
+          # Create .env.production file from secret (must be before build so it's included in Docker image)
           SECRET_CONTENT="${{ secrets.FRONTEND_ENV_FILE }}"
-          if [ -n "${SECRET_CONTENT}" ] && [ "${SECRET_CONTENT}" != "" ]; then
-            echo "Using secret FRONTEND_ENV_FILE"
-            echo "${SECRET_CONTENT}" > .env.production
-          else
-            echo "Using default .env.production values"
-            cat > .env.production << 'EOF'
-          # Frontend production environment variables
-          VITE_DEV_SERVER_PORT=5173
-          VITE_API_BASE_URL=https://api.admin-datlt244.io.vn
-          VITE_BACKEND_URL=http://student-backend:6868
-          VITE_BACKEND_PORT=6868
-          VITE_API_BASE_PATH=/api/v1
-          VITE_NGINX_SERVER_NAME=admin-datlt244.io.vn localhost
-          VITE_NGINX_LISTEN_PORT=80
-          VITE_BACKEND_CONTAINER_NAME=student-backend
-          VITE_BACKEND_CONTAINER_PORT=6868
-          EOF
+          if [ -z "${SECRET_CONTENT}" ] || [ "${SECRET_CONTENT}" = "" ]; then
+            echo "❌ ERROR: FRONTEND_ENV_FILE secret is not set or is empty"
+            echo "Please configure the FRONTEND_ENV_FILE secret in GitHub repository settings"
+            exit 1
           fi
+          echo "✓ Using secret FRONTEND_ENV_FILE"
+          echo "${SECRET_CONTENT}" > .env.production
           echo "Created .env.production file"
           echo "File size: $(wc -c < .env.production) bytes"
-          echo "First 10 lines:"
+          echo "First 10 lines (for verification):"
           head -10 .env.production
 
       - name: Build frontend

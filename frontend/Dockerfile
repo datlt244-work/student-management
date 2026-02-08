@@ -15,6 +15,16 @@ RUN pnpm install --no-frozen-lockfile
 # Copy source code
 COPY . .
 
+# Debug: Check if .env.production exists
+RUN echo "Checking for .env files..." && \
+    ls -la .env* 2>/dev/null || echo "No .env files found" && \
+    if [ -f .env.production ]; then \
+      echo "✓ .env.production found, contents:" && \
+      cat .env.production; \
+    else \
+      echo "⚠ .env.production NOT found"; \
+    fi
+
 # Xử lý environment files
 RUN if [ -f .env.development ] && [ ! -f .env.production ]; then \
       cp .env.development .env.production; \
@@ -33,7 +43,22 @@ COPY --from=build-stage /app/dist /usr/share/nginx/html
 
 # Copy nginx template và file env để envsubst (dùng cho config Nginx động)
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
+
+# Copy .env.production from build stage
+# Note: If file doesn't exist in build stage, this will fail - that's intentional
 COPY --from=build-stage /app/.env.production /tmp/.env.production
+
+# Verify file was copied and show contents for debugging
+RUN if [ -f /tmp/.env.production ]; then \
+      echo "✓ .env.production copied successfully to /tmp/.env.production"; \
+      echo "File size: $(wc -c < /tmp/.env.production) bytes"; \
+      echo "First 15 lines:"; \
+      head -15 /tmp/.env.production; \
+    else \
+      echo "⚠ ERROR: /tmp/.env.production NOT found after copy"; \
+      echo "This means the file was not in the build stage at /app/.env.production"; \
+      exit 1; \
+    fi
 
 # Entrypoint script
 RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \

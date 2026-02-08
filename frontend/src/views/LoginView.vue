@@ -210,9 +210,9 @@ function handleGoogleLogin() {
                   Remember me
                 </span>
               </label>
-              <a class="text-sm font-medium text-primary hover:text-primary-dark transition-colors" href="#">
+              <router-link class="text-sm font-medium text-primary hover:text-primary-dark transition-colors" :to="{ name: 'forgot-password' }">
                 Forgot Password?
-              </a>
+              </router-link>
             </div>
 
             <!-- Login Button -->

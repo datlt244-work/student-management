@@ -14,6 +14,12 @@ const router = createRouter({
       component: () => import('@/views/LoginView.vue'),
       meta: { guest: true },
     },
+    {
+      path: '/forgot-password',
+      name: 'forgot-password',
+      component: () => import('@/views/ForgotPasswordView.vue'),
+      meta: { guest: true },
+    },
     // Admin routes
     {
       path: '/admin',

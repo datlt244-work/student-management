@@ -57,6 +57,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(request -> request
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.POST, PUBLIC_POST_ENDPOINTS).permitAll()
                         .requestMatchers(HttpMethod.GET, PUBLIC_GET_ENDPOINTS).permitAll()
                         .anyRequest().authenticated())
@@ -110,6 +111,7 @@ public class SecurityConfig {
                 "https://api.admin-datlt244.io.vn",
                 "http://api.admin-datlt244.io.vn",
                 "https://admin-datlt244.io.vn",
+                "http://localhost:5173",
                 "http://localhost:*",
                 "https://localhost:*"
         ));

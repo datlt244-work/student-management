@@ -2,52 +2,40 @@
 FROM node:20-alpine as build-stage
 WORKDIR /app
 
-# Install pnpm
-RUN npm install -g pnpm
+# 1. Cố định phiên bản pnpm giống máy cá nhân của bạn để tránh lỗi Lockfile
+RUN npm install -g pnpm@10.4.1
 
 # Copy package files
 COPY package.json pnpm-lock.yaml ./
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile
+# 2. Thay --frozen-lockfile bằng --no-frozen-lockfile nếu vẫn gặp lỗi không khớp
+# Nhưng vì đã cố định pnpm@10.4.1 ở trên, bạn có thể dùng --frozen-lockfile để an toàn
+RUN pnpm install --no-frozen-lockfile
 
-# Copy source code (bao gồm .env.development và .env.production nếu có)
+# Copy source code
 COPY . .
 
-# Xử lý environment files cho Vite build
-# Vite tự động load .env.production khi build với mode production
-# Nếu có .env.development, copy thành .env.production để Vite load
-# Nếu đã có .env.production, giữ nguyên
-RUN echo "Checking for environment files..." && \
-    ls -la .env* 2>/dev/null || echo "No .env files found" && \
-    if [ -f .env.development ] && [ ! -f .env.production ]; then \
-      cp .env.development .env.production && \
-      echo "✓ Copied .env.development to .env.production"; \
-    elif [ -f .env.production ]; then \
-      echo "✓ Using existing .env.production"; \
-    else \
-      echo "⚠ No .env file found, building without environment variables"; \
-    fi && \
-    echo "Environment files after processing:" && \
-    ls -la .env* 2>/dev/null || echo "No .env files"
+# Xử lý environment files
+RUN if [ -f .env.development ] && [ ! -f .env.production ]; then \
+      cp .env.development .env.production; \
+    fi
 
-# Build the application (Vite sẽ tự động load .env.production nếu có)
+# Build (Vite sẽ đóng gói các biến VITE_* vào file tĩnh)
 RUN pnpm build
 
 # Stage 2: Production Run
 FROM nginx:stable-alpine as production-stage
 
-# Install gettext for envsubst command
 RUN apk add --no-cache gettext
 
-# Copy built files from build stage
+# Copy built files
 COPY --from=build-stage /app/dist /usr/share/nginx/html
 
-# Copy nginx template and .env.production
+# Copy nginx template và file env để envsubst (dùng cho config Nginx động)
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build-stage /app/.env.production /tmp/.env.production
 
-# Create entrypoint script to generate nginx.conf from template using .env.production
+# Entrypoint script
 RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
     echo 'set -a' >> /docker-entrypoint.sh && \
     echo '# Load environment variables from .env.production' >> /docker-entrypoint.sh && \
@@ -80,8 +68,6 @@ RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
     echo 'exec nginx -g "daemon off;"' >> /docker-entrypoint.sh && \
     chmod +x /docker-entrypoint.sh
 
-# Expose port 80
 EXPOSE 80
 
-# Use custom entrypoint
 ENTRYPOINT ["/docker-entrypoint.sh"]

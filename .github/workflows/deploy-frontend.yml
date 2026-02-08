@@ -56,9 +56,19 @@ jobs:
             echo "${{ secrets.FRONTEND_ENV_FILE }}" > .env.production
           else
             echo "# Frontend production environment variables" > .env.production
-            echo "VITE_API_URL=/api/v1" >> .env.production
+            echo "VITE_DEV_SERVER_PORT=5173" >> .env.production
+            echo "VITE_API_BASE_URL=https://api.admin-datlt244.io.vn" >> .env.production
+            echo "VITE_BACKEND_URL=http://student-backend:6868" >> .env.production
+            echo "VITE_BACKEND_PORT=6868" >> .env.production
+            echo "VITE_API_BASE_PATH=/api/v1" >> .env.production
+            echo "VITE_NGINX_SERVER_NAME=admin-datlt244.io.vn localhost" >> .env.production
+            echo "VITE_NGINX_LISTEN_PORT=80" >> .env.production
+            echo "VITE_BACKEND_CONTAINER_NAME=student-backend" >> .env.production
+            echo "VITE_BACKEND_CONTAINER_PORT=6868" >> .env.production
           fi
           echo "Created .env.production file"
+          echo "Contents:"
+          cat .env.production
 
       - name: Ensure network exists
         run: |

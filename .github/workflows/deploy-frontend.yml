@@ -62,12 +62,16 @@ jobs:
           docker network create student-management-network
 
       - name: Deploy with Docker Compose
+        env:
+          # Lấy Token từ GitHub nạp vào môi trường
+          CLOUDFLARE_TUNNEL_TOKEN: ${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}
         run: |
           # Dọn dẹp container cũ
           docker compose down --remove-orphans
           
-          # Build và chạy mới (Build sẽ lấy .env.production vừa tạo ở trên)
-          docker compose up -d --build --force-recreate
+          # Chạy container mới + Truyền Token vào lệnh
+          # Token này sẽ được docker-compose.yml đọc vào biến ${TUNNEL_TOKEN}
+          CLOUDFLARE_TUNNEL_TOKEN=$CLOUDFLARE_TUNNEL_TOKEN docker compose up -d --build --force-recreate
           
           # Xóa image rác
           docker image prune -f
@@ -85,17 +89,3 @@ jobs:
 
           echo "✓ Container is running."
           # Optional: Check curl localhost if needed
-
-      - name: Deploy with Docker Compose
-        # Khai báo biến môi trường lấy từ GitHub Secrets
-        env:
-          CLOUDFLARE_TUNNEL_TOKEN: ${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}
-        run: |
-          # Dọn dẹp container cũ
-          docker compose down --remove-orphans
-          
-          # Chạy container mới + Truyền Token vào
-          # Lưu ý: Dòng dưới đây rất quan trọng để docker-compose nhận được biến
-          CLOUDFLARE_TUNNEL_TOKEN=$CLOUDFLARE_TUNNEL_TOKEN docker compose up -d --build --force-recreate
-          
-          docker image prune -f

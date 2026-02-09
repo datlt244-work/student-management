@@ -15,6 +15,7 @@ const navItems = [
   { name: 'Courses', routeName: 'student-courses' },
   { name: 'Grades', routeName: 'student-grades' },
   { name: 'Schedule', routeName: 'student-schedule' },
+  { name: 'Profile', routeName: 'student-profile' },
 ]
 
 function isActive(routeName: string): boolean {

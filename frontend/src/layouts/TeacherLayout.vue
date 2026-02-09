@@ -16,6 +16,7 @@ const navItems = [
   { name: 'Classes', icon: 'menu_book', routeName: 'teacher-classes' },
   { name: 'Grades', icon: 'grade', routeName: 'teacher-grades' },
   { name: 'Schedule', icon: 'calendar_today', routeName: 'teacher-schedule' },
+  { name: 'Profile', icon: 'person', routeName: 'teacher-profile' },
 ]
 
 function isActive(routeName: string): boolean {

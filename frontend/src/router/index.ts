@@ -97,6 +97,11 @@ const router = createRouter({
           name: 'teacher-schedule',
           component: () => import('@/views/teacher/DashboardView.vue'), // TODO: create Schedule page
         },
+        {
+          path: 'profile',
+          name: 'teacher-profile',
+          component: () => import('@/views/teacher/ProfileView.vue'),
+        },
       ],
     },
     // Student routes
@@ -128,6 +133,11 @@ const router = createRouter({
           path: 'schedule',
           name: 'student-schedule',
           component: () => import('@/views/student/DashboardView.vue'), // TODO: create Schedule page
+        },
+        {
+          path: 'profile',
+          name: 'student-profile',
+          component: () => import('@/views/student/ProfileView.vue'),
         },
       ],
     },

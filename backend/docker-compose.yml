@@ -33,6 +33,9 @@ services:
       MAIL_PORT: ${MAIL_PORT}
       MAIL_USERNAME: ${MAIL_USERNAME}
       MAIL_PASSWORD: ${MAIL_PASSWORD}
+      MAIL_FROM: ${MAIL_FROM:-${MAIL_USERNAME}}
+      APP_FRONTEND_URL: ${APP_FRONTEND_URL:-http://localhost:5173}
+      APP_BACKEND_URL: ${APP_BACKEND_URL:-http://localhost:6868/api/v1}
     depends_on:
       db:
         condition: service_healthy

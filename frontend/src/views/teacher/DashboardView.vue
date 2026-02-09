@@ -17,7 +17,7 @@ const currentDate = computed(() => {
 const displayName = computed(() => {
   if (user.value?.email) {
     const name = user.value.email.split('@')[0]
-    return name.charAt(0).toUpperCase() + name.slice(1)
+    return (name?.charAt(0).toUpperCase() ?? '') + (name?.slice(1) ?? '')
   }
   return 'Teacher'
 })

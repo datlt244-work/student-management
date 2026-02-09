@@ -69,8 +69,8 @@ async function fetchProfile() {
       formData.value.workEmail = profile.value.email
       formData.value.phone = tp.phone ?? ''
     }
-  } catch (err: any) {
-    loadError.value = err.message || 'Failed to load profile'
+  } catch (err: unknown) {
+    loadError.value = err instanceof Error ? err.message : 'Failed to load profile'
   } finally {
     isLoading.value = false
   }

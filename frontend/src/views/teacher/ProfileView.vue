@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { getMyProfile, type CombinedProfile } from '@/services/profileService'
+import { getMyProfile, updateMyProfile, type CombinedProfile } from '@/services/profileService'
 
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)
@@ -78,6 +78,11 @@ async function fetchProfile() {
 
 onMounted(fetchProfile)
 
+// Profile update
+const isSaving = ref(false)
+const saveError = ref('')
+const saveSuccess = ref('')
+
 // Password change form
 const passwordData = ref({
   currentPassword: '',
@@ -118,9 +123,24 @@ const securityChecks = computed(() => {
   ]
 })
 
-function handleSave() {
-  // Profile update will be implemented in UC-09
-  console.log('Save profile:', formData.value)
+async function handleSave() {
+  isSaving.value = true
+  saveError.value = ''
+  saveSuccess.value = ''
+  try {
+    const updated = await updateMyProfile({
+      teacherProfile: {
+        phone: formData.value.phone,
+      },
+    })
+    profile.value = updated
+    saveSuccess.value = 'Profile updated successfully!'
+    setTimeout(() => { saveSuccess.value = '' }, 3000)
+  } catch (err: unknown) {
+    saveError.value = err instanceof Error ? err.message : 'Failed to update profile'
+  } finally {
+    isSaving.value = false
+  }
 }
 
 function handleDiscard() {
@@ -326,20 +346,39 @@ function handleCancelPassword() {
                 </div>
               </div>
 
+              <!-- Save feedback -->
+              <div
+                v-if="saveError"
+                class="mt-6 flex items-center gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm"
+              >
+                <span class="material-symbols-outlined text-[18px]">error</span>
+                <span>{{ saveError }}</span>
+              </div>
+              <div
+                v-if="saveSuccess"
+                class="mt-6 flex items-center gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 text-sm"
+              >
+                <span class="material-symbols-outlined text-[18px]">check_circle</span>
+                <span>{{ saveSuccess }}</span>
+              </div>
+
               <!-- Actions -->
-              <div class="mt-10 pt-6 border-t border-border-light dark:border-border-dark flex justify-end gap-3">
+              <div class="mt-6 pt-6 border-t border-border-light dark:border-border-dark flex justify-end gap-3">
                 <button
                   class="px-6 py-2 rounded-lg bg-background-light dark:bg-stone-800 font-bold text-sm hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
+                  :disabled="isSaving"
                   @click="handleDiscard"
                 >
                   Discard
                 </button>
                 <button
-                  class="px-6 py-2 rounded-lg bg-primary text-white font-bold text-sm shadow-md hover:brightness-110 transition-all flex items-center gap-2"
+                  class="px-6 py-2 rounded-lg bg-primary text-white font-bold text-sm shadow-md hover:brightness-110 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  :disabled="isSaving"
                   @click="handleSave"
                 >
-                  <span class="material-symbols-outlined text-sm">save</span>
-                  Save Changes
+                  <span v-if="isSaving" class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></span>
+                  <span v-else class="material-symbols-outlined text-sm">save</span>
+                  {{ isSaving ? 'Saving...' : 'Save Changes' }}
                 </button>
               </div>
             </div>

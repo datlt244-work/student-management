@@ -74,8 +74,8 @@ async function fetchProfile() {
       formData.value.address = sp.address ?? ''
       formData.value.major = sp.major ?? ''
     }
-  } catch (err: any) {
-    loadError.value = err.message || 'Failed to load profile'
+  } catch (err: unknown) {
+    loadError.value = err instanceof Error ? err.message : 'Failed to load profile'
   } finally {
     isLoading.value = false
   }

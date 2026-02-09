@@ -47,9 +47,65 @@ const summaryCards = [
   { label: 'GPA', value: '3.82 / 4.0', isHighlight: true },
 ]
 
+// Password change form
+const passwordData = ref({
+  currentPassword: '',
+  newPassword: '',
+  confirmPassword: '',
+})
+
+const showCurrentPassword = ref(false)
+const showNewPassword = ref(false)
+const showConfirmPassword = ref(false)
+const passwordError = ref('')
+const passwordSuccess = ref('')
+
+const passwordStrength = computed(() => {
+  const pw = passwordData.value.newPassword
+  if (!pw) return { level: 0, label: '', color: '' }
+
+  let score = 0
+  if (pw.length >= 8) score++
+  if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score++
+  if (/\d/.test(pw)) score++
+  if (/[^a-zA-Z0-9]/.test(pw)) score++
+
+  if (score <= 1) return { level: 1, label: 'Weak', color: 'text-red-500' }
+  if (score === 2) return { level: 2, label: 'Medium', color: 'text-primary' }
+  if (score === 3) return { level: 3, label: 'Strong', color: 'text-green-600 dark:text-green-400' }
+  return { level: 4, label: 'Very Strong', color: 'text-green-600 dark:text-green-400' }
+})
+
 function handleUpdateProfile() {
   // TODO: call API to update profile
   console.log('Update profile:', formData.value)
+}
+
+function handleUpdatePassword() {
+  passwordError.value = ''
+  passwordSuccess.value = ''
+
+  if (!passwordData.value.currentPassword) {
+    passwordError.value = 'Please enter your current password.'
+    return
+  }
+  if (!passwordData.value.newPassword) {
+    passwordError.value = 'Please enter a new password.'
+    return
+  }
+  if (passwordData.value.newPassword.length < 8) {
+    passwordError.value = 'New password must be at least 8 characters long.'
+    return
+  }
+  if (passwordData.value.newPassword !== passwordData.value.confirmPassword) {
+    passwordError.value = 'New password and confirmation do not match.'
+    return
+  }
+
+  // TODO: call API to change password
+  console.log('Change password')
+  passwordSuccess.value = 'Password updated successfully!'
+  passwordData.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
 }
 </script>
 
@@ -236,10 +292,141 @@ function handleUpdateProfile() {
 
           <!-- Account Settings Tab -->
           <div v-if="activeTab === 'settings'" class="p-8">
-            <div class="text-center py-16 text-text-muted-light dark:text-text-muted-dark">
-              <span class="material-symbols-outlined text-5xl mb-4 block">settings</span>
-              <p class="text-lg font-bold">Account Settings</p>
-              <p class="text-sm mt-2">Account configuration options will be displayed here.</p>
+            <div class="flex flex-col gap-8 max-w-2xl">
+              <!-- Header -->
+              <div>
+                <h3 class="text-lg font-bold mb-1">Change Password</h3>
+                <p class="text-sm text-text-muted-light dark:text-text-muted-dark">
+                  Ensure your account is using a long, random password to stay secure.
+                </p>
+              </div>
+
+              <!-- Error / Success Messages -->
+              <div
+                v-if="passwordError"
+                class="flex items-center gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm"
+              >
+                <span class="material-symbols-outlined text-[18px]">error</span>
+                <span>{{ passwordError }}</span>
+              </div>
+              <div
+                v-if="passwordSuccess"
+                class="flex items-center gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 text-sm"
+              >
+                <span class="material-symbols-outlined text-[18px]">check_circle</span>
+                <span>{{ passwordSuccess }}</span>
+              </div>
+
+              <!-- Password Fields -->
+              <div class="space-y-6">
+                <!-- Current Password -->
+                <div class="flex flex-col gap-2">
+                  <label class="text-sm font-bold">Current Password</label>
+                  <div class="relative">
+                    <input
+                      v-model="passwordData.currentPassword"
+                      class="form-input w-full rounded-lg border-primary/50 dark:border-primary/50 focus:border-primary focus:ring-primary bg-transparent text-sm h-12 pr-10"
+                      placeholder="••••••••"
+                      :type="showCurrentPassword ? 'text' : 'password'"
+                    />
+                    <button
+                      class="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted-light dark:text-text-muted-dark hover:text-primary transition-colors"
+                      type="button"
+                      @click="showCurrentPassword = !showCurrentPassword"
+                    >
+                      <span class="material-symbols-outlined text-lg">{{ showCurrentPassword ? 'visibility' : 'visibility_off' }}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- New Password -->
+                <div class="flex flex-col gap-2">
+                  <label class="text-sm font-bold">New Password</label>
+                  <div class="relative">
+                    <input
+                      v-model="passwordData.newPassword"
+                      class="form-input w-full rounded-lg border-primary/50 dark:border-primary/50 focus:border-primary focus:ring-primary bg-transparent text-sm h-12 pr-10"
+                      placeholder="Enter new password"
+                      :type="showNewPassword ? 'text' : 'password'"
+                    />
+                    <button
+                      class="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted-light dark:text-text-muted-dark hover:text-primary transition-colors"
+                      type="button"
+                      @click="showNewPassword = !showNewPassword"
+                    >
+                      <span class="material-symbols-outlined text-lg">{{ showNewPassword ? 'visibility' : 'visibility_off' }}</span>
+                    </button>
+                  </div>
+                  <!-- Strength Indicator -->
+                  <div v-if="passwordData.newPassword" class="mt-2">
+                    <div class="flex justify-between items-center mb-1">
+                      <span class="text-xs font-medium text-text-muted-light dark:text-text-muted-dark">Password strength:</span>
+                      <span :class="['text-xs font-bold', passwordStrength.color]">{{ passwordStrength.label }}</span>
+                    </div>
+                    <div class="flex gap-1 h-1.5 w-full">
+                      <div
+                        v-for="i in 4"
+                        :key="i"
+                        :class="[
+                          'flex-1 rounded-full transition-colors',
+                          i <= passwordStrength.level ? 'bg-primary' : 'bg-border-light dark:bg-border-dark',
+                        ]"
+                      ></div>
+                    </div>
+                    <p class="text-xs text-text-muted-light dark:text-text-muted-dark mt-2">
+                      Use at least 8 characters with a mix of letters, numbers &amp; symbols.
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Confirm Password -->
+                <div class="flex flex-col gap-2">
+                  <label class="text-sm font-bold">Confirm New Password</label>
+                  <div class="relative">
+                    <input
+                      v-model="passwordData.confirmPassword"
+                      class="form-input w-full rounded-lg border-primary/50 dark:border-primary/50 focus:border-primary focus:ring-primary bg-transparent text-sm h-12 pr-10"
+                      placeholder="Confirm new password"
+                      :type="showConfirmPassword ? 'text' : 'password'"
+                    />
+                    <button
+                      class="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted-light dark:text-text-muted-dark hover:text-primary transition-colors"
+                      type="button"
+                      @click="showConfirmPassword = !showConfirmPassword"
+                    >
+                      <span class="material-symbols-outlined text-lg">{{ showConfirmPassword ? 'visibility' : 'visibility_off' }}</span>
+                    </button>
+                  </div>
+                  <!-- Mismatch warning -->
+                  <p
+                    v-if="passwordData.confirmPassword && passwordData.newPassword !== passwordData.confirmPassword"
+                    class="text-xs text-red-500 mt-1 flex items-center gap-1"
+                  >
+                    <span class="material-symbols-outlined text-[14px]">error</span>
+                    Passwords do not match.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Secure Action Bar -->
+              <div class="mt-4 flex flex-col sm:flex-row items-center justify-between gap-6 p-6 rounded-xl bg-stone-50/50 dark:bg-stone-800/30 border border-border-light dark:border-border-dark">
+                <div class="flex gap-4 items-center">
+                  <div class="flex size-12 items-center justify-center rounded-full bg-primary/20 text-primary">
+                    <span class="material-symbols-outlined">lock_reset</span>
+                  </div>
+                  <div>
+                    <p class="text-sm font-bold">Secure Action</p>
+                    <p class="text-xs text-text-muted-light dark:text-text-muted-dark">You will be logged out of other sessions.</p>
+                  </div>
+                </div>
+                <button
+                  class="w-full sm:w-auto min-w-[180px] bg-primary text-white py-3 px-8 rounded-lg font-bold text-sm shadow-md shadow-primary/20 hover:brightness-110 transition-all flex items-center justify-center gap-2"
+                  @click="handleUpdatePassword"
+                >
+                  <span class="material-symbols-outlined text-sm">check_circle</span>
+                  Update Password
+                </button>
+              </div>
             </div>
           </div>
 

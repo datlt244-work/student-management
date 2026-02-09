@@ -4,11 +4,13 @@ import com.newwave.student_management.common.exception.AppException;
 import com.newwave.student_management.common.exception.ErrorCode;
 import com.newwave.student_management.domains.auth.entity.User;
 import com.newwave.student_management.domains.auth.repository.UserRepository;
+import com.newwave.student_management.domains.profile.dto.request.UpdateProfileRequest;
+import com.newwave.student_management.domains.profile.dto.request.UpdateStudentProfileRequest;
+import com.newwave.student_management.domains.profile.dto.request.UpdateTeacherProfileRequest;
 import com.newwave.student_management.domains.profile.dto.response.CombinedProfileResponse;
 import com.newwave.student_management.domains.profile.dto.response.SemesterResponse;
 import com.newwave.student_management.domains.profile.dto.response.StudentProfileResponse;
 import com.newwave.student_management.domains.profile.dto.response.TeacherProfileResponse;
-import com.newwave.student_management.domains.profile.entity.Semester;
 import com.newwave.student_management.domains.profile.entity.Student;
 import com.newwave.student_management.domains.profile.entity.Teacher;
 import com.newwave.student_management.domains.profile.repository.SemesterRepository;
@@ -82,5 +84,65 @@ public class ProfileService implements IProfileService {
 
         log.info("Profile loaded for user {} with role {}", userId, role);
         return responseBuilder.build();
+    }
+
+    @Override
+    @Transactional
+    public CombinedProfileResponse updateMyProfile(UUID userId, String role, UpdateProfileRequest request) {
+        String normalizedRole = role.toLowerCase();
+
+        switch (normalizedRole) {
+            case "student" -> {
+                // Validate: student không được gửi teacherProfile
+                if (request.getTeacherProfile() != null) {
+                    throw new AppException(ErrorCode.TEACHER_ROLE_REQUIRED);
+                }
+                if (request.getStudentProfile() != null) {
+                    updateStudentProfile(userId, request.getStudentProfile());
+                }
+            }
+            case "teacher" -> {
+                // Validate: teacher không được gửi studentProfile
+                if (request.getStudentProfile() != null) {
+                    throw new AppException(ErrorCode.STUDENT_ROLE_REQUIRED);
+                }
+                if (request.getTeacherProfile() != null) {
+                    updateTeacherProfile(userId, request.getTeacherProfile());
+                }
+            }
+            default -> {
+                // ADMIN: không có student/teacher profile để update
+            }
+        }
+
+        log.info("Profile updated for user {} with role {}", userId, role);
+
+        // Return updated combined profile (same format as GET /profile/me)
+        return getMyProfile(userId, role);
+    }
+
+    private void updateStudentProfile(UUID userId, UpdateStudentProfileRequest request) {
+        Student student = studentRepository.findByUser_UserId(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.STUDENT_PROFILE_NOT_FOUND));
+
+        if (request.getPhone() != null) {
+            student.setPhone(request.getPhone());
+        }
+        if (request.getAddress() != null) {
+            student.setAddress(request.getAddress());
+        }
+
+        studentRepository.save(student);
+    }
+
+    private void updateTeacherProfile(UUID userId, UpdateTeacherProfileRequest request) {
+        Teacher teacher = teacherRepository.findByUser_UserId(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.TEACHER_PROFILE_NOT_FOUND));
+
+        if (request.getPhone() != null) {
+            teacher.setPhone(request.getPhone());
+        }
+
+        teacherRepository.save(teacher);
     }
 }

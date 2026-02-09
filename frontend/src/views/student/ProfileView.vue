@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { getMyProfile, type CombinedProfile } from '@/services/profileService'
+import { getMyProfile, updateMyProfile, type CombinedProfile } from '@/services/profileService'
 
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)
@@ -83,6 +83,11 @@ async function fetchProfile() {
 
 onMounted(fetchProfile)
 
+// Profile update
+const isSaving = ref(false)
+const saveError = ref('')
+const saveSuccess = ref('')
+
 // Password change form
 const passwordData = ref({
   currentPassword: '',
@@ -112,9 +117,25 @@ const passwordStrength = computed(() => {
   return { level: 4, label: 'Very Strong', color: 'text-green-600 dark:text-green-400' }
 })
 
-function handleUpdateProfile() {
-  // Profile update will be implemented in UC-09
-  console.log('Update profile:', formData.value)
+async function handleUpdateProfile() {
+  isSaving.value = true
+  saveError.value = ''
+  saveSuccess.value = ''
+  try {
+    const updated = await updateMyProfile({
+      studentProfile: {
+        phone: formData.value.phone,
+        address: formData.value.address,
+      },
+    })
+    profile.value = updated
+    saveSuccess.value = 'Profile updated successfully!'
+    setTimeout(() => { saveSuccess.value = '' }, 3000)
+  } catch (err: unknown) {
+    saveError.value = err instanceof Error ? err.message : 'Failed to update profile'
+  } finally {
+    isSaving.value = false
+  }
 }
 
 function handleUpdatePassword() {
@@ -341,23 +362,41 @@ function handleUpdatePassword() {
               </div>
             </div>
 
+            <!-- Save feedback -->
+            <div
+              v-if="saveError"
+              class="mt-6 flex items-center gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm"
+            >
+              <span class="material-symbols-outlined text-[18px]">error</span>
+              <span>{{ saveError }}</span>
+            </div>
+            <div
+              v-if="saveSuccess"
+              class="mt-6 flex items-center gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 text-sm"
+            >
+              <span class="material-symbols-outlined text-[18px]">check_circle</span>
+              <span>{{ saveSuccess }}</span>
+            </div>
+
             <!-- Profile Security & Save -->
-            <div class="mt-12 flex flex-col sm:flex-row items-center justify-between gap-6 p-6 rounded-xl bg-stone-50/50 dark:bg-stone-800/30 border border-border-light dark:border-border-dark">
+            <div class="mt-6 flex flex-col sm:flex-row items-center justify-between gap-6 p-6 rounded-xl bg-stone-50/50 dark:bg-stone-800/30 border border-border-light dark:border-border-dark">
               <div class="flex gap-4 items-center">
                 <div class="flex size-12 items-center justify-center rounded-full bg-primary/20 text-primary">
                   <span class="material-symbols-outlined">verified_user</span>
                 </div>
                 <div>
                   <p class="text-sm font-bold">Profile Security</p>
-                  <p class="text-xs text-text-muted-light dark:text-text-muted-dark">Last updated 2 days ago</p>
+                  <p class="text-xs text-text-muted-light dark:text-text-muted-dark">Only phone and address can be updated.</p>
                 </div>
               </div>
               <button
-                class="w-full sm:w-auto min-w-[180px] bg-primary text-white py-3 px-8 rounded-lg font-bold text-sm shadow-md shadow-primary/20 hover:brightness-110 transition-all flex items-center justify-center gap-2"
+                class="w-full sm:w-auto min-w-[180px] bg-primary text-white py-3 px-8 rounded-lg font-bold text-sm shadow-md shadow-primary/20 hover:brightness-110 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                :disabled="isSaving"
                 @click="handleUpdateProfile"
               >
-                <span class="material-symbols-outlined text-sm">save</span>
-                Update Profile
+                <span v-if="isSaving" class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></span>
+                <span v-else class="material-symbols-outlined text-sm">save</span>
+                {{ isSaving ? 'Saving...' : 'Update Profile' }}
               </button>
             </div>
           </div>

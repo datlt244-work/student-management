@@ -63,6 +63,22 @@ export interface CombinedProfile {
   teacherProfile: TeacherProfile | null
 }
 
+// ========== Request Types ==========
+
+export interface UpdateStudentProfileRequest {
+  phone?: string
+  address?: string
+}
+
+export interface UpdateTeacherProfileRequest {
+  phone?: string
+}
+
+export interface UpdateProfileRequest {
+  studentProfile?: UpdateStudentProfileRequest
+  teacherProfile?: UpdateTeacherProfileRequest
+}
+
 // ========== API Functions ==========
 
 /**
@@ -75,6 +91,25 @@ export async function getMyProfile(): Promise<CombinedProfile> {
   if (!response.ok) {
     const errorData = await response.json().catch(() => null)
     throw new Error(errorData?.message || `Failed to fetch profile (${response.status})`)
+  }
+
+  const data = await response.json()
+  return data.result as CombinedProfile
+}
+
+/**
+ * Cập nhật profile: Student (phone, address) hoặc Teacher (phone)
+ * Endpoint: PUT /profile/me
+ */
+export async function updateMyProfile(request: UpdateProfileRequest): Promise<CombinedProfile> {
+  const response = await apiFetch('/profile/me', {
+    method: 'PUT',
+    body: JSON.stringify(request),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    throw new Error(errorData?.message || `Failed to update profile (${response.status})`)
   }
 
   const data = await response.json()

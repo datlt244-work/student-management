@@ -751,7 +751,7 @@ Email KHÔNG tồn tại (hacker thử):
 
 ---
 
-### UC-08: Lấy Thông Tin Profile (Combined Profile)
+### UC-08: Lấy Thông Tin Profile (Combined Profile) ✅ IMPLEMENTED
 
 | Thuộc tính | Giá trị |
 |------------|---------|
@@ -777,8 +777,9 @@ Email KHÔNG tồn tại (hacker thử):
      │                    │<─────────────────────│
      │                    │                      │
      │                    │ 4. Switch by role:   │
-     │                    │    IF role == STUDENT:
+     │                    │    IF role == STUDENT:│
      │                    │       Fetch Student + Department
+     │                    │       Fetch Current Semester
      │                    │    ELSE IF role == TEACHER:
      │                    │       Fetch Teacher + Department
      │                    │─────────────────────>│
@@ -797,7 +798,7 @@ Email KHÔNG tồn tại (hacker thử):
     "userId": "uuid-123",
     "email": "student@school.edu",
     "profilePictureUrl": "https://example.com/avatar.jpg",
-    "role": "STUDENT",
+    "role": "student",
     "status": "ACTIVE",
     "emailVerified": true,
     "lastLoginAt": "2026-02-02T21:00:00",
@@ -806,16 +807,28 @@ Email KHÔNG tồn tại (hacker thử):
     
     // ========== TỪ BẢNG STUDENTS ==========
     "studentProfile": {
-      "studentId": 1,
+      "studentId": "uuid",
+      "studentCode": "HE170001",
       "firstName": "Nguyễn",
       "lastName": "Văn A",
       "dob": "2000-05-15",
+      "gender": "MALE",
+      "major": "Software Engineering",
       "phone": "0909123456",
       "address": "123 ABC Street, HCM City",
+      "gpa": 3.45,
       "department": {
         "departmentId": 1,
         "name": "Công nghệ Thông tin",
         "officeLocation": "Building A, Room 101"
+      },
+      "currentSemester": {
+        "semesterId": 1,
+        "name": "SPRING",
+        "year": 2026,
+        "displayName": "Spring 2026",
+        "startDate": "2026-01-12",
+        "endDate": "2026-05-10"
       }
     },
     
@@ -834,7 +847,7 @@ Email KHÔNG tồn tại (hacker thử):
     "userId": "uuid-456",
     "email": "teacher@school.edu",
     "profilePictureUrl": null,
-    "role": "TEACHER",
+    "role": "teacher",
     "status": "ACTIVE",
     "emailVerified": true,
     "lastLoginAt": "2026-02-03T08:00:00",
@@ -846,11 +859,14 @@ Email KHÔNG tồn tại (hacker thử):
     
     // ========== TỪ BẢNG TEACHERS ==========
     "teacherProfile": {
-      "teacherId": 1,
+      "teacherId": "uuid",
+      "teacherCode": "HJ170001",
       "firstName": "Trần",
       "lastName": "Văn B",
       "phone": "0901234567",
       "specialization": "Machine Learning",
+      "academicRank": "Associate Professor",
+      "officeRoom": "Building C, Room 402",
       "department": {
         "departmentId": 1,
         "name": "Công nghệ Thông tin",
@@ -870,7 +886,7 @@ Email KHÔNG tồn tại (hacker thử):
     "userId": "uuid-789",
     "email": "admin@school.edu",
     "profilePictureUrl": null,
-    "role": "ADMIN",
+    "role": "admin",
     "status": "ACTIVE",
     "emailVerified": true,
     "lastLoginAt": "2026-02-03T00:00:00",
@@ -883,6 +899,55 @@ Email KHÔNG tồn tại (hacker thử):
   }
 }
 ```
+
+**Database Tables:**
+
+**Bảng `students` (các field liên quan profile):**
+
+| Column | Type | Mô tả |
+|--------|------|-------|
+| student_id | UUID (PK) | ID sinh viên |
+| user_id | UUID (FK → users) | Liên kết User |
+| department_id | INT (FK → departments) | Khoa |
+| student_code | VARCHAR(10) UNIQUE | Mã SV dạng `HExxxxxx` |
+| first_name | VARCHAR(50) | Họ |
+| last_name | VARCHAR(50) | Tên |
+| dob | DATE | Ngày sinh |
+| gender | VARCHAR(10) | `MALE`, `FEMALE`, `OTHER` |
+| major | VARCHAR(100) | Chuyên ngành |
+| email | VARCHAR(100) | Email sinh viên |
+| phone | VARCHAR(20) | Số điện thoại |
+| address | VARCHAR(255) | Địa chỉ |
+| gpa | DECIMAL(3,2) | GPA thang 4.0 |
+
+**Bảng `teachers` (các field liên quan profile):**
+
+| Column | Type | Mô tả |
+|--------|------|-------|
+| teacher_id | UUID (PK) | ID giảng viên |
+| user_id | UUID (FK → users) | Liên kết User |
+| department_id | INT (FK → departments) | Khoa |
+| teacher_code | VARCHAR(10) UNIQUE | Mã GV dạng `HJxxxxxx` |
+| first_name | VARCHAR(50) | Họ |
+| last_name | VARCHAR(50) | Tên |
+| email | VARCHAR(100) | Email giảng viên |
+| phone | VARCHAR(20) | Số điện thoại |
+| specialization | VARCHAR(100) | Chuyên môn |
+| academic_rank | VARCHAR(50) | Học hàm/học vị |
+| office_room | VARCHAR(50) | Phòng làm việc |
+
+**Bảng `semesters`:**
+
+| Column | Type | Mô tả |
+|--------|------|-------|
+| semester_id | INT (PK) | Auto-increment |
+| name | VARCHAR(20) | `SPRING`, `SUMMER`, `FALL` |
+| year | INT | Năm học |
+| start_date | DATE | Ngày bắt đầu kỳ |
+| end_date | DATE | Ngày kết thúc kỳ |
+| is_current | BOOLEAN | Kỳ hiện tại (chỉ 1 record = true) |
+
+> Mỗi năm có 3 kỳ: Spring, Summer, Fall. Unique constraint trên `(name, year)`.
 
 **SQL Query (cho Student):**
 ```sql
@@ -897,6 +962,9 @@ SELECT s.*, d.name as department_name, d.office_location
 FROM students s
 LEFT JOIN departments d ON s.department_id = d.department_id
 WHERE s.user_id = :userId;
+
+-- Query 3: Get current semester
+SELECT * FROM semesters WHERE is_current = TRUE;
 ```
 
 **Error Responses:**
@@ -911,25 +979,33 @@ WHERE s.user_id = :userId;
 - Đây là **endpoint duy nhất** để lấy thông tin profile
 - Frontend chỉ cần gọi **1 API** thay vì 2 API riêng biệt
 - Response structure **luôn giống nhau**, chỉ khác ở `studentProfile` hoặc `teacherProfile` có data hay null
+- Student profile bao gồm `currentSemester` (kỳ hiện tại từ bảng semesters)
+- Mã sinh viên dạng `HExxxxxx`, mã giảng viên dạng `HJxxxxxx`
+
+**Editable Fields trên Frontend:**
+
+| Role | Field | Editable by User |
+|------|-------|------------------|
+| STUDENT | phone | ✅ |
+| STUDENT | address | ✅ |
+| STUDENT | fullName, dob, gender, major, studentCode, email | ❌ (Admin only) |
+| TEACHER | phone | ✅ |
+| TEACHER | academicRank, specialization, officeRoom, teacherCode, email | ❌ (Admin only) |
 
 ---
 
-### UC-09: Cập Nhật Profile (Combined Profile Update)
+### UC-09: Cập Nhật Profile (Combined Profile Update) ✅ IMPLEMENTED
 
 | Thuộc tính | Giá trị |
 |------------|---------|
 | **Endpoint** | `PUT /profile/me` |
 | **Actor** | Authenticated User |
-| **Mục đích** | Cập nhật thông tin User + Student/Teacher trong 1 API call |
-| **Đặc điểm** | Chỉ update các field được gửi (partial update) |
+| **Mục đích** | Cập nhật thông tin Student/Teacher trong 1 API call |
+| **Đặc điểm** | Partial update - chỉ update các field được gửi |
 
-**Request Body cho STUDENT:**
+**Request Body cho STUDENT (phone + address):**
 ```json
 {
-  // ========== CẬP NHẬT BẢNG USERS ==========
-  "profilePictureUrl": "https://example.com/new-avatar.jpg",
-  
-  // ========== CẬP NHẬT BẢNG STUDENTS ==========
   "studentProfile": {
     "phone": "0909123456",
     "address": "456 XYZ Street, HCM City"
@@ -937,16 +1013,11 @@ WHERE s.user_id = :userId;
 }
 ```
 
-**Request Body cho TEACHER:**
+**Request Body cho TEACHER (phone only):**
 ```json
 {
-  // ========== CẬP NHẬT BẢNG USERS ==========
-  "profilePictureUrl": "https://example.com/teacher-avatar.jpg",
-  
-  // ========== CẬP NHẬT BẢNG TEACHERS ==========
   "teacherProfile": {
-    "phone": "0901234567",
-    "specialization": "Artificial Intelligence"
+    "phone": "0901234567"
   }
 }
 ```
@@ -963,15 +1034,17 @@ WHERE s.user_id = :userId;
      │                    │                      │
      │                    │ 2. Extract userId + role from JWT
      │                    │ 3. Validate request  │
+     │                    │    - Student gửi teacherProfile → 1402
+     │                    │    - Teacher gửi studentProfile → 1401
      │                    │                      │
-     │                    │ 4. Update User (nếu có field user)
+     │                    │ 4. IF role == STUDENT && có studentProfile:
+     │                    │       Update students.phone, students.address
+     │                    │    ELSE IF role == TEACHER && có teacherProfile:
+     │                    │       Update teachers.phone
      │                    │─────────────────────>│
      │                    │<─────────────────────│
      │                    │                      │
-     │                    │ 5. IF role == STUDENT && có studentProfile:
-     │                    │       Update bảng students
-     │                    │    ELSE IF role == TEACHER && có teacherProfile:
-     │                    │       Update bảng teachers
+     │                    │ 5. Reload combined profile (getMyProfile)
      │                    │─────────────────────>│
      │                    │<─────────────────────│
      │                    │                      │
@@ -980,30 +1053,44 @@ WHERE s.user_id = :userId;
      │<───────────────────│                      │
 ```
 
-**Response (cho Student):**
+**Response (cho Student - same format as GET /profile/me):**
 ```json
 {
   "code": 1000,
   "result": {
-    // ========== TỪ BẢNG USERS (đã update) ==========
     "userId": "uuid-123",
     "email": "student@school.edu",
-    "profilePictureUrl": "https://example.com/new-avatar.jpg",
-    "role": "STUDENT",
+    "profilePictureUrl": null,
+    "role": "student",
     "status": "ACTIVE",
-    "updatedAt": "2026-02-03T00:30:00",
+    "emailVerified": true,
+    "lastLoginAt": "2026-02-02T21:00:00",
+    "loginCount": 15,
+    "createdAt": "2026-01-01T10:00:00",
     
-    // ========== TỪ BẢNG STUDENTS (đã update) ==========
     "studentProfile": {
-      "studentId": 1,
+      "studentId": "uuid",
+      "studentCode": "HE170001",
       "firstName": "Nguyễn",
       "lastName": "Văn A",
       "dob": "2000-05-15",
+      "gender": "MALE",
+      "major": "Software Engineering",
       "phone": "0909123456",
       "address": "456 XYZ Street, HCM City",
+      "gpa": 3.45,
       "department": {
         "departmentId": 1,
-        "name": "Công nghệ Thông tin"
+        "name": "Công nghệ Thông tin",
+        "officeLocation": "Building A, Room 101"
+      },
+      "currentSemester": {
+        "semesterId": 1,
+        "name": "SPRING",
+        "year": 2026,
+        "displayName": "Spring 2026",
+        "startDate": "2026-01-12",
+        "endDate": "2026-05-10"
       }
     },
     
@@ -1016,33 +1103,33 @@ WHERE s.user_id = :userId;
 
 | Role | Field | Editable by User |
 |------|-------|------------------|
-| ALL | profilePictureUrl | ✅ |
 | STUDENT | studentProfile.phone | ✅ |
 | STUDENT | studentProfile.address | ✅ |
-| STUDENT | studentProfile.firstName | ❌ (Admin only) |
-| STUDENT | studentProfile.lastName | ❌ (Admin only) |
-| STUDENT | studentProfile.dob | ❌ (Admin only) |
-| STUDENT | studentProfile.departmentId | ❌ (Admin only) |
+| STUDENT | firstName, lastName, dob, gender, major, studentCode, email, departmentId | ❌ (Admin only) |
 | TEACHER | teacherProfile.phone | ✅ |
-| TEACHER | teacherProfile.specialization | ✅ |
-| TEACHER | teacherProfile.firstName | ❌ (Admin only) |
-| TEACHER | teacherProfile.lastName | ❌ (Admin only) |
-| TEACHER | teacherProfile.departmentId | ❌ (Admin only) |
+| TEACHER | firstName, lastName, academicRank, specialization, officeRoom, teacherCode, email, departmentId | ❌ (Admin only) |
+
+**Validation Rules:**
+
+| Field | Rule |
+|-------|------|
+| phone | Max 20 characters |
+| address | Max 255 characters |
 
 **Error Responses:**
 
 | Code | Message | HTTP Status |
 |------|---------|-------------|
-| 1401 | Cannot update studentProfile - you are not a Student | 403 |
-| 1402 | Cannot update teacherProfile - you are not a Teacher | 403 |
+| 1401 | Access denied - Student role required (Teacher gửi studentProfile) | 403 |
+| 1402 | Access denied - Teacher role required (Student gửi teacherProfile) | 403 |
 | 1501 | Student profile not found | 404 |
 | 1502 | Teacher profile not found | 404 |
 
 **⚠️ Lưu ý quan trọng:**
-- Đây là **endpoint duy nhất** để cập nhật profile
-- **Partial update**: Chỉ update các field được gửi trong request
+- **Partial update**: Chỉ update các field được gửi, field null sẽ bị bỏ qua
 - Response format **giống hệt** `GET /profile/me`
-- **Validation**: Nếu Student gửi `teacherProfile` → Error 1402
+- **Cross-role validation**: Student không thể gửi `teacherProfile` và ngược lại
+- Frontend hiển thị các field không editable với style `disabled` + `cursor-not-allowed`
 
 ---
 

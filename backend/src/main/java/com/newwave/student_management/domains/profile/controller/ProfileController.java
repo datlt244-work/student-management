@@ -1,14 +1,18 @@
 package com.newwave.student_management.domains.profile.controller;
 
 import com.newwave.student_management.common.dto.ApiResponse;
+import com.newwave.student_management.domains.profile.dto.request.UpdateProfileRequest;
 import com.newwave.student_management.domains.profile.dto.response.CombinedProfileResponse;
 import com.newwave.student_management.domains.profile.service.IProfileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -36,6 +40,24 @@ public class ProfileController {
         String role = jwt.getClaim("role");
 
         CombinedProfileResponse profile = profileService.getMyProfile(userId, role);
+        return ApiResponse.success(profile);
+    }
+
+    @PutMapping("/me")
+    @Operation(
+            summary = "Cập nhật profile",
+            description = "Cập nhật thông tin Student (phone, address) hoặc Teacher (phone). "
+                    + "Chỉ update các field được gửi (partial update). "
+                    + "Response format giống hệt GET /profile/me."
+    )
+    public ApiResponse<CombinedProfileResponse> updateMyProfile(
+            @AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody UpdateProfileRequest request
+    ) {
+        UUID userId = UUID.fromString(jwt.getClaim("userId"));
+        String role = jwt.getClaim("role");
+
+        CombinedProfileResponse profile = profileService.updateMyProfile(userId, role, request);
         return ApiResponse.success(profile);
     }
 }

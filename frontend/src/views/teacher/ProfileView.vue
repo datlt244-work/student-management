@@ -42,15 +42,15 @@ const formData = ref({
 
 // Profile info (computed from API data)
 const profileInfo = computed(() => [
-  { icon: 'badge', label: 'Employee ID', value: profile.value?.teacherProfile?.teacherId?.substring(0, 8).toUpperCase() ?? 'N/A' },
+  { icon: 'badge', label: 'Teacher Code', value: profile.value?.teacherProfile?.teacherCode ?? 'N/A' },
   { icon: 'account_balance', label: 'Department', value: profile.value?.teacherProfile?.department?.name ?? 'N/A' },
   { icon: 'event_available', label: 'Joined Date', value: profile.value?.createdAt ? new Date(profile.value.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A' },
 ])
 
 // Stats cards (computed from API data)
 const statsCards = computed(() => [
-  { icon: 'mail', label: 'Email Verified', value: profile.value?.emailVerified ? 'Yes' : 'No' },
-  { icon: 'login', label: 'Login Count', value: String(profile.value?.loginCount ?? 0) },
+  { icon: 'military_tech', label: 'Academic Rank', value: profile.value?.teacherProfile?.academicRank ?? 'N/A' },
+  { icon: 'meeting_room', label: 'Office Room', value: profile.value?.teacherProfile?.officeRoom ?? 'N/A' },
   { icon: 'verified_user', label: 'Status', value: profile.value?.status ?? 'N/A' },
 ])
 
@@ -63,8 +63,9 @@ async function fetchProfile() {
     // Populate form data from profile
     const tp = profile.value.teacherProfile
     if (tp) {
+      formData.value.academicRank = tp.academicRank ?? 'Lecturer'
       formData.value.specialization = tp.specialization ?? ''
-      formData.value.officeRoom = tp.department?.officeLocation ?? ''
+      formData.value.officeRoom = tp.officeRoom ?? ''
       formData.value.workEmail = profile.value.email
       formData.value.phone = tp.phone ?? ''
     }
@@ -126,8 +127,9 @@ function handleDiscard() {
   // Reset form data to API values
   const tp = profile.value?.teacherProfile
   if (tp) {
+    formData.value.academicRank = tp.academicRank ?? 'Lecturer'
     formData.value.specialization = tp.specialization ?? ''
-    formData.value.officeRoom = tp.department?.officeLocation ?? ''
+    formData.value.officeRoom = tp.officeRoom ?? ''
     formData.value.workEmail = profile.value?.email ?? ''
     formData.value.phone = tp.phone ?? ''
   }
@@ -230,7 +232,7 @@ function handleCancelPassword() {
 
             <!-- Name & Title -->
             <h3 class="text-xl font-bold">{{ displayName }}</h3>
-            <p class="text-primary font-medium text-sm">{{ profile?.teacherProfile?.specialization ?? 'Teacher' }}</p>
+            <p class="text-primary font-medium text-sm">{{ profile?.teacherProfile?.academicRank ?? 'Teacher' }}</p>
 
             <!-- Info Items -->
             <div class="mt-6 space-y-3 text-left">
@@ -278,7 +280,8 @@ function handleCancelPassword() {
                   <label class="text-sm font-bold">Academic Rank</label>
                   <select
                     v-model="formData.academicRank"
-                    class="form-select rounded-lg border-border-light dark:border-border-dark bg-background-light dark:bg-stone-800 text-sm focus:border-primary focus:ring-primary"
+                    class="form-select rounded-lg border-border-light dark:border-border-dark bg-stone-50 dark:bg-stone-800 text-sm h-10 cursor-not-allowed"
+                    disabled
                   >
                     <option>Associate Professor</option>
                     <option>Assistant Professor</option>
@@ -290,24 +293,27 @@ function handleCancelPassword() {
                   <label class="text-sm font-bold">Specialization</label>
                   <input
                     v-model="formData.specialization"
-                    class="form-input rounded-lg border-border-light dark:border-border-dark bg-background-light dark:bg-stone-800 text-sm focus:border-primary focus:ring-primary"
+                    class="form-input rounded-lg border-border-light dark:border-border-dark bg-stone-50 dark:bg-stone-800 text-sm h-10 cursor-not-allowed"
                     type="text"
+                    disabled
                   />
                 </div>
                 <div class="flex flex-col gap-2">
                   <label class="text-sm font-bold">Office Room</label>
                   <input
                     v-model="formData.officeRoom"
-                    class="form-input rounded-lg border-border-light dark:border-border-dark bg-background-light dark:bg-stone-800 text-sm focus:border-primary focus:ring-primary"
+                    class="form-input rounded-lg border-border-light dark:border-border-dark bg-stone-50 dark:bg-stone-800 text-sm h-10 cursor-not-allowed"
                     type="text"
+                    disabled
                   />
                 </div>
                 <div class="flex flex-col gap-2">
                   <label class="text-sm font-bold">Work Email</label>
                   <input
                     v-model="formData.workEmail"
-                    class="form-input rounded-lg border-border-light dark:border-border-dark bg-background-light dark:bg-stone-800 text-sm focus:border-primary focus:ring-primary"
+                    class="form-input rounded-lg border-border-light dark:border-border-dark bg-stone-50 dark:bg-stone-800 text-sm h-10 cursor-not-allowed"
                     type="email"
+                    disabled
                   />
                 </div>
                 <div class="flex flex-col gap-2 md:col-span-2">

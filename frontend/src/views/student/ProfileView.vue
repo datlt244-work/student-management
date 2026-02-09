@@ -43,17 +43,18 @@ const sidebarNav = [
 const formData = ref({
   fullName: '',
   dateOfBirth: '',
-  gender: 'Prefer not to say',
+  gender: '',
   email: '',
   phone: '',
   address: '',
+  major: '',
 })
 
 // Summary info
 const summaryCards = computed(() => [
+  { label: 'Current Semester', value: profile.value?.studentProfile?.currentSemester?.displayName ?? 'N/A', isHighlight: false },
   { label: 'Department', value: profile.value?.studentProfile?.department?.name ?? 'N/A', isHighlight: false },
-  { label: 'Status', value: profile.value?.status ?? 'N/A', isHighlight: false },
-  { label: 'Login Count', value: String(profile.value?.loginCount ?? 0), isHighlight: true },
+  { label: 'GPA', value: profile.value?.studentProfile?.gpa != null ? `${profile.value.studentProfile.gpa} / 4.0` : 'N/A', isHighlight: true },
 ])
 
 // Fetch profile on mount
@@ -67,9 +68,11 @@ async function fetchProfile() {
     if (sp) {
       formData.value.fullName = `${sp.firstName} ${sp.lastName}`
       formData.value.dateOfBirth = sp.dob ?? ''
+      formData.value.gender = sp.gender ?? ''
       formData.value.email = profile.value.email
       formData.value.phone = sp.phone ?? ''
       formData.value.address = sp.address ?? ''
+      formData.value.major = sp.major ?? ''
     }
   } catch (err: any) {
     loadError.value = err.message || 'Failed to load profile'
@@ -206,8 +209,8 @@ function handleUpdatePassword() {
             <!-- Name & Info -->
             <div class="mt-6 text-center">
               <h1 class="text-2xl font-bold leading-tight">{{ displayName }}</h1>
-              <p class="text-primary font-medium mt-1">{{ profile?.studentProfile?.department?.name ?? 'No Department' }}</p>
-              <p class="text-text-muted-light dark:text-text-muted-dark text-sm font-normal mt-1">{{ profile?.email ?? '' }}</p>
+              <p class="text-primary font-medium mt-1">{{ profile?.studentProfile?.major ?? profile?.studentProfile?.department?.name ?? 'No Department' }}</p>
+              <p class="text-text-muted-light dark:text-text-muted-dark text-sm font-normal mt-1">Student ID: {{ profile?.studentProfile?.studentCode ?? 'N/A' }}</p>
             </div>
 
             <!-- Edit Photo Button -->
@@ -268,6 +271,16 @@ function handleUpdatePassword() {
                   v-model="formData.fullName"
                   class="form-input rounded-lg border-border-light dark:border-border-dark bg-transparent text-sm focus:border-primary focus:ring-primary h-12"
                   type="text"
+                  disabled
+                />
+              </div>
+              <div class="flex flex-col gap-2">
+                <label class="text-sm font-bold">Student Code</label>
+                <input
+                  :value="profile?.studentProfile?.studentCode ?? ''"
+                  class="form-input rounded-lg border-border-light dark:border-border-dark bg-stone-50 dark:bg-stone-800 text-sm h-12 cursor-not-allowed"
+                  type="text"
+                  disabled
                 />
               </div>
               <div class="flex flex-col gap-2">
@@ -276,26 +289,38 @@ function handleUpdatePassword() {
                   v-model="formData.dateOfBirth"
                   class="form-input rounded-lg border-border-light dark:border-border-dark bg-transparent text-sm focus:border-primary focus:ring-primary h-12"
                   type="date"
+                  disabled
                 />
               </div>
               <div class="flex flex-col gap-2">
                 <label class="text-sm font-bold">Gender</label>
                 <select
                   v-model="formData.gender"
-                  class="form-select rounded-lg border-border-light dark:border-border-dark bg-transparent text-sm focus:border-primary focus:ring-primary h-12"
+                  class="form-select rounded-lg border-border-light dark:border-border-dark bg-stone-50 dark:bg-stone-800 text-sm h-12 cursor-not-allowed"
+                  disabled
                 >
-                  <option>Male</option>
-                  <option>Female</option>
-                  <option>Other</option>
-                  <option>Prefer not to say</option>
+                  <option value="" disabled>Select gender</option>
+                  <option value="MALE">Male</option>
+                  <option value="FEMALE">Female</option>
+                  <option value="OTHER">Other</option>
                 </select>
+              </div>
+              <div class="flex flex-col gap-2">
+                <label class="text-sm font-bold">Major</label>
+                <input
+                  v-model="formData.major"
+                  class="form-input rounded-lg border-border-light dark:border-border-dark bg-stone-50 dark:bg-stone-800 text-sm h-12 cursor-not-allowed"
+                  type="text"
+                  disabled
+                />
               </div>
               <div class="flex flex-col gap-2">
                 <label class="text-sm font-bold">Email Address</label>
                 <input
                   v-model="formData.email"
-                  class="form-input rounded-lg border-border-light dark:border-border-dark bg-transparent text-sm focus:border-primary focus:ring-primary h-12"
+                  class="form-input rounded-lg border-border-light dark:border-border-dark bg-stone-50 dark:bg-stone-800 text-sm h-12 cursor-not-allowed"
                   type="email"
+                  disabled
                 />
               </div>
               <div class="flex flex-col gap-2">

@@ -11,7 +11,8 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "teachers", indexes = {
-        @Index(name = "idx_teachers_email", columnList = "email")
+        @Index(name = "idx_teachers_email", columnList = "email"),
+        @Index(name = "idx_teachers_teacher_code", columnList = "teacher_code")
 })
 @Data
 @NoArgsConstructor
@@ -34,6 +35,12 @@ public class Teacher extends JpaBaseEntity {
     @JoinColumn(name = "department_id")
     private Department department;
 
+    /**
+     * Mã giáo viên dạng HJxxxxxx (ví dụ: HJ170001)
+     */
+    @Column(name = "teacher_code", length = 10, unique = true)
+    private String teacherCode;
+
     @Column(name = "first_name", length = 50, nullable = false)
     private String firstName;
 
@@ -48,5 +55,11 @@ public class Teacher extends JpaBaseEntity {
 
     @Column(name = "specialization", length = 100)
     private String specialization;
+
+    @Column(name = "academic_rank", length = 50)
+    private String academicRank;
+
+    @Column(name = "office_room", length = 50)
+    private String officeRoom;
 }
 

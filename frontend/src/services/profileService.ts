@@ -8,22 +8,39 @@ export interface DepartmentInfo {
   officeLocation: string | null
 }
 
+export interface SemesterInfo {
+  semesterId: number
+  name: string
+  year: number
+  displayName: string
+  startDate: string | null
+  endDate: string | null
+}
+
 export interface StudentProfile {
   studentId: string
+  studentCode: string | null
   firstName: string
   lastName: string
   dob: string | null
+  gender: string | null
+  major: string | null
   phone: string | null
   address: string | null
+  gpa: number | null
   department: DepartmentInfo | null
+  currentSemester: SemesterInfo | null
 }
 
 export interface TeacherProfile {
   teacherId: string
+  teacherCode: string | null
   firstName: string
   lastName: string
   phone: string | null
   specialization: string | null
+  academicRank: string | null
+  officeRoom: string | null
   department: DepartmentInfo | null
 }
 

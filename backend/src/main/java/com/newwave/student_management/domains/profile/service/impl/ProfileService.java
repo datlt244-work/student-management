@@ -5,10 +5,13 @@ import com.newwave.student_management.common.exception.ErrorCode;
 import com.newwave.student_management.domains.auth.entity.User;
 import com.newwave.student_management.domains.auth.repository.UserRepository;
 import com.newwave.student_management.domains.profile.dto.response.CombinedProfileResponse;
+import com.newwave.student_management.domains.profile.dto.response.SemesterResponse;
 import com.newwave.student_management.domains.profile.dto.response.StudentProfileResponse;
 import com.newwave.student_management.domains.profile.dto.response.TeacherProfileResponse;
+import com.newwave.student_management.domains.profile.entity.Semester;
 import com.newwave.student_management.domains.profile.entity.Student;
 import com.newwave.student_management.domains.profile.entity.Teacher;
+import com.newwave.student_management.domains.profile.repository.SemesterRepository;
 import com.newwave.student_management.domains.profile.repository.StudentRepository;
 import com.newwave.student_management.domains.profile.repository.TeacherRepository;
 import com.newwave.student_management.domains.profile.service.IProfileService;
@@ -27,6 +30,7 @@ public class ProfileService implements IProfileService {
     private final UserRepository userRepository;
     private final StudentRepository studentRepository;
     private final TeacherRepository teacherRepository;
+    private final SemesterRepository semesterRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -54,7 +58,13 @@ public class ProfileService implements IProfileService {
             case "student" -> {
                 Student student = studentRepository.findByUserIdWithDepartment(userId)
                         .orElseThrow(() -> new AppException(ErrorCode.STUDENT_PROFILE_NOT_FOUND));
-                responseBuilder.studentProfile(StudentProfileResponse.fromEntity(student));
+
+                // Fetch current semester
+                SemesterResponse currentSemester = semesterRepository.findByIsCurrentTrue()
+                        .map(SemesterResponse::fromEntity)
+                        .orElse(null);
+
+                responseBuilder.studentProfile(StudentProfileResponse.fromEntity(student, currentSemester));
                 responseBuilder.teacherProfile(null);
             }
             case "teacher" -> {

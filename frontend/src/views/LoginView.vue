@@ -54,8 +54,19 @@ async function handleLogin(e: Event) {
       return
     }
 
-    // Lưu auth state vào store + localStorage
     const result = data.result || data
+
+    // Kiểm tra role được chọn trên UI có khớp với role từ server không
+    const serverRole = result.role?.toLowerCase()
+    const uiRole = selectedRole.value.toLowerCase()
+
+    if (serverRole !== uiRole) {
+      const roleLabel = selectedRole.value
+      errorMessage.value = `Your account does not have the "${roleLabel}" role. Please select the correct role and try again.`
+      return
+    }
+
+    // Lưu auth state vào store + localStorage
     authStore.setAuth(
       {
         accessToken: result.accessToken,
@@ -69,12 +80,13 @@ async function handleLogin(e: Event) {
     )
 
     // Redirect dựa theo role
-    const role = result.role?.toLowerCase()
-    if (role === 'admin') {
+    if (serverRole === 'admin') {
       router.push({ name: 'admin-dashboard' })
+    } else if (serverRole === 'teacher') {
+      router.push({ name: 'teacher-dashboard' })
     } else {
-      // TODO: Thêm redirect cho student/teacher
-      router.push({ name: 'admin-dashboard' })
+      // TODO: Thêm redirect cho student role
+      router.push({ name: 'login' })
     }
   } catch (err) {
     errorMessage.value = 'Unable to connect to server. Please try again later.'

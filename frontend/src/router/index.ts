@@ -62,6 +62,43 @@ const router = createRouter({
         },
       ],
     },
+    // Teacher routes
+    {
+      path: '/teacher',
+      component: () => import('@/layouts/TeacherLayout.vue'),
+      meta: { requiresAuth: true, role: 'teacher' },
+      children: [
+        {
+          path: '',
+          redirect: { name: 'teacher-dashboard' },
+        },
+        {
+          path: 'dashboard',
+          name: 'teacher-dashboard',
+          component: () => import('@/views/teacher/DashboardView.vue'),
+        },
+        {
+          path: 'students',
+          name: 'teacher-students',
+          component: () => import('@/views/teacher/DashboardView.vue'), // TODO: create Students page
+        },
+        {
+          path: 'classes',
+          name: 'teacher-classes',
+          component: () => import('@/views/teacher/DashboardView.vue'), // TODO: create Classes page
+        },
+        {
+          path: 'grades',
+          name: 'teacher-grades',
+          component: () => import('@/views/teacher/DashboardView.vue'), // TODO: create Grades page
+        },
+        {
+          path: 'schedule',
+          name: 'teacher-schedule',
+          component: () => import('@/views/teacher/DashboardView.vue'), // TODO: create Schedule page
+        },
+      ],
+    },
   ],
 })
 
@@ -87,7 +124,10 @@ router.beforeEach((to, _from, next) => {
     if (role === 'admin') {
       return next({ name: 'admin-dashboard' })
     }
-    // TODO: Add redirects for student/teacher roles
+    if (role === 'teacher') {
+      return next({ name: 'teacher-dashboard' })
+    }
+    // TODO: Add redirect for student role
   }
 
   next()

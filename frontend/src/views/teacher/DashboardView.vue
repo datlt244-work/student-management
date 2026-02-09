@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { getMyProfile, type CombinedProfile } from '@/services/profileService'
 
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)
+
+const profile = ref<CombinedProfile | null>(null)
 
 const currentDate = computed(() => {
   return new Date().toLocaleDateString('en-US', {
@@ -15,11 +18,23 @@ const currentDate = computed(() => {
 })
 
 const displayName = computed(() => {
+  const tp = profile.value?.teacherProfile
+  if (tp) {
+    return `${tp.firstName} ${tp.lastName}`
+  }
   if (user.value?.email) {
     const name = user.value.email.split('@')[0]
     return (name?.charAt(0).toUpperCase() ?? '') + (name?.slice(1) ?? '')
   }
   return 'Teacher'
+})
+
+onMounted(async () => {
+  try {
+    profile.value = await getMyProfile()
+  } catch {
+    // Fallback to email-based name
+  }
 })
 
 // Quick stats — will be fetched from API later

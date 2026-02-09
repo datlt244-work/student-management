@@ -7,12 +7,14 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
 @Entity
 @Table(name = "students", indexes = {
-        @Index(name = "idx_students_email", columnList = "email")
+        @Index(name = "idx_students_email", columnList = "email"),
+        @Index(name = "idx_students_student_code", columnList = "student_code")
 })
 @Data
 @NoArgsConstructor
@@ -35,6 +37,12 @@ public class Student extends JpaBaseEntity {
     @JoinColumn(name = "department_id")
     private Department department;
 
+    /**
+     * Mã sinh viên dạng HExxxxxx (ví dụ: HE170001)
+     */
+    @Column(name = "student_code", length = 10, unique = true)
+    private String studentCode;
+
     @Column(name = "first_name", length = 50, nullable = false)
     private String firstName;
 
@@ -44,6 +52,12 @@ public class Student extends JpaBaseEntity {
     @Column(name = "dob")
     private LocalDate dob;
 
+    @Column(name = "gender", length = 10)
+    private String gender;
+
+    @Column(name = "major", length = 100)
+    private String major;
+
     @Column(name = "email", length = 100, nullable = false, unique = true)
     private String email;
 
@@ -52,5 +66,11 @@ public class Student extends JpaBaseEntity {
 
     @Column(name = "address", length = 255)
     private String address;
+
+    /**
+     * GPA trên thang 4.0
+     */
+    @Column(name = "gpa", precision = 3, scale = 2)
+    private BigDecimal gpa;
 }
 

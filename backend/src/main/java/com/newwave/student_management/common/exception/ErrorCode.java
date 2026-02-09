@@ -57,6 +57,14 @@ public enum ErrorCode {
     INVALID_RESET_TOKEN(1311, "Invalid or expired password reset token", HttpStatus.BAD_REQUEST),
     INCORRECT_PASSWORD(1312, "Current password is incorrect", HttpStatus.BAD_REQUEST),
     SAME_PASSWORD(1313, "New password must be different from current password", HttpStatus.BAD_REQUEST),
+
+    // Profile errors (1400-1499)
+    STUDENT_ROLE_REQUIRED(1401, "Access denied - Student role required", HttpStatus.FORBIDDEN),
+    TEACHER_ROLE_REQUIRED(1402, "Access denied - Teacher role required", HttpStatus.FORBIDDEN),
+
+    // Profile not found errors (1500-1599)
+    STUDENT_PROFILE_NOT_FOUND(1501, "Student profile not found", HttpStatus.NOT_FOUND),
+    TEACHER_PROFILE_NOT_FOUND(1502, "Teacher profile not found", HttpStatus.NOT_FOUND),
     ;
 
     ErrorCode(int code, String message, HttpStatus statusCode) {

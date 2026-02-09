@@ -1,11 +1,20 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { getMyProfile, type CombinedProfile } from '@/services/profileService'
 
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)
 
+// Profile data from API
+const profile = ref<CombinedProfile | null>(null)
+const isLoading = ref(false)
+const loadError = ref('')
+
 const displayName = computed(() => {
+  if (profile.value?.teacherProfile) {
+    return `${profile.value.teacherProfile.firstName} ${profile.value.teacherProfile.lastName}`
+  }
   if (user.value?.email) {
     const name = user.value.email.split('@')[0]
     return (name?.charAt(0).toUpperCase() ?? '') + (name?.slice(1) ?? '')
@@ -22,28 +31,52 @@ const tabs = [
   { key: 'security' as const, label: 'Account Security' },
 ]
 
-// Form data — will be fetched from API later
+// Form data — populated from API
 const formData = ref({
-  academicRank: 'Associate Professor',
-  specialization: 'Artificial Intelligence',
-  officeRoom: 'Building C, Room 402',
-  workEmail: 'jane.smith@university.edu',
-  phone: '+1 (555) 012-3456',
+  academicRank: 'Lecturer',
+  specialization: '',
+  officeRoom: '',
+  workEmail: '',
+  phone: '',
 })
 
-// Profile info
-const profileInfo = [
-  { icon: 'badge', label: 'Employee ID', value: 'SMS-2024-001' },
-  { icon: 'account_balance', label: 'Department', value: 'Computer Science' },
-  { icon: 'event_available', label: 'Joined Date', value: 'August 15, 2018' },
-]
+// Profile info (computed from API data)
+const profileInfo = computed(() => [
+  { icon: 'badge', label: 'Teacher Code', value: profile.value?.teacherProfile?.teacherCode ?? 'N/A' },
+  { icon: 'account_balance', label: 'Department', value: profile.value?.teacherProfile?.department?.name ?? 'N/A' },
+  { icon: 'event_available', label: 'Joined Date', value: profile.value?.createdAt ? new Date(profile.value.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A' },
+])
 
-// Stats cards
-const statsCards = [
-  { icon: 'menu_book', label: 'Active Courses', value: '4' },
-  { icon: 'group', label: 'Total Students', value: '128' },
-  { icon: 'star', label: 'Exp. Level', value: 'Senior' },
-]
+// Stats cards (computed from API data)
+const statsCards = computed(() => [
+  { icon: 'military_tech', label: 'Academic Rank', value: profile.value?.teacherProfile?.academicRank ?? 'N/A' },
+  { icon: 'meeting_room', label: 'Office Room', value: profile.value?.teacherProfile?.officeRoom ?? 'N/A' },
+  { icon: 'verified_user', label: 'Status', value: profile.value?.status ?? 'N/A' },
+])
+
+// Fetch profile on mount
+async function fetchProfile() {
+  isLoading.value = true
+  loadError.value = ''
+  try {
+    profile.value = await getMyProfile()
+    // Populate form data from profile
+    const tp = profile.value.teacherProfile
+    if (tp) {
+      formData.value.academicRank = tp.academicRank ?? 'Lecturer'
+      formData.value.specialization = tp.specialization ?? ''
+      formData.value.officeRoom = tp.officeRoom ?? ''
+      formData.value.workEmail = profile.value.email
+      formData.value.phone = tp.phone ?? ''
+    }
+  } catch (err: any) {
+    loadError.value = err.message || 'Failed to load profile'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+onMounted(fetchProfile)
 
 // Password change form
 const passwordData = ref({
@@ -86,13 +119,20 @@ const securityChecks = computed(() => {
 })
 
 function handleSave() {
-  // TODO: call API to save profile
+  // Profile update will be implemented in UC-09
   console.log('Save profile:', formData.value)
 }
 
 function handleDiscard() {
-  // TODO: reset form data to original values
-  console.log('Discard changes')
+  // Reset form data to API values
+  const tp = profile.value?.teacherProfile
+  if (tp) {
+    formData.value.academicRank = tp.academicRank ?? 'Lecturer'
+    formData.value.specialization = tp.specialization ?? ''
+    formData.value.officeRoom = tp.officeRoom ?? ''
+    formData.value.workEmail = profile.value?.email ?? ''
+    formData.value.phone = tp.phone ?? ''
+  }
 }
 
 function handleUpdatePassword() {
@@ -144,6 +184,30 @@ function handleCancelPassword() {
         <span class="text-sm font-bold">Teacher Profile</span>
       </div>
 
+      <!-- Loading State -->
+      <div v-if="isLoading" class="flex items-center justify-center py-20">
+        <div class="flex flex-col items-center gap-4">
+          <div class="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+          <p class="text-text-muted-light dark:text-text-muted-dark text-sm">Loading profile...</p>
+        </div>
+      </div>
+
+      <!-- Error State -->
+      <div v-else-if="loadError" class="flex items-center justify-center py-20">
+        <div class="text-center">
+          <span class="material-symbols-outlined text-5xl text-red-500 mb-4 block">error</span>
+          <p class="text-lg font-bold text-red-500">Failed to load profile</p>
+          <p class="text-sm text-text-muted-light dark:text-text-muted-dark mt-2">{{ loadError }}</p>
+          <button
+            class="mt-4 px-6 py-2 rounded-lg bg-primary text-white font-bold text-sm hover:brightness-110 transition-all"
+            @click="fetchProfile"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+
+      <template v-else>
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Left: Profile Card -->
         <div class="lg:col-span-1">
@@ -168,7 +232,7 @@ function handleCancelPassword() {
 
             <!-- Name & Title -->
             <h3 class="text-xl font-bold">{{ displayName }}</h3>
-            <p class="text-primary font-medium text-sm">Professor &amp; Researcher</p>
+            <p class="text-primary font-medium text-sm">{{ profile?.teacherProfile?.academicRank ?? 'Teacher' }}</p>
 
             <!-- Info Items -->
             <div class="mt-6 space-y-3 text-left">
@@ -216,7 +280,8 @@ function handleCancelPassword() {
                   <label class="text-sm font-bold">Academic Rank</label>
                   <select
                     v-model="formData.academicRank"
-                    class="form-select rounded-lg border-border-light dark:border-border-dark bg-background-light dark:bg-stone-800 text-sm focus:border-primary focus:ring-primary"
+                    class="form-select rounded-lg border-border-light dark:border-border-dark bg-stone-50 dark:bg-stone-800 text-sm h-10 cursor-not-allowed"
+                    disabled
                   >
                     <option>Associate Professor</option>
                     <option>Assistant Professor</option>
@@ -228,24 +293,27 @@ function handleCancelPassword() {
                   <label class="text-sm font-bold">Specialization</label>
                   <input
                     v-model="formData.specialization"
-                    class="form-input rounded-lg border-border-light dark:border-border-dark bg-background-light dark:bg-stone-800 text-sm focus:border-primary focus:ring-primary"
+                    class="form-input rounded-lg border-border-light dark:border-border-dark bg-stone-50 dark:bg-stone-800 text-sm h-10 cursor-not-allowed"
                     type="text"
+                    disabled
                   />
                 </div>
                 <div class="flex flex-col gap-2">
                   <label class="text-sm font-bold">Office Room</label>
                   <input
                     v-model="formData.officeRoom"
-                    class="form-input rounded-lg border-border-light dark:border-border-dark bg-background-light dark:bg-stone-800 text-sm focus:border-primary focus:ring-primary"
+                    class="form-input rounded-lg border-border-light dark:border-border-dark bg-stone-50 dark:bg-stone-800 text-sm h-10 cursor-not-allowed"
                     type="text"
+                    disabled
                   />
                 </div>
                 <div class="flex flex-col gap-2">
                   <label class="text-sm font-bold">Work Email</label>
                   <input
                     v-model="formData.workEmail"
-                    class="form-input rounded-lg border-border-light dark:border-border-dark bg-background-light dark:bg-stone-800 text-sm focus:border-primary focus:ring-primary"
+                    class="form-input rounded-lg border-border-light dark:border-border-dark bg-stone-50 dark:bg-stone-800 text-sm h-10 cursor-not-allowed"
                     type="email"
+                    disabled
                   />
                 </div>
                 <div class="flex flex-col gap-2 md:col-span-2">
@@ -456,6 +524,7 @@ function handleCancelPassword() {
           </div>
         </div>
       </div>
+      </template>
     </div>
   </div>
 </template>

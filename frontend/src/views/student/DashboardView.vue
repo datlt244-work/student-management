@@ -1,16 +1,31 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { getMyProfile, type CombinedProfile } from '@/services/profileService'
 
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)
 
+const profile = ref<CombinedProfile | null>(null)
+
 const displayName = computed(() => {
+  const sp = profile.value?.studentProfile
+  if (sp) {
+    return `${sp.firstName} ${sp.lastName}`
+  }
   if (user.value?.email) {
     const name = user.value.email.split('@')[0]
     return (name?.charAt(0).toUpperCase() ?? '') + (name?.slice(1) ?? '')
   }
   return 'Student'
+})
+
+onMounted(async () => {
+  try {
+    profile.value = await getMyProfile()
+  } catch {
+    // Fallback to email-based name
+  }
 })
 
 // Quick stats — will be fetched from API later

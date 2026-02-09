@@ -61,6 +61,17 @@ async function handleLogin(e: Event) {
     const uiRole = selectedRole.value.toLowerCase()
 
     if (serverRole !== uiRole) {
+      // Revoke the server-issued tokens to prevent orphaned active sessions
+      try {
+        await apiFetch('/auth/logout', {
+          method: 'POST',
+          body: JSON.stringify({ refreshToken: result.refreshToken }),
+          headers: { Authorization: `Bearer ${result.accessToken}` },
+        })
+      } catch {
+        // Best-effort: if revocation fails, tokens will expire naturally
+      }
+
       const roleLabel = selectedRole.value
       errorMessage.value = `Your account does not have the "${roleLabel}" role. Please select the correct role and try again.`
       return

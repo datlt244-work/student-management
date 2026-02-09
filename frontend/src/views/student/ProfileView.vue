@@ -1,11 +1,20 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { getMyProfile, type CombinedProfile } from '@/services/profileService'
 
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)
 
+// Profile data from API
+const profile = ref<CombinedProfile | null>(null)
+const isLoading = ref(false)
+const loadError = ref('')
+
 const displayName = computed(() => {
+  if (profile.value?.studentProfile) {
+    return `${profile.value.studentProfile.firstName} ${profile.value.studentProfile.lastName}`
+  }
   if (user.value?.email) {
     const name = user.value.email.split('@')[0]
     return (name?.charAt(0).toUpperCase() ?? '') + (name?.slice(1) ?? '')
@@ -30,22 +39,46 @@ const sidebarNav = [
   { label: 'Financials', icon: 'payments', routeName: '' },
 ]
 
-// Form data — will be fetched from API later
+// Form data — populated from API
 const formData = ref({
-  fullName: 'Alex Johnson',
-  dateOfBirth: '2002-05-15',
-  gender: 'Male',
-  email: 'alex.johnson@university.edu',
-  phone: '+1 (555) 012-3456',
-  address: '123 Campus Dr, Apt 4B',
+  fullName: '',
+  dateOfBirth: '',
+  gender: 'Prefer not to say',
+  email: '',
+  phone: '',
+  address: '',
 })
 
 // Summary info
-const summaryCards = [
-  { label: 'Current Semester', value: 'Fall 2024', isHighlight: false },
-  { label: 'Academic Advisor', value: 'Dr. Sarah Miller', isHighlight: false },
-  { label: 'GPA', value: '3.82 / 4.0', isHighlight: true },
-]
+const summaryCards = computed(() => [
+  { label: 'Department', value: profile.value?.studentProfile?.department?.name ?? 'N/A', isHighlight: false },
+  { label: 'Status', value: profile.value?.status ?? 'N/A', isHighlight: false },
+  { label: 'Login Count', value: String(profile.value?.loginCount ?? 0), isHighlight: true },
+])
+
+// Fetch profile on mount
+async function fetchProfile() {
+  isLoading.value = true
+  loadError.value = ''
+  try {
+    profile.value = await getMyProfile()
+    // Populate form data from profile
+    const sp = profile.value.studentProfile
+    if (sp) {
+      formData.value.fullName = `${sp.firstName} ${sp.lastName}`
+      formData.value.dateOfBirth = sp.dob ?? ''
+      formData.value.email = profile.value.email
+      formData.value.phone = sp.phone ?? ''
+      formData.value.address = sp.address ?? ''
+    }
+  } catch (err: any) {
+    loadError.value = err.message || 'Failed to load profile'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+onMounted(fetchProfile)
 
 // Password change form
 const passwordData = ref({
@@ -77,7 +110,7 @@ const passwordStrength = computed(() => {
 })
 
 function handleUpdateProfile() {
-  // TODO: call API to update profile
+  // Profile update will be implemented in UC-09
   console.log('Update profile:', formData.value)
 }
 
@@ -124,8 +157,31 @@ function handleUpdatePassword() {
         <span class="text-sm font-medium leading-normal">Personal Profile</span>
       </div>
 
+      <!-- Loading State -->
+      <div v-if="isLoading" class="flex items-center justify-center py-20">
+        <div class="flex flex-col items-center gap-4">
+          <div class="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+          <p class="text-text-muted-light dark:text-text-muted-dark text-sm">Loading profile...</p>
+        </div>
+      </div>
+
+      <!-- Error State -->
+      <div v-else-if="loadError" class="flex items-center justify-center py-20">
+        <div class="text-center">
+          <span class="material-symbols-outlined text-5xl text-red-500 mb-4 block">error</span>
+          <p class="text-lg font-bold text-red-500">Failed to load profile</p>
+          <p class="text-sm text-text-muted-light dark:text-text-muted-dark mt-2">{{ loadError }}</p>
+          <button
+            class="mt-4 px-6 py-2 rounded-lg bg-primary text-white font-bold text-sm hover:brightness-110 transition-all"
+            @click="fetchProfile"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+
       <!-- Profile Layout -->
-      <div class="flex flex-col lg:flex-row gap-8 items-start">
+      <div v-else class="flex flex-col lg:flex-row gap-8 items-start">
         <!-- Sidebar (Profile Summary) -->
         <aside class="w-full lg:w-1/3 flex flex-col gap-6">
           <div class="bg-surface-light dark:bg-surface-dark p-8 rounded-xl shadow-sm border border-border-light dark:border-border-dark flex flex-col items-center">
@@ -150,8 +206,8 @@ function handleUpdatePassword() {
             <!-- Name & Info -->
             <div class="mt-6 text-center">
               <h1 class="text-2xl font-bold leading-tight">{{ displayName }}</h1>
-              <p class="text-primary font-medium mt-1">B.Sc. in Computer Science</p>
-              <p class="text-text-muted-light dark:text-text-muted-dark text-sm font-normal mt-1">Student ID: 202300154</p>
+              <p class="text-primary font-medium mt-1">{{ profile?.studentProfile?.department?.name ?? 'No Department' }}</p>
+              <p class="text-text-muted-light dark:text-text-muted-dark text-sm font-normal mt-1">{{ profile?.email ?? '' }}</p>
             </div>
 
             <!-- Edit Photo Button -->

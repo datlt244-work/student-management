@@ -99,6 +99,38 @@ const router = createRouter({
         },
       ],
     },
+    // Student routes
+    {
+      path: '/student',
+      component: () => import('@/layouts/StudentLayout.vue'),
+      meta: { requiresAuth: true, role: 'student' },
+      children: [
+        {
+          path: '',
+          redirect: { name: 'student-dashboard' },
+        },
+        {
+          path: 'dashboard',
+          name: 'student-dashboard',
+          component: () => import('@/views/student/DashboardView.vue'),
+        },
+        {
+          path: 'courses',
+          name: 'student-courses',
+          component: () => import('@/views/student/DashboardView.vue'), // TODO: create Courses page
+        },
+        {
+          path: 'grades',
+          name: 'student-grades',
+          component: () => import('@/views/student/DashboardView.vue'), // TODO: create Grades page
+        },
+        {
+          path: 'schedule',
+          name: 'student-schedule',
+          component: () => import('@/views/student/DashboardView.vue'), // TODO: create Schedule page
+        },
+      ],
+    },
   ],
 })
 
@@ -127,7 +159,9 @@ router.beforeEach((to, _from, next) => {
     if (role === 'teacher') {
       return next({ name: 'teacher-dashboard' })
     }
-    // TODO: Add redirect for student role
+    if (role === 'student') {
+      return next({ name: 'student-dashboard' })
+    }
   }
 
   next()

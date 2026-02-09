@@ -84,8 +84,9 @@ async function handleLogin(e: Event) {
       router.push({ name: 'admin-dashboard' })
     } else if (serverRole === 'teacher') {
       router.push({ name: 'teacher-dashboard' })
+    } else if (serverRole === 'student') {
+      router.push({ name: 'student-dashboard' })
     } else {
-      // TODO: Thêm redirect cho student role
       router.push({ name: 'login' })
     }
   } catch (err) {

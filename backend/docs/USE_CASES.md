@@ -1548,16 +1548,20 @@ Content-Type: image/jpeg
 - **Storage**: Chỉ lưu relative path trong DB, construct full URL khi cần
 - **Cache**: `immutable` cache header + UUID filename = tối ưu performance
 
+**Implementation notes (đã làm):**
+- DB lưu relative path (`avatar/{userId}/{uuid}.webp`). API **GET /profile/me** và **login/refresh** trả về `profilePictureUrl` dạng **full URL** (gọi `IStorageService.getPublicUrl(relativePath)`) để frontend hiển thị avatar đúng sau khi reload trang.
+- Upload response vẫn trả `profilePictureUrl` (relative) + `fullUrl` (full); frontend dùng `fullUrl` ngay sau upload. Khi load lại trang, `GET /profile/me` trả full URL nên ảnh không biến mất.
+
 ---
 
-### UC-10: Đổi Mật Khẩu (Change Password)
+### UC-10: Đổi Mật Khẩu (Change Password) ✅ IMPLEMENTED
 
 | Thuộc tính | Giá trị |
 |------------|---------|
 | **Endpoint** | `POST /users/me/change-password` |
 | **Actor** | Authenticated User |
 | **Mục đích** | Thay đổi mật khẩu |
-| **Security** | Có option logout all other devices |
+| **Security** | Logout toàn bộ thiết bị/tab ngay (token version + xóa refresh token). Client redirect về login sau khi đổi thành công. |
 
 **Request Body:**
 ```json
@@ -1589,61 +1593,55 @@ Content-Type: image/jpeg
      │                  │ 7. Update password_hash              │
      │                  │────────────────────>│                │
      │                  │                     │                │
-     │                  │ 8. If logoutOtherDevices == true:    │
+     │                  │ 8. Increment token version (Redis)   │
+     │                  │    → Mọi JWT cũ (mọi tab/thiết bị)  │
+     │                  │      bị từ chối ngay khi validate   │
+     │                  │────────────────────────────────────>│
+     │                  │ 9. If logoutOtherDevices == true:    │
      │                  │    → Delete ALL refresh tokens       │
-     │                  │      (trừ token hiện tại)            │
      │                  │────────────────────────────────────>│
      │                  │                     │                │
-     │ 9. Success       │                     │                │
+     │ 10. Success      │                     │                │
+     │     (không cấp token mới; client logout & redirect login)
      │<─────────────────│                     │                │
 ```
 
-**Response:**
+**Response (đã implement):**
 ```json
 {
   "code": 1000,
   "result": {
-    "message": "Password changed successfully.",
-    "loggedOutDevices": 3,
-    "newAccessToken": "eyJ...",
-    "newRefreshToken": "uuid..."
+    "message": "Password changed successfully. Please login again.",
+    "loggedOutDevices": 3
   }
 }
 ```
 
-**⚠️ Security Logic (Blacklist Approach):**
+**⚠️ Security Logic (đã implement – Token Version + Logout all):**
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                  CHANGE PASSWORD - BLACKLIST APPROACH                   │
+│            CHANGE PASSWORD - TOKEN VERSION + LOGOUT ALL                  │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
-│  Option: logoutOtherDevices (default: true)                             │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │ true:                                                           │    │
-│  │   → Delete ALL refresh tokens (trừ current device)              │    │
-│  │   → Issue new tokens cho current device                         │    │
-│  │   → Devices khác không thể refresh token                        │    │
-│  │                                                                 │    │
-│  │ false:                                                          │    │
-│  │   → Chỉ update password                                         │    │
-│  │   → Giữ nguyên sessions của các devices khác                    │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
+│  1. Update password trong DB                                            │
+│  2. Increment token version (Redis: auth:token-version:{userId})        │
+│     → JWT có claim "tv" (token version). Validator so sánh với Redis.  │
+│     → Mọi request dùng JWT cũ (tv < current) → 401 ngay.                │
+│     → Tab ẩn danh / thiết bị khác hết hiệu lực ngay, không chờ hết hạn. │
+│  3. Delete ALL refresh tokens (logoutOtherDevices default true)          │
+│  4. Không cấp newAccessToken/newRefreshToken                            │
+│     → Frontend sau khi đổi thành công: clearAuth() + redirect /login    │
 │                                                                         │
-│  Flow khi logoutOtherDevices = true:                                    │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │ 1. Update password trong DB                                     │    │
-│  │ 2. Get current refresh token từ request body                    │    │
-│  │ 3. DEL refresh:token:{userId} (xóa tất cả)                      │    │
-│  │ 4. Generate new access + refresh token                          │    │
-│  │ 5. Store new refresh token cho current device                   │    │
-│  │ 6. Return new tokens + loggedOutDevices count                   │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-│                                                                         │
-│  ⚠️ Note: JWT cũ vẫn valid cho đến khi hết hạn (1h)                    │
-│  Nhưng không thể refresh → bắt buộc login lại                          │
-│                                                                         │
+│  Kết quả: Thiết bị đổi mật khẩu → logout và chuyển login; mọi tab/      │
+│  thiết bị khác → request tiếp theo 401 → FE refresh thất bại → redirect  │
+│  login.                                                                  │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
+
+**Implementation notes (đã làm):**
+- Backend: `UserController` POST `/users/me/change-password`, `AuthService.changePassword()`; xóa hết refresh token, tăng token version (Redis), response chỉ có `message` + `loggedOutDevices` (không trả token mới).
+- Frontend: Student/Teacher ProfileView gọi `changePassword()` → hiển thị success → sau ~1.5s `authStore.clearAuth()` + `window.location.href = '/login'`.
+- Token version: JWT có claim `tv`; `JwtTokenVersionValidator` so sánh với Redis; đổi mật khẩu gọi `incrementTokenVersion(userId)` để vô hiệu hóa mọi access token cũ.
 
 **Error Responses:**
 

@@ -22,7 +22,7 @@ RUN if [ -f .env.production ]; then \
     fi
 
 # Build Vite (Vite sẽ bake các biến VITE_* vào file tĩnh HTML/JS)
-RUN pnpm build
+RUN pnpm run build-only
 
 # Stage 2: Production Run
 FROM nginx:stable-alpine as production-stage

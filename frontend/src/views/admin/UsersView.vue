@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { watchDebounced } from '@vueuse/core'
 import { useRouter } from 'vue-router'
 import { getAdminUsers, type AdminUserListItem, type UserStatus } from '@/services/adminUserService'
@@ -41,8 +41,13 @@ async function fetchUsers() {
     currentPage.value = result.page + 1
     totalPages.value = result.totalPages
     totalElements.value = result.totalElements
-  } catch (err: any) {
-    errorMessage.value = err?.message || 'Failed to load users'
+  } catch (err: unknown) {
+    if (err && typeof err === 'object' && 'message' in err) {
+      // eslint-disable-next-line @typescript-eslint/no-base-to-string
+      errorMessage.value = String((err as { message?: unknown }).message) || 'Failed to load users'
+    } else {
+      errorMessage.value = 'Failed to load users'
+    }
   } finally {
     isLoading.value = false
   }

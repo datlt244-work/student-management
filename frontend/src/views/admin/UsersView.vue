@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 
 const router = useRouter()
 
+// Filters & pagination
 const searchQuery = ref('')
 const statusFilter = ref('')
 const roleFilter = ref('')
@@ -22,6 +23,39 @@ const paginationPages = computed(() => {
     pages.push(i)
   }
   return pages
+})
+
+// Add New User modal state
+const showAddUserModal = ref(false)
+const newUserRole = ref<'TEACHER' | 'STUDENT'>('TEACHER')
+
+// Teacher form model
+const newTeacher = ref({
+  firstName: '',
+  lastName: '',
+  email: '',
+  teacherCode: '',
+  dob: '',
+  phone: '',
+  department: '',
+  address: '',
+  specialization: '',
+  academicRank: '',
+  officeRoom: '',
+})
+
+// Student form model
+const newStudent = ref({
+  firstName: '',
+  lastName: '',
+  email: '',
+  studentCode: '',
+  dob: '',
+  gender: '',
+  major: '',
+  phone: '',
+  department: '',
+  address: '',
 })
 
 // Placeholder data — sẽ fetch từ API sau
@@ -124,7 +158,48 @@ function handleDelete(user: (typeof users.value)[0]) {
 }
 
 function handleAddUser() {
-  // TODO: mở modal/form thêm user
+  showAddUserModal.value = true
+  newUserRole.value = 'TEACHER'
+  newTeacher.value = {
+    firstName: '',
+    lastName: '',
+    email: '',
+    teacherCode: '',
+    dob: '',
+    phone: '',
+    department: '',
+    address: '',
+    specialization: '',
+    academicRank: '',
+    officeRoom: '',
+  }
+  newStudent.value = {
+    firstName: '',
+    lastName: '',
+    email: '',
+    studentCode: '',
+    dob: '',
+    gender: '',
+    major: '',
+    phone: '',
+    department: '',
+    address: '',
+  }
+}
+
+function closeAddUserModal() {
+  showAddUserModal.value = false
+}
+
+function submitNewUser() {
+  // TODO: gọi API tạo user mới
+  const payload =
+    newUserRole.value === 'TEACHER'
+      ? { role: 'TEACHER', ...newTeacher.value }
+      : { role: 'STUDENT', ...newStudent.value }
+
+  console.log('Create user', payload)
+  showAddUserModal.value = false
 }
 </script>
 
@@ -321,4 +396,285 @@ function handleAddUser() {
       </div>
     </div>
   </div>
+
+  <!-- Add New User Modal -->
+  <Teleport to="body">
+    <Transition name="fade">
+      <div
+        v-if="showAddUserModal"
+        class="fixed inset-0 z-[100] flex items-center justify-center p-4 backdrop-blur-md bg-stone-900/40"
+      >
+        <div
+          class="bg-surface-light dark:bg-surface-dark w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden border border-stone-200 dark:border-stone-800 max-h-[90vh] flex flex-col"
+        >
+          <div class="bg-primary px-6 py-4 flex items-center justify-between flex-shrink-0">
+            <h2 class="text-white text-xl font-bold flex items-center gap-2">
+              <span class="material-symbols-outlined">person_add</span>
+              Add New User
+            </h2>
+            <button class="text-white/80 hover:text-white transition-colors" @click="closeAddUserModal">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          <form class="p-6 overflow-y-auto space-y-6 flex-1" @submit.prevent="submitNewUser">
+            <div class="space-y-3">
+              <label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Role Selection</label>
+              <div class="flex p-1 bg-stone-100 dark:bg-stone-800 rounded-lg gap-1">
+                <button
+                  type="button"
+                  :class="[
+                    'flex-1 text-center py-2 text-sm font-medium rounded-md cursor-pointer transition-all border',
+                    newUserRole === 'TEACHER'
+                      ? 'bg-primary text-white border-primary'
+                      : 'bg-transparent text-slate-600 dark:text-slate-400 border-transparent',
+                  ]"
+                  @click="newUserRole = 'TEACHER'"
+                >
+                  Teacher
+                </button>
+                <button
+                  type="button"
+                  :class="[
+                    'flex-1 text-center py-2 text-sm font-medium rounded-md cursor-pointer transition-all border',
+                    newUserRole === 'STUDENT'
+                      ? 'bg-primary text-white border-primary'
+                      : 'bg-transparent text-slate-600 dark:text-slate-400 border-transparent',
+                  ]"
+                  @click="newUserRole = 'STUDENT'"
+                >
+                  Student
+                </button>
+              </div>
+
+              <!-- Teacher fields -->
+              <div v-if="newUserRole === 'TEACHER'" class="pt-4 space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">First Name</label>
+                    <input
+                      v-model="newTeacher.firstName"
+                      class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
+                      placeholder="John"
+                      type="text"
+                    />
+                  </div>
+                  <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Last Name</label>
+                    <input
+                      v-model="newTeacher.lastName"
+                      class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
+                      placeholder="Doe"
+                      type="text"
+                    />
+                  </div>
+                  <div class="space-y-1.5 sm:col-span-2">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Email Address</label>
+                    <input
+                      v-model="newTeacher.email"
+                      class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
+                      placeholder="j.doe@university.edu"
+                      type="email"
+                    />
+                  </div>
+                  <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Teacher Code</label>
+                    <input
+                      v-model="newTeacher.teacherCode"
+                      class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
+                      placeholder="TCH-8821"
+                      type="text"
+                    />
+                  </div>
+                  <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Date of Birth</label>
+                    <input
+                      v-model="newTeacher.dob"
+                      class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
+                      type="date"
+                    />
+                  </div>
+                  <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Phone Number</label>
+                    <input
+                      v-model="newTeacher.phone"
+                      class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
+                      placeholder="+1 (555) 000-0000"
+                      type="tel"
+                    />
+                  </div>
+                  <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Department</label>
+                    <input
+                      v-model="newTeacher.department"
+                      class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
+                      placeholder="Mathematics"
+                      type="text"
+                    />
+                  </div>
+                  <div class="space-y-1.5 sm:col-span-2">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Home Address</label>
+                    <input
+                      v-model="newTeacher.address"
+                      class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
+                      placeholder="123 Faculty Lane, Academic City"
+                      type="text"
+                    />
+                  </div>
+                  <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Specialization</label>
+                    <input
+                      v-model="newTeacher.specialization"
+                      class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
+                      placeholder="Artificial Intelligence"
+                      type="text"
+                    />
+                  </div>
+                  <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Academic Rank</label>
+                    <input
+                      v-model="newTeacher.academicRank"
+                      class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
+                      placeholder="Professor"
+                      type="text"
+                    />
+                  </div>
+                  <div class="space-y-1.5 sm:col-span-2">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Office Room</label>
+                    <input
+                      v-model="newTeacher.officeRoom"
+                      class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
+                      placeholder="Building B, Room 402"
+                      type="text"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Student fields -->
+              <div v-else class="pt-4 space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">First Name</label>
+                    <input
+                      v-model="newStudent.firstName"
+                      class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
+                      placeholder="Sarah"
+                      type="text"
+                    />
+                  </div>
+                  <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Last Name</label>
+                    <input
+                      v-model="newStudent.lastName"
+                      class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
+                      placeholder="Miller"
+                      type="text"
+                    />
+                  </div>
+                  <div class="space-y-1.5 sm:col-span-2">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Email Address</label>
+                    <input
+                      v-model="newStudent.email"
+                      class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
+                      placeholder="s.miller@student.edu"
+                      type="email"
+                    />
+                  </div>
+                  <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Student Code</label>
+                    <input
+                      v-model="newStudent.studentCode"
+                      class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
+                      placeholder="STU-2024-001"
+                      type="text"
+                    />
+                  </div>
+                  <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Major</label>
+                    <input
+                      v-model="newStudent.major"
+                      class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
+                      placeholder="Software Engineering"
+                      type="text"
+                    />
+                  </div>
+                  <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Date of Birth</label>
+                    <input
+                      v-model="newStudent.dob"
+                      class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
+                      type="date"
+                    />
+                  </div>
+                  <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Gender</label>
+                    <input
+                      v-model="newStudent.gender"
+                      class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
+                      placeholder="Female"
+                      type="text"
+                    />
+                  </div>
+                  <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Phone Number</label>
+                    <input
+                      v-model="newStudent.phone"
+                      class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
+                      placeholder="+1 (555) 123-4567"
+                      type="tel"
+                    />
+                  </div>
+                  <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Department</label>
+                    <input
+                      v-model="newStudent.department"
+                      class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
+                      placeholder="Engineering"
+                      type="text"
+                    />
+                  </div>
+                  <div class="space-y-1.5 sm:col-span-2">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Home Address</label>
+                    <input
+                      v-model="newStudent.address"
+                      class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
+                      placeholder="456 University Blvd, Student Housing"
+                      type="text"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-6 border-t border-stone-200 dark:border-stone-800 flex-shrink-0">
+              <button
+                type="button"
+                class="px-5 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 font-bold transition-all"
+                @click="closeAddUserModal"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                class="px-5 py-2.5 rounded-lg bg-primary hover:bg-primary-dark text-white font-bold shadow-lg shadow-primary/20 transition-all active:scale-95"
+              >
+                Create User
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
 </template>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>

@@ -153,11 +153,24 @@ const announcements = [
   <div class="flex-1 flex flex-col p-6 lg:p-10 gap-8 max-w-7xl mx-auto w-full">
     <!-- Welcome Section -->
     <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
-      <div class="space-y-1">
-        <h1 class="text-3xl font-black tracking-tight">Welcome back, {{ displayName }}</h1>
-        <p class="text-text-muted-light dark:text-text-muted-dark">
-          Here's what's happening with your classes today, {{ currentDate }}.
-        </p>
+      <div class="flex gap-5 items-center">
+        <div
+          v-if="user?.profilePictureUrl"
+          class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-20 md:size-24 border-4 border-surface-light dark:border-background-dark shadow-lg shrink-0"
+          :style="{ backgroundImage: `url(${user.profilePictureUrl})` }"
+        ></div>
+        <div
+          v-else
+          class="rounded-full size-20 md:size-24 border-4 border-surface-light dark:border-background-dark shadow-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-2xl shrink-0"
+        >
+          {{ displayName.substring(0, 2).toUpperCase() }}
+        </div>
+        <div class="space-y-1">
+          <h1 class="text-3xl font-black tracking-tight">Welcome back, {{ displayName }}</h1>
+          <p class="text-text-muted-light dark:text-text-muted-dark">
+            Here's what's happening with your classes today, {{ currentDate }}.
+          </p>
+        </div>
       </div>
       <div class="flex gap-3">
         <button class="flex items-center gap-2 bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:shadow-md transition-shadow">

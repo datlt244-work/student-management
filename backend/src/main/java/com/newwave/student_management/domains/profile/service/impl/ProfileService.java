@@ -24,6 +24,8 @@ import lombok.extern.slf4j.Slf4j;
 import net.coobird.thumbnailator.Thumbnails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayInputStream;
@@ -216,22 +218,30 @@ public class ProfileService implements IProfileService {
             throw new AppException(ErrorCode.FILE_UPLOAD_FAILED);
         }
 
-        // 5. Update DB with new avatar relative path
-        try {
-            user.setProfilePictureUrl(objectName);
-            userRepository.save(user);
-        } catch (Exception e) {
-            // Rollback: delete the newly uploaded file
-            log.error("Failed to update DB for avatar, cleaning up MinIO: {}", e.getMessage());
-            storageService.deleteFile(objectName);
-            throw new AppException(ErrorCode.FILE_UPLOAD_FAILED);
-        }
+        // 5. Update DB with new avatar relative path; schedule MinIO cleanup after commit/rollback
+        user.setProfilePictureUrl(objectName);
+        userRepository.save(user);
 
-        // 6. Delete old avatar from MinIO (non-critical)
-        if (oldAvatarPath != null && !oldAvatarPath.isBlank()) {
-            storageService.deleteFile(oldAvatarPath);
-        }
+        final String oldPathToDelete = (oldAvatarPath != null && !oldAvatarPath.isBlank()) ? oldAvatarPath : null;
+        final String newPathForRollback = objectName;
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                if (oldPathToDelete != null) {
+                    storageService.deleteFile(oldPathToDelete);
+                }
+            }
 
+            @Override
+            public void afterCompletion(int status) {
+                if (status == TransactionSynchronization.STATUS_ROLLED_BACK) {
+                    storageService.deleteFile(newPathForRollback);
+                    log.warn("Avatar transaction rolled back, deleted orphan from MinIO: {}", newPathForRollback);
+                }
+            }
+        });
+
+        userRepository.flush();
         log.info("Avatar updated for user {}: {}", userId, objectName);
 
         return AvatarUploadResponse.builder()

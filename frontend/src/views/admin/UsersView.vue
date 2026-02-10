@@ -52,21 +52,15 @@ onMounted(() => {
   fetchUsers()
 })
 
-// Search: debounce to tránh gọi API trên mỗi phím gõ
+// Debounce tất cả filter/search để tránh gọi API trùng lặp (đặc biệt khi clearFilters)
 watchDebounced(
-  searchQuery,
+  [searchQuery, statusFilter, roleFilter, sortBy, pageSize],
   () => {
     currentPage.value = 1
     fetchUsers()
   },
   { debounce: 500, maxWait: 1000 },
 )
-
-// Các filter khác & page size: fetch ngay
-watch([statusFilter, roleFilter, sortBy, pageSize], () => {
-  currentPage.value = 1
-  fetchUsers()
-})
 
 const paginationPages = computed(() => {
   const total = totalPages.value

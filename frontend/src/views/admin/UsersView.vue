@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 const searchQuery = ref('')
 const statusFilter = ref('')
@@ -25,6 +28,7 @@ const paginationPages = computed(() => {
 const users = ref([
   {
     id: 'US-001',
+    userId: '00000000-0000-0000-0000-000000000001',
     name: 'Alexander Wright',
     email: 'alex.wright@edu.com',
     avatar: 'https://ui-avatars.com/api/?name=Alexander+Wright&background=f97316&color=fff',
@@ -37,6 +41,7 @@ const users = ref([
   },
   {
     id: 'US-002',
+    userId: '00000000-0000-0000-0000-000000000002',
     name: 'Sarah Chen',
     email: 's.chen@school.org',
     avatar: 'https://ui-avatars.com/api/?name=Sarah+Chen&background=9333ea&color=fff',
@@ -49,6 +54,7 @@ const users = ref([
   },
   {
     id: 'US-003',
+    userId: '00000000-0000-0000-0000-000000000003',
     name: 'Michael Ross',
     email: 'm.ross@student.edu',
     avatar: 'https://ui-avatars.com/api/?name=Michael+Ross&background=4f46e5&color=fff',
@@ -61,6 +67,7 @@ const users = ref([
   },
   {
     id: 'US-004',
+    userId: '00000000-0000-0000-0000-000000000004',
     name: 'Robert Thorne',
     email: 'r.thorne@edu.com',
     avatar: 'https://ui-avatars.com/api/?name=Robert+Thorne&background=e11d48&color=fff',
@@ -102,8 +109,13 @@ function goToPage(page: number) {
 }
 
 function handleEdit(user: (typeof users.value)[0]) {
-  console.log('Edit', user)
-  // TODO: mở modal/form edit
+  if (user.role === 'STUDENT' || user.role === 'TEACHER') {
+    const uid = (user as { userId?: string }).userId ?? user.id
+    router.push({ name: 'admin-user-detail', params: { userId: uid } })
+  } else {
+    // TODO: mở modal/form edit cho admin
+    console.log('Edit', user)
+  }
 }
 
 function handleDelete(user: (typeof users.value)[0]) {
@@ -238,10 +250,10 @@ function handleAddUser() {
                 <div class="flex items-center justify-end gap-2">
                   <button
                     class="p-2 text-slate-400 hover:text-primary transition-colors rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800"
-                    aria-label="Edit user"
+                    aria-label="View detail"
                     @click="handleEdit(user)"
                   >
-                    <span class="material-symbols-outlined text-[20px]">edit</span>
+                    <span class="material-symbols-outlined text-[20px]">visibility</span>
                   </button>
                   <button
                     class="p-2 text-slate-400 hover:text-red-500 transition-colors rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800"

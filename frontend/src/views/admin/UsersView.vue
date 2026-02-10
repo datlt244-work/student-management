@@ -38,7 +38,6 @@ async function fetchUsers() {
 
     users.value = result.content
     currentPage.value = result.page + 1
-    pageSize.value = result.size
     totalPages.value = result.totalPages
     totalElements.value = result.totalElements
   } catch (err: any) {

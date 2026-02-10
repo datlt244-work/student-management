@@ -23,7 +23,7 @@ public class AdminUserService implements IAdminUserService {
     public AdminUserListResponse getUsers(String search, UserStatus status, Integer roleId, Pageable pageable) {
         String normalizedSearch = (search == null || search.isBlank())
                 ? null
-                : "%" + search.trim().toLowerCase() + "%";
+                : "%" + search.trim().toLowerCase().replace("%", "\\%").replace("_", "\\_") + "%";
 
         Page<User> pageResult = userRepository.searchAdminUsers(
                 normalizedSearch,

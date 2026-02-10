@@ -5,7 +5,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -36,6 +35,7 @@ public class SecurityConfig {
     private String signerKey;
 
     private final JwtBlacklistValidator jwtBlacklistValidator;
+    private final JwtTokenVersionValidator jwtTokenVersionValidator;
 
     private final String[] PUBLIC_POST_ENDPOINTS = {
             "/auth/login",
@@ -77,10 +77,11 @@ public class SecurityConfig {
                 .macAlgorithm(MacAlgorithm.HS256)
                 .build();
 
-        // Default validators (exp, nbf, etc.) + blacklist validator (jti revoked)
+        // Default validators (exp, nbf, etc.) + blacklist (jti) + token version (invalidate after password change)
         decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
                 JwtValidators.createDefault(),
-                jwtBlacklistValidator
+                jwtBlacklistValidator,
+                jwtTokenVersionValidator
         ));
 
         return decoder;

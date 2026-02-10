@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -70,6 +71,22 @@ public class GlobalExceptionHandler {
                 .code(errorCode.getCode())
                 .message(errorCode.getMessage())
                 .result(fieldErrors)
+                .build();
+
+        return ResponseEntity.status(errorCode.getStatusCode()).body(apiResponse);
+    }
+
+    /**
+     * Handle file upload size exceeded (multipart)
+     */
+    @ExceptionHandler(value = MaxUploadSizeExceededException.class)
+    ResponseEntity<ApiResponse<Void>> handlingMaxUploadSizeExceeded(MaxUploadSizeExceededException exception) {
+        ErrorCode errorCode = ErrorCode.FILE_TOO_LARGE;
+        log.warn("Upload size exceeded: {}", exception.getMessage());
+
+        ApiResponse<Void> apiResponse = ApiResponse.<Void>builder()
+                .code(errorCode.getCode())
+                .message(errorCode.getMessage())
                 .build();
 
         return ResponseEntity.status(errorCode.getStatusCode()).body(apiResponse);

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { getMyProfile, updateMyProfile, type CombinedProfile } from '@/services/profileService'
+import { getMyProfile, updateMyProfile, uploadAvatar, type CombinedProfile } from '@/services/profileService'
+import { changePassword } from '@/services/authService'
 
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)
@@ -83,6 +84,46 @@ async function fetchProfile() {
 
 onMounted(fetchProfile)
 
+// Avatar upload
+const avatarInput = ref<HTMLInputElement | null>(null)
+const isUploadingAvatar = ref(false)
+
+function triggerAvatarUpload() {
+  avatarInput.value?.click()
+}
+
+async function handleAvatarChange(event: Event) {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+
+  isUploadingAvatar.value = true
+  try {
+    const result = await uploadAvatar(file)
+    // Update profile picture URL locally
+    if (profile.value) {
+      profile.value.profilePictureUrl = result.fullUrl
+    }
+    // Update auth store so avatar updates in layout/navbar too
+    if (authStore.user) {
+      const rememberMe = localStorage.getItem('rememberMe') === 'true'
+      authStore.setAuth({
+        accessToken: authStore.accessToken!,
+        refreshToken: authStore.refreshToken!,
+        userId: authStore.user.userId,
+        email: authStore.user.email,
+        role: authStore.user.role,
+        profilePictureUrl: result.fullUrl,
+      }, rememberMe)
+    }
+  } catch (err: unknown) {
+    alert(err instanceof Error ? err.message : 'Failed to upload avatar')
+  } finally {
+    isUploadingAvatar.value = false
+    target.value = '' // Reset file input
+  }
+}
+
 // Profile update
 const isSaving = ref(false)
 const saveError = ref('')
@@ -100,6 +141,7 @@ const showNewPassword = ref(false)
 const showConfirmPassword = ref(false)
 const passwordError = ref('')
 const passwordSuccess = ref('')
+const isChangingPassword = ref(false)
 
 const passwordStrength = computed(() => {
   const pw = passwordData.value.newPassword
@@ -138,7 +180,7 @@ async function handleUpdateProfile() {
   }
 }
 
-function handleUpdatePassword() {
+async function handleUpdatePassword() {
   passwordError.value = ''
   passwordSuccess.value = ''
 
@@ -159,10 +201,26 @@ function handleUpdatePassword() {
     return
   }
 
-  // TODO: call API to change password
-  console.log('Change password')
-  passwordSuccess.value = 'Password updated successfully!'
-  passwordData.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
+  isChangingPassword.value = true
+  try {
+    const result = await changePassword({
+      currentPassword: passwordData.value.currentPassword,
+      newPassword: passwordData.value.newPassword,
+      confirmPassword: passwordData.value.confirmPassword,
+      logoutOtherDevices: true,
+    })
+    passwordSuccess.value = result.message || 'Password changed successfully. Please login again.'
+    passwordData.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
+    // Sau khi đổi mật khẩu, bắt buộc user đăng nhập lại
+    setTimeout(() => {
+      authStore.clearAuth()
+      window.location.href = '/login'
+    }, 1500)
+  } catch (err: unknown) {
+    passwordError.value = err instanceof Error ? err.message : 'Failed to change password'
+  } finally {
+    isChangingPassword.value = false
+  }
 }
 </script>
 
@@ -212,9 +270,9 @@ function handleUpdatePassword() {
             <!-- Avatar -->
             <div class="relative group">
               <div
-                v-if="user?.profilePictureUrl"
+                v-if="profile?.profilePictureUrl"
                 class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-40 border-4 border-primary/20"
-                :style="{ backgroundImage: `url(${user.profilePictureUrl})` }"
+                :style="{ backgroundImage: `url(${profile.profilePictureUrl})` }"
               ></div>
               <div
                 v-else
@@ -222,9 +280,14 @@ function handleUpdatePassword() {
               >
                 {{ displayName.substring(0, 2).toUpperCase() }}
               </div>
-              <div class="absolute bottom-2 right-2 bg-primary text-white p-1.5 rounded-full shadow-lg cursor-pointer hover:brightness-110 transition-all">
-                <span class="material-symbols-outlined text-base">photo_camera</span>
+              <div
+                class="absolute bottom-2 right-2 bg-primary text-white p-1.5 rounded-full shadow-lg cursor-pointer hover:brightness-110 transition-all"
+                @click="triggerAvatarUpload"
+              >
+                <span v-if="isUploadingAvatar" class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent block"></span>
+                <span v-else class="material-symbols-outlined text-base">photo_camera</span>
               </div>
+              <input ref="avatarInput" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="handleAvatarChange" />
             </div>
 
             <!-- Name & Info -->
@@ -235,9 +298,14 @@ function handleUpdatePassword() {
             </div>
 
             <!-- Edit Photo Button -->
-            <button class="mt-8 flex w-full items-center justify-center gap-2 rounded-lg h-12 bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all font-bold text-sm tracking-wide">
-              <span class="material-symbols-outlined text-sm">edit</span>
-              <span>Edit Photo</span>
+            <button
+              class="mt-8 flex w-full items-center justify-center gap-2 rounded-lg h-12 bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all font-bold text-sm tracking-wide disabled:opacity-50 disabled:cursor-not-allowed"
+              :disabled="isUploadingAvatar"
+              @click="triggerAvatarUpload"
+            >
+              <span v-if="isUploadingAvatar" class="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent"></span>
+              <span v-else class="material-symbols-outlined text-sm">edit</span>
+              <span>{{ isUploadingAvatar ? 'Uploading...' : 'Edit Photo' }}</span>
             </button>
 
             <hr class="w-full my-8 border-border-light dark:border-border-dark" />
@@ -540,11 +608,13 @@ function handleUpdatePassword() {
                   </div>
                 </div>
                 <button
-                  class="w-full sm:w-auto min-w-[180px] bg-primary text-white py-3 px-8 rounded-lg font-bold text-sm shadow-md shadow-primary/20 hover:brightness-110 transition-all flex items-center justify-center gap-2"
+                  class="w-full sm:w-auto min-w-[180px] bg-primary text-white py-3 px-8 rounded-lg font-bold text-sm shadow-md shadow-primary/20 hover:brightness-110 transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:pointer-events-none"
+                  :disabled="isChangingPassword"
                   @click="handleUpdatePassword"
                 >
-                  <span class="material-symbols-outlined text-sm">check_circle</span>
-                  Update Password
+                  <span v-if="isChangingPassword" class="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                  <span v-else class="material-symbols-outlined text-sm">check_circle</span>
+                  {{ isChangingPassword ? 'Updating...' : 'Update Password' }}
                 </button>
               </div>
             </div>

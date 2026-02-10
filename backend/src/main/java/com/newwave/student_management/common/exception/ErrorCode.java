@@ -65,6 +65,13 @@ public enum ErrorCode {
     // Profile not found errors (1500-1599)
     STUDENT_PROFILE_NOT_FOUND(1501, "Student profile not found", HttpStatus.NOT_FOUND),
     TEACHER_PROFILE_NOT_FOUND(1502, "Teacher profile not found", HttpStatus.NOT_FOUND),
+
+    // File upload errors (1600-1699)
+    FILE_REQUIRED(1600, "File is required", HttpStatus.BAD_REQUEST),
+    FILE_TOO_LARGE(1601, "File size exceeds maximum limit (5MB)", HttpStatus.BAD_REQUEST),
+    FILE_INVALID_FORMAT(1602, "Invalid file format. Allowed: JPG, PNG, WebP", HttpStatus.BAD_REQUEST),
+    FILE_PROCESSING_FAILED(1603, "Failed to process image", HttpStatus.INTERNAL_SERVER_ERROR),
+    FILE_UPLOAD_FAILED(1604, "Failed to upload file to storage", HttpStatus.INTERNAL_SERVER_ERROR),
     ;
 
     ErrorCode(int code, String message, HttpStatus statusCode) {

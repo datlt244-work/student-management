@@ -23,7 +23,7 @@ public class JwtService {
     @Value("${spring.security.jwt.expiration-seconds}")
     private long expiration;
 
-    public String generateToken(User user){
+    public String generateToken(User user, long tokenVersion) {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS256);
 
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder()
@@ -34,6 +34,7 @@ public class JwtService {
                 .jwtID(UUID.randomUUID().toString())
                 .claim("userId", user.getUserId())
                 .claim("role", user.getRole() != null ? user.getRole().getRoleName() : null)
+                .claim("tv", tokenVersion)
                 .build();
 
         Payload payload = new Payload(jwtClaimsSet.toJSONObject());

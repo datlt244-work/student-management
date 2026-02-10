@@ -7,6 +7,7 @@ import com.newwave.student_management.domains.auth.repository.UserRepository;
 import com.newwave.student_management.domains.profile.dto.request.UpdateProfileRequest;
 import com.newwave.student_management.domains.profile.dto.request.UpdateStudentProfileRequest;
 import com.newwave.student_management.domains.profile.dto.request.UpdateTeacherProfileRequest;
+import com.newwave.student_management.domains.profile.dto.response.AvatarUploadResponse;
 import com.newwave.student_management.domains.profile.dto.response.CombinedProfileResponse;
 import com.newwave.student_management.domains.profile.dto.response.SemesterResponse;
 import com.newwave.student_management.domains.profile.dto.response.StudentProfileResponse;
@@ -17,11 +18,20 @@ import com.newwave.student_management.domains.profile.repository.SemesterReposit
 import com.newwave.student_management.domains.profile.repository.StudentRepository;
 import com.newwave.student_management.domains.profile.repository.TeacherRepository;
 import com.newwave.student_management.domains.profile.service.IProfileService;
+import com.newwave.student_management.infrastructure.storage.IStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.coobird.thumbnailator.Thumbnails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -29,10 +39,17 @@ import java.util.UUID;
 @Slf4j
 public class ProfileService implements IProfileService {
 
+    private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
+            "image/jpeg", "image/jpg", "image/png", "image/webp"
+    );
+    private static final int MAX_AVATAR_DIMENSION = 500;
+
     private final UserRepository userRepository;
     private final StudentRepository studentRepository;
     private final TeacherRepository teacherRepository;
     private final SemesterRepository semesterRepository;
+    private final IStorageService storageService;
 
     @Override
     @Transactional(readOnly = true)
@@ -41,11 +58,15 @@ public class ProfileService implements IProfileService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
-        // 2. Build base response from User
+        // 2. Build base response from User (profilePictureUrl: relative path in DB → full URL for frontend)
+        String rawAvatar = user.getProfilePictureUrl();
+        String profilePictureUrl = (rawAvatar != null && !rawAvatar.isBlank())
+                ? storageService.getPublicUrl(rawAvatar)
+                : null;
         CombinedProfileResponse.CombinedProfileResponseBuilder responseBuilder = CombinedProfileResponse.builder()
                 .userId(user.getUserId())
                 .email(user.getEmail())
-                .profilePictureUrl(user.getProfilePictureUrl())
+                .profilePictureUrl(profilePictureUrl)
                 .role(user.getRole().getRoleName())
                 .status(user.getStatus().name())
                 .emailVerified(user.isEmailVerified())
@@ -144,5 +165,89 @@ public class ProfileService implements IProfileService {
         }
 
         teacherRepository.save(teacher);
+    }
+
+    @Override
+    @Transactional
+    public AvatarUploadResponse uploadAvatar(UUID userId, MultipartFile file) {
+        // 1. Validate file
+        if (file == null || file.isEmpty()) {
+            throw new AppException(ErrorCode.FILE_REQUIRED);
+        }
+        if (file.getSize() > MAX_FILE_SIZE) {
+            throw new AppException(ErrorCode.FILE_TOO_LARGE);
+        }
+        String contentType = file.getContentType();
+        if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType.toLowerCase())) {
+            throw new AppException(ErrorCode.FILE_INVALID_FORMAT);
+        }
+
+        // 2. Fetch user + get old avatar path
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        String oldAvatarPath = user.getProfilePictureUrl();
+
+        // 3. Image processing: resize to max 500x500, output as JPEG
+        byte[] processedImage;
+        try {
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            Thumbnails.of(file.getInputStream())
+                    .size(MAX_AVATAR_DIMENSION, MAX_AVATAR_DIMENSION)
+                    .keepAspectRatio(true)
+                    .outputFormat("jpg")
+                    .outputQuality(0.85)
+                    .toOutputStream(outputStream);
+            processedImage = outputStream.toByteArray();
+        } catch (IOException e) {
+            log.error("Failed to process avatar image for user {}: {}", userId, e.getMessage());
+            throw new AppException(ErrorCode.FILE_PROCESSING_FAILED);
+        }
+
+        // 4. Generate object name and upload to MinIO
+        String objectName = "avatar/" + userId + "/" + UUID.randomUUID() + ".jpg";
+        String fullUrl;
+        try {
+            fullUrl = storageService.uploadFile(
+                    objectName,
+                    new ByteArrayInputStream(processedImage),
+                    processedImage.length,
+                    "image/jpeg"
+            );
+        } catch (Exception e) {
+            log.error("Failed to upload avatar to MinIO for user {}: {}", userId, e.getMessage());
+            throw new AppException(ErrorCode.FILE_UPLOAD_FAILED);
+        }
+
+        // 5. Update DB with new avatar relative path; schedule MinIO cleanup after commit/rollback
+        user.setProfilePictureUrl(objectName);
+        userRepository.save(user);
+
+        final String oldPathToDelete = (oldAvatarPath != null && !oldAvatarPath.isBlank()) ? oldAvatarPath : null;
+        final String newPathForRollback = objectName;
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                if (oldPathToDelete != null) {
+                    storageService.deleteFile(oldPathToDelete);
+                }
+            }
+
+            @Override
+            public void afterCompletion(int status) {
+                if (status == TransactionSynchronization.STATUS_ROLLED_BACK) {
+                    storageService.deleteFile(newPathForRollback);
+                    log.warn("Avatar transaction rolled back, deleted orphan from MinIO: {}", newPathForRollback);
+                }
+            }
+        });
+
+        userRepository.flush();
+        log.info("Avatar updated for user {}: {}", userId, objectName);
+
+        return AvatarUploadResponse.builder()
+                .profilePictureUrl(objectName)
+                .fullUrl(fullUrl)
+                .message("Profile picture updated successfully")
+                .build();
     }
 }

@@ -28,6 +28,13 @@ public interface ITokenRedisService {
 
     UUID getUserIdByResetToken(String token);
 
-    void deleteAllRefreshTokensForUser(UUID userId);
+    int deleteAllRefreshTokensForUser(UUID userId);
+
+    /**
+     * Token version for user. Incremented on password change so all existing JWTs are invalidated.
+     */
+    long getTokenVersion(UUID userId);
+
+    void incrementTokenVersion(UUID userId);
 
 }

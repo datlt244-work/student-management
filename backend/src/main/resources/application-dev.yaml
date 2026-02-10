@@ -42,6 +42,13 @@ spring:
     jwt:
       signer-key: ${JWT_SECRET_KEY}
 
+# MinIO (dev: khớp .env - API port 9004, Console 9005)
+minio:
+  url: ${MINIO_URL:http://localhost:9004}
+  access-key: ${MINIO_ACCESS_KEY:${MINIO_ROOT_USER:admin_minio}}
+  secret-key: ${MINIO_SECRET_KEY:${MINIO_ROOT_PASSWORD:admin_minio}}
+  bucket: ${MINIO_BUCKET:${MINIO_BUCKET_NAME:student-management}}
+
 management:
   endpoints:
     web:

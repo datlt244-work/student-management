@@ -1289,14 +1289,279 @@ SELECT * FROM semesters WHERE is_current = TRUE;
 
 ---
 
-### UC-10: Đổi Mật Khẩu (Change Password)
+### UC-09.3: Upload Ảnh Đại Diện (Upload Profile Image) ✅ IMPLEMENTED
+
+| Thuộc tính | Giá trị |
+|------------|---------|
+| **Endpoint** | `POST /profile/me/avatar` |
+| **Actor** | Authenticated User (Student, Teacher, Admin) |
+| **Mục đích** | Upload hoặc thay thế ảnh đại diện (profile picture) |
+| **Content-Type** | `multipart/form-data` |
+| **Storage** | MinIO - Bucket: `student-management`, Prefix: `avatar/` |
+| **Postcondition** | `users.profile_picture_url` được cập nhật với URL ảnh mới |
+
+#### 1. Chiến Lược Đặt Tên (Naming Strategy)
+
+Sử dụng **UUID** trong tên file để đảm bảo mỗi lần upload tạo ra URL mới hoàn toàn:
+
+```
+Cấu trúc đường dẫn: avatar/{user_id}/{uuid}.webp
+
+Ví dụ:
+  Upload lần 1: avatar/550e8400-e29b-41d4.../a1b2c3d4-e5f6-7890.webp
+  Upload lần 2: avatar/550e8400-e29b-41d4.../f9e8d7c6-b5a4-3210.webp
+  → URL khác nhau → Trình duyệt tự tải ảnh mới, không cần xóa cache
+```
+
+> **Tại sao không dùng tên cố định (ví dụ `user_123.jpg`)?**
+> - CDN/Browser cache ảnh cũ → user đổi ảnh nhưng vẫn thấy ảnh cũ
+> - Phải thêm query string `?v=timestamp` → không chuyên nghiệp
+> - UUID tên file = mỗi upload là URL mới = cache-busting tự nhiên
+
+#### 2. Validation
+
+| Rule | Giá trị |
+|------|---------|
+| **Max file size** | 5 MB |
+| **Allowed formats** | JPG, JPEG, PNG, WebP |
+| **Content-Type check** | Kiểm tra cả extension VÀ magic bytes (file signature) |
+
+```
+Magic Bytes:
+  JPEG: FF D8 FF
+  PNG:  89 50 4E 47 0D 0A 1A 0A
+  WebP: 52 49 46 46 xx xx xx xx 57 45 42 50
+```
+
+#### 3. Image Processing (Backend)
+
+Trước khi upload lên MinIO, Backend **phải** xử lý ảnh:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     IMAGE PROCESSING PIPELINE                    │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Input: Raw image từ user (có thể vài MB, kích thước bất kỳ)    │
+│                                                                  │
+│  Step 1: Resize                                                  │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ - Max dimensions: 500x500 px                              │  │
+│  │ - Giữ tỉ lệ (aspect ratio), crop center nếu cần          │  │
+│  │ - Nếu ảnh nhỏ hơn 500x500 → giữ nguyên                   │  │
+│  └───────────────────────────────────────────────────────────┘  │
+│                                                                  │
+│  Step 2: Convert & Compress                                      │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ - Convert sang WebP (quality 80%)                         │  │
+│  │ - Kết quả: file nhỏ hơn nhiều so với ảnh gốc              │  │
+│  │ - Ví dụ: 3MB JPEG → ~50-100KB WebP                       │  │
+│  └───────────────────────────────────────────────────────────┘  │
+│                                                                  │
+│  Output: {uuid}.webp (optimized, sẵn sàng upload MinIO)        │
+│                                                                  │
+│  Java Library: Thumbnailator hoặc ImageIO + WebP encoder        │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### 4. Luồng Hoạt Động (Atomic Replace Flow)
+
+```
+┌─────────┐      ┌─────────────────┐      ┌────────────┐      ┌───────┐
+│  Client │      │ Profile Service │      │ PostgreSQL │      │ MinIO │
+└────┬────┘      └────────┬────────┘      └──────┬─────┘      └───┬───┘
+     │                    │                      │                │
+     │ 1. POST /profile/me/avatar               │                │
+     │    [multipart/form-data: file]            │                │
+     │───────────────────>│                      │                │
+     │                    │                      │                │
+     │                    │ 2. VALIDATE:         │                │
+     │                    │    - File size <= 5MB │                │
+     │                    │    - Format: JPG/PNG/WebP             │
+     │                    │    - Magic bytes check│                │
+     │                    │    → Nếu fail → Error (return ngay)   │
+     │                    │                      │                │
+     │                    │ 3. IMAGE PROCESSING: │                │
+     │                    │    - Resize (max 500x500)             │
+     │                    │    - Convert to WebP (quality 80%)    │
+     │                    │    - Generate filename: {uuid}.webp   │
+     │                    │                      │                │
+     │                    │ 4. GET old avatar URL from DB         │
+     │                    │───────────────────────>               │
+     │                    │<───────────────────────               │
+     │                    │                      │                │
+     │                    │ 5. UPLOAD NEW to MinIO                │
+     │                    │    Path: avatar/{userId}/{uuid}.webp  │
+     │                    │    Metadata:          │                │
+     │                    │      Content-Type: image/webp         │
+     │                    │      Cache-Control: public, max-age=31536000, immutable
+     │                    │──────────────────────────────────────>│
+     │                    │<──────────────────────────────────────│
+     │                    │    → Nếu upload fail → Error (return) │
+     │                    │                      │                │
+     │                    │ 6. UPDATE DB:         │                │
+     │                    │    users.profile_picture_url = newUrl │
+     │                    │───────────────────────>               │
+     │                    │<───────────────────────               │
+     │                    │    → Nếu DB fail:     │                │
+     │                    │      DELETE ảnh mới trên MinIO (cleanup)
+     │                    │      → Error          │                │
+     │                    │                      │                │
+     │                    │ 7. DELETE OLD from MinIO (nếu có)     │
+     │                    │    (Extract path từ old URL)          │
+     │                    │──────────────────────────────────────>│
+     │                    │    → Nếu delete fail: log warning     │
+     │                    │      (chấp nhận rác, dữ liệu user OK)│
+     │                    │                      │                │
+     │ 8. Return new avatar URL                  │                │
+     │<───────────────────│                      │                │
+```
+
+#### 5. Atomic Logic (Error Handling)
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     ATOMIC REPLACE - ERROR HANDLING                      │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  Nguyên tắc: Dữ liệu người dùng (DB) phải LUÔN ĐÚNG                    │
+│                                                                         │
+│  ┌───────────────────────────────────────────────────────────────────┐  │
+│  │ CASE 1: Upload MinIO THẤT BẠI                                     │  │
+│  │   → Return Error ngay                                             │  │
+│  │   → Không thay đổi gì trong DB                                    │  │
+│  │   → Trạng thái: Giữ nguyên ảnh cũ ✅                              │  │
+│  ├───────────────────────────────────────────────────────────────────┤  │
+│  │ CASE 2: Upload OK, Update DB THẤT BẠI                             │  │
+│  │   → XÓA ảnh mới vừa upload trên MinIO (cleanup orphan)           │  │
+│  │   → Return Error                                                  │  │
+│  │   → Trạng thái: Giữ nguyên ảnh cũ ✅, không có file rác ✅        │  │
+│  ├───────────────────────────────────────────────────────────────────┤  │
+│  │ CASE 3: Upload OK, Update DB OK, Delete ảnh cũ THẤT BẠI          │  │
+│  │   → Log warning (không throw error)                               │  │
+│  │   → Return Success                                                │  │
+│  │   → Trạng thái: DB đúng ✅, ảnh cũ thành orphan (rác)             │  │
+│  │   → Giải pháp: Background job dọn rác định kỳ (optional)         │  │
+│  └───────────────────────────────────────────────────────────────────┘  │
+│                                                                         │
+│  ⚠️ Ưu tiên: DB consistency > Storage cleanup                          │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 6. MinIO Configuration
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         MINIO BUCKET SETUP                              │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  Bucket: student-management                                             │
+│  Prefix public: avatar/*                                                │
+│                                                                         │
+│  ┌───────────────────────────────────────────────────────────────────┐  │
+│  │ Access Policy cho prefix avatar/*: PUBLIC DOWNLOAD                │  │
+│  │                                                                   │  │
+│  │ Command:                                                          │  │
+│  │   mc anonymous set download mylocal/student-management/avatar     │  │
+│  │                                                                   │  │
+│  │ → Client truy cập trực tiếp: http://{minio-host}:9000/           │  │
+│  │   student-management/avatar/{userId}/{uuid}.webp                  │  │
+│  │                                                                   │  │
+│  │ → Không cần Presigned URL cho avatar                              │  │
+│  │ → Giảm tải cho Backend (không cần proxy ảnh)                      │  │
+│  └───────────────────────────────────────────────────────────────────┘  │
+│                                                                         │
+│  Upload Metadata:                                                       │
+│  ┌───────────────────────────────────────────────────────────────────┐  │
+│  │ Content-Type:  image/webp                                         │  │
+│  │ Cache-Control: public, max-age=31536000, immutable                │  │
+│  │                                                                   │  │
+│  │ → max-age=31536000 = cache 1 năm                                  │  │
+│  │ → immutable = trình duyệt KHÔNG cần revalidate                   │  │
+│  │ → An toàn vì mỗi upload = URL mới (UUID filename)                │  │
+│  └───────────────────────────────────────────────────────────────────┘  │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 7. URL Construction
+
+```
+URL Pattern:
+  {minio-endpoint}/{bucket}/{prefix}/{userId}/{uuid}.webp
+
+Ví dụ (Development):
+  http://localhost:9000/student-management/avatar/550e8400.../a1b2c3d4.webp
+
+Ví dụ (Production - qua reverse proxy / CDN):
+  https://cdn.school.edu/avatar/550e8400.../a1b2c3d4.webp
+
+Lưu trong DB:
+  users.profile_picture_url = "avatar/550e8400.../a1b2c3d4.webp"
+  → Chỉ lưu relative path, construct full URL ở Backend/Frontend
+  → Dễ dàng migrate storage hoặc đổi domain sau này
+```
+
+**Request (multipart/form-data):**
+```
+POST /profile/me/avatar
+Authorization: Bearer {accessToken}
+Content-Type: multipart/form-data
+
+------WebKitFormBoundary
+Content-Disposition: form-data; name="file"; filename="my_photo.jpg"
+Content-Type: image/jpeg
+
+[binary data]
+------WebKitFormBoundary--
+```
+
+**Response (Success):**
+```json
+{
+  "code": 1000,
+  "result": {
+    "profilePictureUrl": "avatar/550e8400-e29b-41d4.../a1b2c3d4-e5f6-7890.webp",
+    "fullUrl": "http://localhost:9000/student-management/avatar/550e8400.../a1b2c3d4.webp",
+    "message": "Profile picture updated successfully"
+  }
+}
+```
+
+**Error Responses:**
+
+| Code | Message | HTTP Status |
+|------|---------|-------------|
+| 1600 | File is required | 400 |
+| 1601 | File size exceeds maximum limit (5MB) | 400 |
+| 1602 | Invalid file format. Allowed: JPG, PNG, WebP | 400 |
+| 1603 | Failed to process image | 500 |
+| 1604 | Failed to upload file to storage | 500 |
+
+**⚠️ Lưu ý quan trọng:**
+- **Naming**: UUID filename → cache-busting tự nhiên, không cần query string
+- **Processing**: Luôn resize + convert WebP ở Backend trước khi lưu
+- **Atomic**: Upload trước → Update DB → Delete ảnh cũ (theo thứ tự)
+- **Rollback**: Nếu DB fail → xóa ảnh mới; Nếu delete ảnh cũ fail → chấp nhận rác
+- **Storage**: Chỉ lưu relative path trong DB, construct full URL khi cần
+- **Cache**: `immutable` cache header + UUID filename = tối ưu performance
+
+**Implementation notes (đã làm):**
+- DB lưu relative path (`avatar/{userId}/{uuid}.webp`). API **GET /profile/me** và **login/refresh** trả về `profilePictureUrl` dạng **full URL** (gọi `IStorageService.getPublicUrl(relativePath)`) để frontend hiển thị avatar đúng sau khi reload trang.
+- Upload response vẫn trả `profilePictureUrl` (relative) + `fullUrl` (full); frontend dùng `fullUrl` ngay sau upload. Khi load lại trang, `GET /profile/me` trả full URL nên ảnh không biến mất.
+
+---
+
+### UC-10: Đổi Mật Khẩu (Change Password) ✅ IMPLEMENTED
 
 | Thuộc tính | Giá trị |
 |------------|---------|
 | **Endpoint** | `POST /users/me/change-password` |
 | **Actor** | Authenticated User |
 | **Mục đích** | Thay đổi mật khẩu |
-| **Security** | Có option logout all other devices |
+| **Security** | Logout toàn bộ thiết bị/tab ngay (token version + xóa refresh token). Client redirect về login sau khi đổi thành công. |
 
 **Request Body:**
 ```json
@@ -1328,61 +1593,55 @@ SELECT * FROM semesters WHERE is_current = TRUE;
      │                  │ 7. Update password_hash              │
      │                  │────────────────────>│                │
      │                  │                     │                │
-     │                  │ 8. If logoutOtherDevices == true:    │
+     │                  │ 8. Increment token version (Redis)   │
+     │                  │    → Mọi JWT cũ (mọi tab/thiết bị)  │
+     │                  │      bị từ chối ngay khi validate   │
+     │                  │────────────────────────────────────>│
+     │                  │ 9. If logoutOtherDevices == true:    │
      │                  │    → Delete ALL refresh tokens       │
-     │                  │      (trừ token hiện tại)            │
      │                  │────────────────────────────────────>│
      │                  │                     │                │
-     │ 9. Success       │                     │                │
+     │ 10. Success      │                     │                │
+     │     (không cấp token mới; client logout & redirect login)
      │<─────────────────│                     │                │
 ```
 
-**Response:**
+**Response (đã implement):**
 ```json
 {
   "code": 1000,
   "result": {
-    "message": "Password changed successfully.",
-    "loggedOutDevices": 3,
-    "newAccessToken": "eyJ...",
-    "newRefreshToken": "uuid..."
+    "message": "Password changed successfully. Please login again.",
+    "loggedOutDevices": 3
   }
 }
 ```
 
-**⚠️ Security Logic (Blacklist Approach):**
+**⚠️ Security Logic (đã implement – Token Version + Logout all):**
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                  CHANGE PASSWORD - BLACKLIST APPROACH                   │
+│            CHANGE PASSWORD - TOKEN VERSION + LOGOUT ALL                  │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
-│  Option: logoutOtherDevices (default: true)                             │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │ true:                                                           │    │
-│  │   → Delete ALL refresh tokens (trừ current device)              │    │
-│  │   → Issue new tokens cho current device                         │    │
-│  │   → Devices khác không thể refresh token                        │    │
-│  │                                                                 │    │
-│  │ false:                                                          │    │
-│  │   → Chỉ update password                                         │    │
-│  │   → Giữ nguyên sessions của các devices khác                    │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
+│  1. Update password trong DB                                            │
+│  2. Increment token version (Redis: auth:token-version:{userId})        │
+│     → JWT có claim "tv" (token version). Validator so sánh với Redis.  │
+│     → Mọi request dùng JWT cũ (tv < current) → 401 ngay.                │
+│     → Tab ẩn danh / thiết bị khác hết hiệu lực ngay, không chờ hết hạn. │
+│  3. Delete ALL refresh tokens (logoutOtherDevices default true)          │
+│  4. Không cấp newAccessToken/newRefreshToken                            │
+│     → Frontend sau khi đổi thành công: clearAuth() + redirect /login    │
 │                                                                         │
-│  Flow khi logoutOtherDevices = true:                                    │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │ 1. Update password trong DB                                     │    │
-│  │ 2. Get current refresh token từ request body                    │    │
-│  │ 3. DEL refresh:token:{userId} (xóa tất cả)                      │    │
-│  │ 4. Generate new access + refresh token                          │    │
-│  │ 5. Store new refresh token cho current device                   │    │
-│  │ 6. Return new tokens + loggedOutDevices count                   │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-│                                                                         │
-│  ⚠️ Note: JWT cũ vẫn valid cho đến khi hết hạn (1h)                    │
-│  Nhưng không thể refresh → bắt buộc login lại                          │
-│                                                                         │
+│  Kết quả: Thiết bị đổi mật khẩu → logout và chuyển login; mọi tab/      │
+│  thiết bị khác → request tiếp theo 401 → FE refresh thất bại → redirect  │
+│  login.                                                                  │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
+
+**Implementation notes (đã làm):**
+- Backend: `UserController` POST `/users/me/change-password`, `AuthService.changePassword()`; xóa hết refresh token, tăng token version (Redis), response chỉ có `message` + `loggedOutDevices` (không trả token mới).
+- Frontend: Student/Teacher ProfileView gọi `changePassword()` → hiển thị success → sau ~1.5s `authStore.clearAuth()` + `window.location.href = '/login'`.
+- Token version: JWT có claim `tv`; `JwtTokenVersionValidator` so sánh với Redis; đổi mật khẩu gọi `incrementTokenVersion(userId)` để vô hiệu hóa mọi access token cũ.
 
 **Error Responses:**
 
@@ -2191,6 +2450,7 @@ SELECT * FROM semesters WHERE is_current = TRUE;
 | UC-09 | PUT /users/me | - | ✅ | ✅ | ✅ |
 | UC-09.1 | PUT /students/me | - | ✅ | - | - |
 | UC-09.2 | PUT /teachers/me | - | - | ✅ | - |
+| UC-09.3 | POST /profile/me/avatar | - | ✅ | ✅ | ✅ |
 | UC-10 | POST /users/me/change-password | - | ✅ | ✅ | ✅ |
 | UC-11 | /admin/users | - | - | - | ✅ |
 | UC-12 | GET /departments | - | ✅ | ✅ | ✅ |

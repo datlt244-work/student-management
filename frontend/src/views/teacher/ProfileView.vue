@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { getMyProfile, updateMyProfile, type CombinedProfile } from '@/services/profileService'
+import { getMyProfile, updateMyProfile, uploadAvatar, type CombinedProfile } from '@/services/profileService'
+import { changePassword } from '@/services/authService'
 
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)
@@ -78,6 +79,44 @@ async function fetchProfile() {
 
 onMounted(fetchProfile)
 
+// Avatar upload
+const avatarInput = ref<HTMLInputElement | null>(null)
+const isUploadingAvatar = ref(false)
+
+function triggerAvatarUpload() {
+  avatarInput.value?.click()
+}
+
+async function handleAvatarChange(event: Event) {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+
+  isUploadingAvatar.value = true
+  try {
+    const result = await uploadAvatar(file)
+    if (profile.value) {
+      profile.value.profilePictureUrl = result.fullUrl
+    }
+    if (authStore.user) {
+      const rememberMe = localStorage.getItem('rememberMe') === 'true'
+      authStore.setAuth({
+        accessToken: authStore.accessToken!,
+        refreshToken: authStore.refreshToken!,
+        userId: authStore.user.userId,
+        email: authStore.user.email,
+        role: authStore.user.role,
+        profilePictureUrl: result.fullUrl,
+      }, rememberMe)
+    }
+  } catch (err: unknown) {
+    alert(err instanceof Error ? err.message : 'Failed to upload avatar')
+  } finally {
+    isUploadingAvatar.value = false
+    target.value = ''
+  }
+}
+
 // Profile update
 const isSaving = ref(false)
 const saveError = ref('')
@@ -95,6 +134,7 @@ const showNewPassword = ref(false)
 const showConfirmPassword = ref(false)
 const passwordError = ref('')
 const passwordSuccess = ref('')
+const isChangingPassword = ref(false)
 
 const passwordStrength = computed(() => {
   const pw = passwordData.value.newPassword
@@ -155,7 +195,7 @@ function handleDiscard() {
   }
 }
 
-function handleUpdatePassword() {
+async function handleUpdatePassword() {
   passwordError.value = ''
   passwordSuccess.value = ''
 
@@ -176,10 +216,26 @@ function handleUpdatePassword() {
     return
   }
 
-  // TODO: call API to change password
-  console.log('Change password')
-  passwordSuccess.value = 'Password updated successfully!'
-  passwordData.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
+  isChangingPassword.value = true
+  try {
+    const result = await changePassword({
+      currentPassword: passwordData.value.currentPassword,
+      newPassword: passwordData.value.newPassword,
+      confirmPassword: passwordData.value.confirmPassword,
+      logoutOtherDevices: true,
+    })
+    passwordSuccess.value = result.message || 'Password changed successfully. Please login again.'
+    passwordData.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
+    // Sau khi đổi mật khẩu, bắt buộc user đăng nhập lại
+    setTimeout(() => {
+      authStore.clearAuth()
+      window.location.href = '/login'
+    }, 1500)
+  } catch (err: unknown) {
+    passwordError.value = err instanceof Error ? err.message : 'Failed to change password'
+  } finally {
+    isChangingPassword.value = false
+  }
 }
 
 function handleCancelPassword() {
@@ -235,9 +291,9 @@ function handleCancelPassword() {
             <!-- Avatar -->
             <div class="relative inline-block mb-4">
               <div
-                v-if="user?.profilePictureUrl"
+                v-if="profile?.profilePictureUrl"
                 class="bg-center bg-no-repeat aspect-square bg-cover rounded-xl size-32 mx-auto ring-4 ring-primary/20"
-                :style="{ backgroundImage: `url(${user.profilePictureUrl})` }"
+                :style="{ backgroundImage: `url(${profile.profilePictureUrl})` }"
               ></div>
               <div
                 v-else
@@ -245,9 +301,14 @@ function handleCancelPassword() {
               >
                 {{ displayName.substring(0, 2).toUpperCase() }}
               </div>
-              <div class="absolute -bottom-2 -right-2 bg-primary text-white rounded-full p-2 shadow-lg cursor-pointer hover:brightness-110 transition-all">
-                <span class="material-symbols-outlined text-sm">edit</span>
+              <div
+                class="absolute -bottom-2 -right-2 bg-primary text-white rounded-full p-2 shadow-lg cursor-pointer hover:brightness-110 transition-all"
+                @click="triggerAvatarUpload"
+              >
+                <span v-if="isUploadingAvatar" class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent block"></span>
+                <span v-else class="material-symbols-outlined text-sm">edit</span>
               </div>
+              <input ref="avatarInput" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="handleAvatarChange" />
             </div>
 
             <!-- Name & Title -->
@@ -535,11 +596,13 @@ function handleCancelPassword() {
                   Cancel
                 </button>
                 <button
-                  class="px-6 py-2 rounded-lg bg-primary text-white font-bold text-sm shadow-md hover:brightness-110 transition-all flex items-center gap-2"
+                  class="px-6 py-2 rounded-lg bg-primary text-white font-bold text-sm shadow-md hover:brightness-110 transition-all flex items-center gap-2 disabled:opacity-60 disabled:pointer-events-none"
+                  :disabled="isChangingPassword"
                   @click="handleUpdatePassword"
                 >
-                  <span class="material-symbols-outlined text-sm">lock_reset</span>
-                  Update Password
+                  <span v-if="isChangingPassword" class="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                  <span v-else class="material-symbols-outlined text-sm">lock_reset</span>
+                  {{ isChangingPassword ? 'Updating...' : 'Update Password' }}
                 </button>
               </div>
             </div>

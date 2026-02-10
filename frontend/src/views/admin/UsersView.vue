@@ -201,6 +201,75 @@ function submitNewUser() {
   console.log('Create user', payload)
   showAddUserModal.value = false
 }
+
+// Import Excel modal state
+const showImportExcelModal = ref(false)
+const importFile = ref<File | null>(null)
+const importFileInputRef = ref<HTMLInputElement | null>(null)
+
+function handleImportFromExcel() {
+  showImportExcelModal.value = true
+  importFile.value = null
+}
+
+function closeImportExcelModal() {
+  showImportExcelModal.value = false
+  importFile.value = null
+}
+
+function downloadTeacherTemplate() {
+  // TODO: tải template Excel cho Teacher
+  console.log('Download teacher template')
+}
+
+function downloadStudentTemplate() {
+  // TODO: tải template Excel cho Student
+  console.log('Download student template')
+}
+
+function triggerImportFileInput() {
+  importFileInputRef.value?.click()
+}
+
+function handleImportFileSelect(event: Event) {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (file) {
+    const ext = file.name.toLowerCase().split('.').pop()
+    if (ext === 'xlsx' || ext === 'xls') {
+      importFile.value = file
+    } else {
+      importFile.value = null
+      alert('Chỉ chấp nhận file Excel (.xlsx, .xls)')
+    }
+  }
+  target.value = ''
+}
+
+function handleImportDrop(event: DragEvent) {
+  event.preventDefault()
+  const file = event.dataTransfer?.files?.[0]
+  if (file) {
+    const ext = file.name.toLowerCase().split('.').pop()
+    if (ext === 'xlsx' || ext === 'xls') {
+      importFile.value = file
+    } else {
+      importFile.value = null
+      alert('Chỉ chấp nhận file Excel (.xlsx, .xls)')
+    }
+  }
+}
+
+function handleImportDragOver(event: DragEvent) {
+  event.preventDefault()
+}
+
+function processImport() {
+  if (!importFile.value) return
+  // TODO: gọi API upload và xử lý import
+  console.log('Process import', importFile.value.name)
+  closeImportExcelModal()
+}
 </script>
 
 <template>
@@ -209,15 +278,28 @@ function submitNewUser() {
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div>
         <h1 class="text-slate-900 dark:text-white text-3xl font-bold leading-tight tracking-tight">User Management</h1>
-        <p class="text-slate-500 dark:text-slate-400 mt-1 text-sm">Manage student, teacher, and administrator accounts across the system.</p>
+        <p class="text-slate-500 dark:text-slate-400 mt-1 text-sm">
+          Manage student, teacher, and administrator accounts across the system.
+        </p>
       </div>
-      <button
-        class="flex items-center gap-2 px-6 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-lg font-bold shadow-lg shadow-primary/20 transition-all active:scale-95 shrink-0"
-        @click="handleAddUser"
-      >
-        <span class="material-symbols-outlined text-[20px]">person_add</span>
-        Add New User
-      </button>
+      <div class="flex flex-col sm:flex-row gap-3">
+        <button
+          class="flex items-center justify-center gap-2 px-4 py-2.5 bg-surface-light dark:bg-surface-dark border border-stone-200 dark:border-stone-700 text-slate-700 dark:text-slate-200 rounded-lg text-sm font-semibold shadow-sm hover:bg-stone-50 dark:hover:bg-stone-800 transition-all shrink-0"
+          type="button"
+          @click="handleImportFromExcel"
+        >
+          <span class="material-symbols-outlined text-[18px]">upload_file</span>
+          Import from Excel
+        </button>
+        <button
+          class="flex items-center gap-2 px-6 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-lg font-bold shadow-lg shadow-primary/20 transition-all active:scale-95 shrink-0"
+          type="button"
+          @click="handleAddUser"
+        >
+          <span class="material-symbols-outlined text-[20px]">person_add</span>
+          Add New User
+        </button>
+      </div>
     </div>
 
     <!-- Filters -->
@@ -662,6 +744,125 @@ function submitNewUser() {
               </button>
             </div>
           </form>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
+
+  <!-- Import Excel Modal -->
+  <Teleport to="body">
+    <Transition name="fade">
+      <div
+        v-if="showImportExcelModal"
+        class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4"
+      >
+        <div
+          class="bg-surface-light dark:bg-surface-dark w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-stone-200 dark:border-stone-800"
+        >
+          <div class="px-8 py-6 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                <span class="material-symbols-outlined">upload_file</span>
+              </div>
+              <div>
+                <h2 class="text-xl font-bold text-slate-900 dark:text-white">Bulk Import Users</h2>
+                <p class="text-sm text-slate-500 dark:text-slate-400">Import multiple accounts using Excel templates</p>
+              </div>
+            </div>
+            <button class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors" @click="closeImportExcelModal">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+
+          <div class="px-8 py-8 flex flex-col gap-8 max-h-[70vh] overflow-y-auto">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="p-5 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-900/30 flex flex-col gap-4">
+                <div class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-primary">school</span>
+                  <h3 class="font-bold text-slate-800 dark:text-slate-200">Teacher Template</h3>
+                </div>
+                <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Download the Excel format specialized for teacher profiles, departments, and payroll IDs.
+                </p>
+                <button
+                  type="button"
+                  class="w-full flex items-center justify-center gap-2 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-lg text-sm font-bold transition-all active:scale-[0.98]"
+                  @click="downloadTeacherTemplate"
+                >
+                  <span class="material-symbols-outlined text-lg">download</span>
+                  Download Template
+                </button>
+              </div>
+              <div class="p-5 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-900/30 flex flex-col gap-4">
+                <div class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-primary">group</span>
+                  <h3 class="font-bold text-slate-800 dark:text-slate-200">Student Template</h3>
+                </div>
+                <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Download the Excel format specialized for student data, parent contact, and grade levels.
+                </p>
+                <button
+                  type="button"
+                  class="w-full flex items-center justify-center gap-2 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-lg text-sm font-bold transition-all active:scale-[0.98]"
+                  @click="downloadStudentTemplate"
+                >
+                  <span class="material-symbols-outlined text-lg">download</span>
+                  Download Template
+                </button>
+              </div>
+            </div>
+
+            <div class="flex flex-col gap-3">
+              <label class="text-sm font-bold text-slate-700 dark:text-slate-300">Upload Filled Template</label>
+              <input
+                ref="importFileInputRef"
+                type="file"
+                accept=".xlsx,.xls"
+                class="hidden"
+                @change="handleImportFileSelect"
+              />
+              <div
+                class="border-2 border-dashed border-primary/40 hover:border-primary bg-primary/5 rounded-xl p-10 flex flex-col items-center justify-center gap-4 cursor-pointer transition-all group"
+                @click="triggerImportFileInput"
+                @drop="handleImportDrop"
+                @dragover="handleImportDragOver"
+              >
+                <div class="w-14 h-14 rounded-full bg-white dark:bg-stone-800 shadow-md flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                  <span class="material-symbols-outlined text-3xl">cloud_upload</span>
+                </div>
+                <div class="text-center">
+                  <p v-if="!importFile" class="text-sm font-bold text-slate-900 dark:text-white">
+                    Click to upload or drag and drop
+                  </p>
+                  <p v-else class="text-sm font-bold text-primary">{{ importFile.name }}</p>
+                  <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Excel files only (.xlsx, .xls) up to 10MB</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="px-8 py-5 border-t border-stone-100 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-900/50 flex items-center justify-end gap-3">
+            <button
+              type="button"
+              class="px-6 py-2.5 text-slate-600 dark:text-slate-400 font-bold hover:bg-stone-200 dark:hover:bg-stone-800 rounded-lg transition-all"
+              @click="closeImportExcelModal"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              :class="[
+                'px-8 py-2.5 font-bold rounded-lg transition-all',
+                importFile
+                  ? 'bg-primary hover:bg-primary-dark text-white cursor-pointer'
+                  : 'bg-primary/50 text-white cursor-not-allowed',
+              ]"
+              :disabled="!importFile"
+              @click="processImport"
+            >
+              Process Import
+            </button>
+          </div>
         </div>
       </div>
     </Transition>

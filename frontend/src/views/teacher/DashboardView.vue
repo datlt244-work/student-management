@@ -32,6 +32,7 @@ const displayName = computed(() => {
 onMounted(async () => {
   try {
     profile.value = await getMyProfile()
+    authStore.updateProfilePicture(profile.value?.profilePictureUrl ?? null)
   } catch {
     // Fallback to email-based name
   }

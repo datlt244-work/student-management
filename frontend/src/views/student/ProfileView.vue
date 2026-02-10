@@ -64,6 +64,7 @@ async function fetchProfile() {
   loadError.value = ''
   try {
     profile.value = await getMyProfile()
+    authStore.updateProfilePicture(profile.value?.profilePictureUrl ?? null)
     // Populate form data from profile
     const sp = profile.value.studentProfile
     if (sp) {

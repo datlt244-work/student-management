@@ -90,6 +90,14 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('rememberMe')
   }
 
+  /** Đồng bộ avatar khi load profile (Dashboard, Profile) — tránh avatar cũ từ login */
+  function updateProfilePicture(url: string | null) {
+    if (user.value) {
+      user.value = { ...user.value, profilePictureUrl: url }
+      getStorage().setItem('user', JSON.stringify(user.value))
+    }
+  }
+
   return {
     accessToken,
     refreshToken,
@@ -100,5 +108,6 @@ export const useAuthStore = defineStore('auth', () => {
     rememberedEmail,
     setAuth,
     clearAuth,
+    updateProfilePicture,
   }
 })

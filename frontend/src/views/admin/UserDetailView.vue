@@ -2,12 +2,49 @@
 import { ref, computed, watch } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 
+interface StudentCourse {
+  code: string
+  name: string
+  instructor: string
+  schedule: string
+  status: string
+}
+
+interface UserDetail {
+  id: string
+  userId: string
+  name: string
+  email: string
+  avatar?: string
+  role: string
+  status: string
+  studentCode?: string
+  courses?: StudentCourse[]
+  [key: string]: unknown
+}
+
 const route = useRoute()
 
 const activeTab = ref<'personal' | 'academic' | 'grades'>('personal')
 
-// Placeholder data — sẽ fetch từ API sau dựa trên route.params.userId
-const user = ref<Record<string, unknown>>({
+const defaultStudent: UserDetail & {
+  studentCode: string
+  phone: string
+  dob: string
+  gender: string
+  address: string
+  attendance: number
+  credits: number
+  creditsTotal: number
+  creditsProgress: number
+  major: string
+  year: string
+  advisor: string
+  gpa: number
+  gpaMax: number
+  currentSemester: string
+  courses: StudentCourse[]
+} = {
   id: 'US-003',
   userId: '00000000-0000-0000-0000-000000000003',
   name: 'Michael Ross',
@@ -35,10 +72,13 @@ const user = ref<Record<string, unknown>>({
     { code: 'CS-305', name: 'Database Management', instructor: 'Prof. Alexander Wright', schedule: 'Tue, Thu 02:00 PM', status: 'ENROLLED' },
     { code: 'MATH-210', name: 'Linear Algebra', instructor: 'Dr. Sarah Chen', schedule: 'Fri 09:00 AM', status: 'ENROLLED' },
   ],
-})
+}
+
+// Placeholder data — sẽ fetch từ API sau dựa trên route.params.userId
+const user = ref<UserDetail>(defaultStudent)
 
 // Teacher-specific data
-const teacherData: Record<string, unknown> = {
+const teacherData: UserDetail = {
   id: 'US-002',
   userId: '00000000-0000-0000-0000-000000000002',
   name: 'Sarah Chen, Ph.D.',
@@ -97,6 +137,11 @@ function viewTranscript() {
 
 const isTeacher = computed(() => user.value.role === 'TEACHER')
 
+const studentCourses = computed<StudentCourse[]>(() => {
+  const c = user.value.courses
+  return Array.isArray(c) ? c : []
+})
+
 // Fetch user khi route thay đổi
 watch(
   () => route.params.userId,
@@ -106,35 +151,7 @@ watch(
       if (String(userId).includes('0002') || String(userId).includes('002')) {
         user.value = { ...teacherData }
       } else {
-        user.value = {
-          id: 'US-003',
-          userId: '00000000-0000-0000-0000-000000000003',
-          name: 'Michael Ross',
-          email: 'm.ross@student.edu',
-          avatar: 'https://ui-avatars.com/api/?name=Michael+Ross&background=4f46e5&color=fff',
-          role: 'STUDENT',
-          status: 'ACTIVE',
-          studentCode: 'STU-12345',
-          phone: '+1 (555) 123-4567',
-          dob: 'May 14, 2002',
-          gender: 'Male',
-          address: '789 University Ave, Suite 402,\nCambridge, MA 02138, USA',
-          attendance: 94,
-          credits: 72,
-          creditsTotal: 120,
-          creditsProgress: 60,
-          major: 'Computer Science',
-          year: 'Year 3',
-          advisor: 'Dr. Sarah Chen',
-          gpa: 3.8,
-          gpaMax: 4.0,
-          currentSemester: 'Fall 2023',
-          courses: [
-            { code: 'CS-301', name: 'Operating Systems', instructor: 'Dr. Robert Thorne', schedule: 'Mon, Wed 10:00 AM', status: 'ENROLLED' },
-            { code: 'CS-305', name: 'Database Management', instructor: 'Prof. Alexander Wright', schedule: 'Tue, Thu 02:00 PM', status: 'ENROLLED' },
-            { code: 'MATH-210', name: 'Linear Algebra', instructor: 'Dr. Sarah Chen', schedule: 'Fri 09:00 AM', status: 'ENROLLED' },
-          ],
-        }
+        user.value = { ...defaultStudent }
       }
     }
   },
@@ -367,7 +384,7 @@ watch(
               </thead>
               <tbody class="divide-y divide-stone-200 dark:divide-stone-800">
                 <tr
-                  v-for="course in user.courses"
+                  v-for="course in studentCourses"
                   :key="course.code"
                   class="hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors"
                 >

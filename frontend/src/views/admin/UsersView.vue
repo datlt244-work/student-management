@@ -1,17 +1,66 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { watchDebounced } from '@vueuse/core'
 import { useRouter } from 'vue-router'
+import { getAdminUsers, type AdminUserListItem, type UserStatus } from '@/services/adminUserService'
 
 const router = useRouter()
 
 // Filters & pagination
 const searchQuery = ref('')
-const statusFilter = ref('')
+const statusFilter = ref<UserStatus | ''>('')
 const roleFilter = ref('')
-const sortBy = ref('')
+const sortBy = ref<'createdAt,desc' | 'createdAt,asc' | ''>('createdAt,desc')
 const pageSize = ref(20)
-const currentPage = ref(1)
-const totalPages = computed(() => 12)
+const currentPage = ref(1) // UI 1-based
+const totalPages = ref(0)
+const totalElements = ref(0)
+
+// Loading & error state
+const isLoading = ref(false)
+const errorMessage = ref<string | null>(null)
+
+// Server data
+const users = ref<AdminUserListItem[]>([])
+
+async function fetchUsers() {
+  try {
+    isLoading.value = true
+    errorMessage.value = null
+
+    const result = await getAdminUsers({
+      page: currentPage.value - 1,
+      size: pageSize.value,
+      sort: sortBy.value || 'createdAt,desc',
+      search: searchQuery.value || undefined,
+      status: statusFilter.value,
+      roleId: roleFilter.value ? Number(roleFilter.value) : undefined,
+    })
+
+    users.value = result.content
+    currentPage.value = result.page + 1
+    totalPages.value = result.totalPages
+    totalElements.value = result.totalElements
+  } catch (err: any) {
+    errorMessage.value = err?.message || 'Failed to load users'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+onMounted(() => {
+  fetchUsers()
+})
+
+// Debounce tất cả filter/search để tránh gọi API trùng lặp (đặc biệt khi clearFilters)
+watchDebounced(
+  [searchQuery, statusFilter, roleFilter, sortBy, pageSize],
+  () => {
+    currentPage.value = 1
+    fetchUsers()
+  },
+  { debounce: 500, maxWait: 1000 },
+)
 
 const paginationPages = computed(() => {
   const total = totalPages.value
@@ -58,93 +107,89 @@ const newStudent = ref({
   address: '',
 })
 
-// Placeholder data — sẽ fetch từ API sau
-const users = ref([
-  {
-    id: 'US-001',
-    userId: '00000000-0000-0000-0000-000000000001',
-    name: 'Alexander Wright',
-    email: 'alex.wright@edu.com',
-    avatar: 'https://ui-avatars.com/api/?name=Alexander+Wright&background=f97316&color=fff',
-    role: 'ADMIN',
-    status: 'ACTIVE',
-    createdAt: 'Oct 12, 2023',
-    roleClasses: 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400',
-    statusClasses: 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 ring-green-600/20',
-    statusDot: 'bg-green-500',
-  },
-  {
-    id: 'US-002',
-    userId: '00000000-0000-0000-0000-000000000002',
-    name: 'Sarah Chen',
-    email: 's.chen@school.org',
-    avatar: 'https://ui-avatars.com/api/?name=Sarah+Chen&background=9333ea&color=fff',
-    role: 'TEACHER',
-    status: 'PENDING_VERIFICATION',
-    createdAt: 'Oct 14, 2023',
-    roleClasses: 'bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400',
-    statusClasses: 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 ring-yellow-600/20',
-    statusDot: 'bg-yellow-500',
-  },
-  {
-    id: 'US-003',
-    userId: '00000000-0000-0000-0000-000000000003',
-    name: 'Michael Ross',
-    email: 'm.ross@student.edu',
-    avatar: 'https://ui-avatars.com/api/?name=Michael+Ross&background=4f46e5&color=fff',
-    role: 'STUDENT',
-    status: 'INACTIVE',
-    createdAt: 'Oct 15, 2023',
-    roleClasses: 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400',
-    statusClasses: 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 ring-stone-500/20',
-    statusDot: 'bg-stone-400',
-  },
-  {
-    id: 'US-004',
-    userId: '00000000-0000-0000-0000-000000000004',
-    name: 'Robert Thorne',
-    email: 'r.thorne@edu.com',
-    avatar: 'https://ui-avatars.com/api/?name=Robert+Thorne&background=e11d48&color=fff',
-    role: 'STUDENT',
-    status: 'BLOCKED',
-    createdAt: 'Sep 28, 2023',
-    roleClasses: 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400',
-    statusClasses: 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 ring-red-600/20',
-    statusDot: 'bg-red-500',
-  },
-])
-
 const filteredUsers = computed(() => {
-  let list = [...users.value]
-  if (searchQuery.value) {
-    const q = searchQuery.value.toLowerCase()
-    list = list.filter((u) => u.email.toLowerCase().includes(q) || u.name.toLowerCase().includes(q))
-  }
-  if (statusFilter.value) {
-    list = list.filter((u) => u.status === statusFilter.value)
-  }
-  if (roleFilter.value) {
-    list = list.filter((u) => u.role === roleFilter.value)
-  }
-  return list
+  return users.value
 })
 
 function clearFilters() {
   searchQuery.value = ''
   statusFilter.value = ''
   roleFilter.value = ''
-  sortBy.value = ''
+  sortBy.value = 'createdAt,desc'
 }
 
 function goToPage(page: number) {
-  if (page >= 1 && page <= totalPages.value) {
+  if (page >= 1 && page <= totalPages.value && page !== currentPage.value) {
     currentPage.value = page
+    fetchUsers()
   }
 }
 
-function handleEdit(user: (typeof users.value)[0]) {
-  if (user.role === 'STUDENT' || user.role === 'TEACHER') {
-    const uid = (user as { userId?: string }).userId ?? user.id
+function mapRoleToId(roleName: string): string {
+  if (roleName === 'ADMIN') return '1'
+  if (roleName === 'TEACHER') return '2'
+  if (roleName === 'STUDENT') return '3'
+  return ''
+}
+
+function getRolePillClasses(roleName: string): string {
+  switch (roleName) {
+    case 'ADMIN':
+      return 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+    case 'TEACHER':
+      return 'bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
+    case 'STUDENT':
+      return 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+    default:
+      return 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300'
+  }
+}
+
+function getStatusPillClasses(status: UserStatus): { container: string; dot: string } {
+  switch (status) {
+    case 'ACTIVE':
+      return {
+        container: 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 ring-green-600/20',
+        dot: 'bg-green-500',
+      }
+    case 'INACTIVE':
+      return {
+        container: 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 ring-stone-500/20',
+        dot: 'bg-stone-400',
+      }
+    case 'BLOCKED':
+      return {
+        container: 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 ring-red-600/20',
+        dot: 'bg-red-500',
+      }
+    case 'PENDING_VERIFICATION':
+    default:
+      return {
+        container: 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 ring-yellow-600/20',
+        dot: 'bg-yellow-500',
+      }
+  }
+}
+
+function formatCreatedAt(value: string): string {
+  if (!value) return ''
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return value
+  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' })
+}
+
+function buildDisplayName(email: string): string {
+  const parts = email.split('@')
+  const localPart = parts[0] || ''
+  return localPart
+    .split(/[._]/)
+    .map((s) => (s && s.length > 0 ? s[0]!.toUpperCase() + s.slice(1) : ''))
+    .join(' ')
+}
+
+function handleEdit(user: AdminUserListItem) {
+  if (user.role.roleName === 'STUDENT' || user.role.roleName === 'TEACHER') {
+    const uid = user.userId
     router.push({ name: 'admin-user-detail', params: { userId: uid } })
   } else {
     // TODO: mở modal/form edit cho admin
@@ -152,7 +197,7 @@ function handleEdit(user: (typeof users.value)[0]) {
   }
 }
 
-function handleDelete(user: (typeof users.value)[0]) {
+function handleDelete(user: AdminUserListItem) {
   console.log('Delete', user)
   // TODO: confirm + gọi API
 }
@@ -282,7 +327,14 @@ function processImport() {
           Manage student, teacher, and administrator accounts across the system.
         </p>
       </div>
-      <div class="flex flex-col sm:flex-row gap-3">
+      <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+        <div
+          v-if="isLoading"
+          class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-stone-100 dark:bg-stone-800 text-xs font-medium text-slate-600 dark:text-slate-300"
+        >
+          <span class="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></span>
+          <span>Loading...</span>
+        </div>
         <button
           class="flex items-center justify-center gap-2 px-4 py-2.5 bg-surface-light dark:bg-surface-dark border border-stone-200 dark:border-stone-700 text-slate-700 dark:text-slate-200 rounded-lg text-sm font-semibold shadow-sm hover:bg-stone-50 dark:hover:bg-stone-800 transition-all shrink-0"
           type="button"
@@ -303,7 +355,9 @@ function processImport() {
     </div>
 
     <!-- Filters -->
-    <div class="bg-surface-light dark:bg-surface-dark p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm flex flex-col lg:flex-row gap-4">
+    <div
+      class="bg-surface-light dark:bg-surface-dark p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm flex flex-col lg:flex-row gap-4"
+    >
       <div class="relative flex-1 min-w-0">
         <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">search</span>
         <input
@@ -313,10 +367,10 @@ function processImport() {
           type="text"
         />
       </div>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="flex flex-wrap gap-2 lg:gap-3 items-center justify-end shrink-0">
         <select
           v-model="statusFilter"
-          class="h-11 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary"
+          class="h-10 px-2 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-xs md:text-sm focus:ring-primary focus:border-primary w-[110px]"
         >
           <option value="">Status</option>
           <option value="ACTIVE">ACTIVE</option>
@@ -326,29 +380,27 @@ function processImport() {
         </select>
         <select
           v-model="roleFilter"
-          class="h-11 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary"
+          class="h-10 px-2 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-xs md:text-sm focus:ring-primary focus:border-primary w-[100px]"
         >
           <option value="">Role</option>
-          <option value="ADMIN">ADMIN</option>
-          <option value="TEACHER">TEACHER</option>
-          <option value="STUDENT">STUDENT</option>
+          <option :value="mapRoleToId('ADMIN')">ADMIN</option>
+          <option :value="mapRoleToId('TEACHER')">TEACHER</option>
+          <option :value="mapRoleToId('STUDENT')">STUDENT</option>
         </select>
         <select
           v-model="sortBy"
-          class="h-11 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary"
+          class="h-10 px-2 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-xs md:text-sm focus:ring-primary focus:border-primary w-[120px]"
         >
-          <option value="">Sort By</option>
-          <option value="newest">Newest First</option>
-          <option value="oldest">Oldest First</option>
-          <option value="name_asc">Name A-Z</option>
-          <option value="name_desc">Name Z-A</option>
+          <option value="">Sort</option>
+          <option value="createdAt,desc">Newest First</option>
+          <option value="createdAt,asc">Oldest First</option>
         </select>
         <button
-          class="flex items-center justify-center gap-2 h-11 px-4 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-slate-700 dark:text-slate-300 rounded-lg font-semibold transition-all"
+          class="flex items-center justify-center gap-1 h-10 px-2 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-slate-700 dark:text-slate-300 rounded-lg font-semibold transition-all text-xs md:text-sm"
           @click="clearFilters"
         >
-          <span class="material-symbols-outlined text-[20px]">filter_list</span>
-          Clear
+          <span class="material-symbols-outlined text-[18px]">filter_list</span>
+          <span class="hidden md:inline">Clear</span>
         </button>
       </div>
     </div>
@@ -370,39 +422,58 @@ function processImport() {
           <tbody class="divide-y divide-stone-200 dark:divide-stone-800">
             <tr
               v-for="user in filteredUsers"
-              :key="user.id"
+              :key="user.userId"
               class="hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors"
             >
-              <td class="p-4 text-sm font-medium text-slate-500 whitespace-nowrap">{{ user.id }}</td>
+              <td class="p-4 text-sm font-medium text-slate-500 whitespace-nowrap">
+                {{ user.userId.substring(0, 8) }}
+              </td>
               <td class="p-4 whitespace-nowrap">
                 <div class="flex items-center gap-3">
                   <div
                     class="w-10 h-10 rounded-full overflow-hidden border border-primary/20 flex items-center justify-center bg-orange-100 dark:bg-orange-900/20"
                   >
                     <img
-                      v-if="user.avatar"
-                      :src="user.avatar"
-                      :alt="user.name"
+                      v-if="user.profilePictureUrl"
+                      :src="user.profilePictureUrl"
+                      :alt="user.email"
                       class="w-full h-full object-cover"
                     />
-                    <span v-else class="text-primary font-bold text-sm">{{ user.name.substring(0, 2).toUpperCase() }}</span>
+                    <span v-else class="text-primary font-bold text-sm">
+                      {{ buildDisplayName(user.email).substring(0, 2).toUpperCase() }}
+                    </span>
                   </div>
                   <div class="flex flex-col min-w-0">
-                    <span class="text-sm font-bold text-slate-900 dark:text-white leading-none truncate">{{ user.name }}</span>
+                    <span class="text-sm font-bold text-slate-900 dark:text-white leading-none truncate">
+                      {{ buildDisplayName(user.email) }}
+                    </span>
                     <span class="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">{{ user.email }}</span>
                   </div>
                 </div>
               </td>
               <td class="p-4">
-                <span :class="['text-xs font-bold px-2 py-1 rounded-md', user.roleClasses]">{{ user.role }}</span>
+                <span
+                  :class="['text-xs font-bold px-2 py-1 rounded-md', getRolePillClasses(user.role.roleName)]"
+                >
+                  {{ user.role.roleName }}
+                </span>
               </td>
               <td class="p-4">
-                <span :class="['inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold ring-1 ring-inset', user.statusClasses]">
-                  <span :class="['w-1.5 h-1.5 rounded-full', user.statusDot]"></span>
+                <span
+                  :class="[
+                    'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold ring-1 ring-inset',
+                    getStatusPillClasses(user.status).container,
+                  ]"
+                >
+                  <span
+                    :class="['w-1.5 h-1.5 rounded-full', getStatusPillClasses(user.status).dot]"
+                  ></span>
                   {{ user.status }}
                 </span>
               </td>
-              <td class="p-4 text-sm text-slate-600 dark:text-slate-400 whitespace-nowrap">{{ user.createdAt }}</td>
+              <td class="p-4 text-sm text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                {{ formatCreatedAt(user.createdAt) }}
+              </td>
               <td class="p-4 text-right whitespace-nowrap">
                 <div class="flex items-center justify-end gap-2">
                   <button

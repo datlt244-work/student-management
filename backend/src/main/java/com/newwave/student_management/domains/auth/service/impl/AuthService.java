@@ -240,6 +240,9 @@ public class AuthService implements IAuthService {
 
         // 5. Logout all devices: delete all refresh tokens for this user
         tokenRedisService.deleteAllRefreshTokensForUser(userId);
+
+        // 6. Invalidate all existing access tokens (same as changePassword)
+        tokenRedisService.incrementTokenVersion(userId);
     }
 
     @Override

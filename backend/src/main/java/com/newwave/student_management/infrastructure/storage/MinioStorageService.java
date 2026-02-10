@@ -20,8 +20,9 @@ public class MinioStorageService implements IStorageService {
     @Value("${minio.bucket}")
     private String bucket;
 
-    @Value("${minio.url}")
-    private String minioUrl;
+    /** URL public để trình duyệt truy cập file (khác minio.url khi chạy Docker) */
+    @Value("${minio.public-url:${minio.url}}")
+    private String publicUrl;
 
     @Override
     public String uploadFile(String objectName, InputStream inputStream, long size, String contentType) {
@@ -38,8 +39,8 @@ public class MinioStorageService implements IStorageService {
                             .build()
             );
 
-            // Construct public URL
-            String fullUrl = minioUrl + "/" + bucket + "/" + objectName;
+            // Construct public URL (dùng publicUrl để browser truy cập được)
+            String fullUrl = publicUrl + "/" + bucket + "/" + objectName;
             log.info("Uploaded file to MinIO: {}", fullUrl);
             return fullUrl;
         } catch (Exception e) {
@@ -67,7 +68,7 @@ public class MinioStorageService implements IStorageService {
     @Override
     public String getPublicUrl(String objectName) {
         if (objectName == null || objectName.isBlank()) return null;
-        String base = minioUrl.endsWith("/") ? minioUrl : minioUrl + "/";
+        String base = publicUrl.endsWith("/") ? publicUrl : publicUrl + "/";
         return base + bucket + "/" + objectName;
     }
 }

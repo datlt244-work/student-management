@@ -36,8 +36,11 @@ spring:
     jwt:
       signer-key: ${JWT_SECRET_KEY}
 
+# minio.url: endpoint cho MinioClient (nội bộ, vd: http://minio:9000 trong Docker)
+# minio.public-url: URL public cho trình duyệt (vd: https://s3.admin-datlt244.io.vn)
 minio:
-  url: ${MINIO_SERVER_URL:${MINIO_URL:http://localhost:${MINIO_PORT:9000}}}
+  url: ${MINIO_URL:http://localhost:${MINIO_PORT:9000}}
+  public-url: ${MINIO_PUBLIC_URL:${MINIO_SERVER_URL:${MINIO_URL:http://localhost:${MINIO_PORT:9000}}}}
   access-key: ${MINIO_ACCESS_KEY:${MINIO_ROOT_USER:minioadmin}}
   secret-key: ${MINIO_SECRET_KEY:${MINIO_ROOT_PASSWORD:minioadmin}}
   bucket: ${MINIO_BUCKET:${MINIO_BUCKET_NAME:student-management}}

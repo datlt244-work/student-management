@@ -25,6 +25,7 @@ public class TokenRedisService implements ITokenRedisService {
     private static final String RESET_COUNT_PREFIX = "auth:reset:count:";
     private static final String RESET_TOKEN_PREFIX = "auth:reset:token:";
     private static final String RESET_TOKEN_TO_USER_PREFIX = "auth:reset:token-to-user:";
+    private static final String TOKEN_VERSION_PREFIX = "auth:token-version:";
 
     private final StringRedisTemplate stringRedisTemplate;
 
@@ -206,18 +207,41 @@ public class TokenRedisService implements ITokenRedisService {
     }
 
     @Override
-    public void deleteAllRefreshTokensForUser(UUID userId) {
+    public int deleteAllRefreshTokensForUser(UUID userId) {
         if (userId == null) {
-            return;
+            return 0;
         }
         String userKey = REFRESH_KEY_PREFIX + userId;
         Set<String> tokens = stringRedisTemplate.opsForZSet().range(userKey, 0, -1);
+        int deletedCount = 0;
         if (tokens != null && !tokens.isEmpty()) {
+            deletedCount = tokens.size();
             for (String token : tokens) {
                 stringRedisTemplate.delete(REFRESH_TOKEN_TO_USER_PREFIX + token);
             }
         }
         stringRedisTemplate.delete(userKey);
+        return deletedCount;
+    }
+
+    @Override
+    public long getTokenVersion(UUID userId) {
+        if (userId == null) return 0L;
+        String key = TOKEN_VERSION_PREFIX + userId;
+        String val = stringRedisTemplate.opsForValue().get(key);
+        if (val == null || val.isBlank()) return 0L;
+        try {
+            return Long.parseLong(val);
+        } catch (NumberFormatException e) {
+            return 0L;
+        }
+    }
+
+    @Override
+    public void incrementTokenVersion(UUID userId) {
+        if (userId == null) return;
+        String key = TOKEN_VERSION_PREFIX + userId;
+        stringRedisTemplate.opsForValue().increment(key);
     }
 
     /**

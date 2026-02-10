@@ -2,10 +2,12 @@ package com.newwave.student_management.domains.auth.service.impl;
 
 import com.newwave.student_management.common.exception.AppException;
 import com.newwave.student_management.common.exception.ErrorCode;
+import com.newwave.student_management.domains.auth.dto.request.ChangePasswordRequest;
 import com.newwave.student_management.domains.auth.dto.request.ForgotPasswordRequest;
 import com.newwave.student_management.domains.auth.dto.request.LoginRequest;
 import com.newwave.student_management.domains.auth.dto.request.RefreshTokenRequest;
 import com.newwave.student_management.domains.auth.dto.request.ResetPasswordRequest;
+import com.newwave.student_management.domains.auth.dto.response.ChangePasswordResponse;
 import com.newwave.student_management.domains.auth.dto.response.LoginResponse;
 import com.newwave.student_management.domains.auth.entity.User;
 import com.newwave.student_management.domains.auth.entity.UserStatus;
@@ -22,6 +24,7 @@ import org.springframework.stereotype.Service;
 
 import java.text.ParseException;
 import java.time.LocalDateTime;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -83,8 +86,9 @@ public class AuthService implements IAuthService {
         user.setLoginCount(user.getLoginCount() + 1);
         userRepository.save(user);
 
-        // 9. Generate tokens
-        String accessToken = jwtService.generateToken(user);
+        // 9. Generate tokens (with current token version so change-password can invalidate all)
+        long tokenVersion = tokenRedisService.getTokenVersion(user.getUserId());
+        String accessToken = jwtService.generateToken(user, tokenVersion);
         String refreshToken = tokenRedisService.createAndStoreRefreshToken(user.getUserId());
 
         // 10. Return response
@@ -132,8 +136,9 @@ public class AuthService implements IAuthService {
         // 5. Xóa refresh token cũ
         tokenRedisService.deleteRefreshToken(userId, refreshToken);
 
-        // 6. Generate new tokens
-        String newAccessToken = jwtService.generateToken(user);
+        // 6. Generate new tokens (with current token version)
+        long tokenVersion = tokenRedisService.getTokenVersion(user.getUserId());
+        String newAccessToken = jwtService.generateToken(user, tokenVersion);
         String newRefreshToken = tokenRedisService.createAndStoreRefreshToken(user.getUserId());
 
         // 7. Build response
@@ -231,5 +236,53 @@ public class AuthService implements IAuthService {
 
         // 5. Logout all devices: delete all refresh tokens for this user
         tokenRedisService.deleteAllRefreshTokensForUser(userId);
+    }
+
+    @Override
+    public ChangePasswordResponse changePassword(UUID userId, ChangePasswordRequest request) {
+        if (userId == null) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        // 1. Validate new password confirmation
+        if (!Objects.equals(request.getNewPassword(), request.getConfirmPassword())) {
+            throw new AppException(ErrorCode.PASSWORD_MISMATCH);
+        }
+
+        // 2. Load current user
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        // 3. Verify current password
+        boolean currentOk = passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash());
+        if (!currentOk) {
+            throw new AppException(ErrorCode.INCORRECT_PASSWORD);
+        }
+
+        // 4. Ensure new password is different
+        boolean samePassword = passwordEncoder.matches(request.getNewPassword(), user.getPasswordHash());
+        if (samePassword) {
+            throw new AppException(ErrorCode.SAME_PASSWORD);
+        }
+
+        // 5. Update password
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        // 6. Invalidate all access tokens (current + other devices/tabs): increment token version
+        tokenRedisService.incrementTokenVersion(userId);
+
+        // 7. Handle logoutOtherDevices option: delete all refresh tokens
+        boolean logoutOtherDevices = request.getLogoutOtherDevices() == null || request.getLogoutOtherDevices();
+
+        int loggedOutDevices = 0;
+        if (logoutOtherDevices) {
+            loggedOutDevices = tokenRedisService.deleteAllRefreshTokensForUser(userId);
+        }
+
+        return ChangePasswordResponse.builder()
+                .message("Password changed successfully. Please login again.")
+                .loggedOutDevices(loggedOutDevices)
+                .build();
     }
 }

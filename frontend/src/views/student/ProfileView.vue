@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { getMyProfile, updateMyProfile, uploadAvatar, type CombinedProfile } from '@/services/profileService'
+import { changePassword } from '@/services/authService'
 
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)
@@ -140,6 +141,7 @@ const showNewPassword = ref(false)
 const showConfirmPassword = ref(false)
 const passwordError = ref('')
 const passwordSuccess = ref('')
+const isChangingPassword = ref(false)
 
 const passwordStrength = computed(() => {
   const pw = passwordData.value.newPassword
@@ -178,7 +180,7 @@ async function handleUpdateProfile() {
   }
 }
 
-function handleUpdatePassword() {
+async function handleUpdatePassword() {
   passwordError.value = ''
   passwordSuccess.value = ''
 
@@ -199,10 +201,26 @@ function handleUpdatePassword() {
     return
   }
 
-  // TODO: call API to change password
-  console.log('Change password')
-  passwordSuccess.value = 'Password updated successfully!'
-  passwordData.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
+  isChangingPassword.value = true
+  try {
+    const result = await changePassword({
+      currentPassword: passwordData.value.currentPassword,
+      newPassword: passwordData.value.newPassword,
+      confirmPassword: passwordData.value.confirmPassword,
+      logoutOtherDevices: true,
+    })
+    passwordSuccess.value = result.message || 'Password changed successfully. Please login again.'
+    passwordData.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
+    // Sau khi đổi mật khẩu, bắt buộc user đăng nhập lại
+    setTimeout(() => {
+      authStore.clearAuth()
+      window.location.href = '/login'
+    }, 1500)
+  } catch (err: unknown) {
+    passwordError.value = err instanceof Error ? err.message : 'Failed to change password'
+  } finally {
+    isChangingPassword.value = false
+  }
 }
 </script>
 
@@ -590,11 +608,13 @@ function handleUpdatePassword() {
                   </div>
                 </div>
                 <button
-                  class="w-full sm:w-auto min-w-[180px] bg-primary text-white py-3 px-8 rounded-lg font-bold text-sm shadow-md shadow-primary/20 hover:brightness-110 transition-all flex items-center justify-center gap-2"
+                  class="w-full sm:w-auto min-w-[180px] bg-primary text-white py-3 px-8 rounded-lg font-bold text-sm shadow-md shadow-primary/20 hover:brightness-110 transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:pointer-events-none"
+                  :disabled="isChangingPassword"
                   @click="handleUpdatePassword"
                 >
-                  <span class="material-symbols-outlined text-sm">check_circle</span>
-                  Update Password
+                  <span v-if="isChangingPassword" class="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                  <span v-else class="material-symbols-outlined text-sm">check_circle</span>
+                  {{ isChangingPassword ? 'Updating...' : 'Update Password' }}
                 </button>
               </div>
             </div>

@@ -63,4 +63,11 @@ public class MinioStorageService implements IStorageService {
             log.warn("Failed to delete file from MinIO: {} - {}", objectName, e.getMessage());
         }
     }
+
+    @Override
+    public String getPublicUrl(String objectName) {
+        if (objectName == null || objectName.isBlank()) return null;
+        String base = minioUrl.endsWith("/") ? minioUrl : minioUrl + "/";
+        return base + bucket + "/" + objectName;
+    }
 }

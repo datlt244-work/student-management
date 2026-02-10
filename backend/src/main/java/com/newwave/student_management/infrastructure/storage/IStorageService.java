@@ -21,4 +21,12 @@ public interface IStorageService {
      * @param objectName path trong bucket
      */
     void deleteFile(String objectName);
+
+    /**
+     * Trả về URL công khai đầy đủ cho object (dùng khi trả profile/me để frontend hiển thị ảnh sau reload).
+     *
+     * @param objectName path trong bucket (vd: "avatar/userId/uuid.webp")
+     * @return full URL hoặc null nếu objectName null/blank
+     */
+    String getPublicUrl(String objectName);
 }

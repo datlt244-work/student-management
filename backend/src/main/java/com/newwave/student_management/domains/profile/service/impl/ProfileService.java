@@ -56,11 +56,15 @@ public class ProfileService implements IProfileService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
-        // 2. Build base response from User
+        // 2. Build base response from User (profilePictureUrl: relative path in DB → full URL for frontend)
+        String rawAvatar = user.getProfilePictureUrl();
+        String profilePictureUrl = (rawAvatar != null && !rawAvatar.isBlank())
+                ? storageService.getPublicUrl(rawAvatar)
+                : null;
         CombinedProfileResponse.CombinedProfileResponseBuilder responseBuilder = CombinedProfileResponse.builder()
                 .userId(user.getUserId())
                 .email(user.getEmail())
-                .profilePictureUrl(user.getProfilePictureUrl())
+                .profilePictureUrl(profilePictureUrl)
                 .role(user.getRole().getRoleName())
                 .status(user.getStatus().name())
                 .emailVerified(user.isEmailVerified())

@@ -16,6 +16,7 @@ import com.newwave.student_management.domains.auth.service.IAuthService;
 import com.newwave.student_management.domains.auth.service.ITokenRedisService;
 import com.newwave.student_management.infrastructure.mail.IMailService;
 import com.newwave.student_management.infrastructure.security.JwtService;
+import com.newwave.student_management.infrastructure.storage.IStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -37,6 +38,7 @@ public class AuthService implements IAuthService {
     private final JwtService jwtService;
     private final ITokenRedisService tokenRedisService;
     private final IMailService mailService;
+    private final IStorageService storageService;
 
     @Value("${spring.security.jwt.expiration-seconds:3600}")
     private long accessTokenExpiresIn;
@@ -91,14 +93,15 @@ public class AuthService implements IAuthService {
         String accessToken = jwtService.generateToken(user, tokenVersion);
         String refreshToken = tokenRedisService.createAndStoreRefreshToken(user.getUserId());
 
-        // 10. Return response
+        // 10. Return response (profilePictureUrl: full URL for frontend)
+        String profilePictureUrl = toFullAvatarUrl(user.getProfilePictureUrl());
         return LoginResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
                 .expiresIn(accessTokenExpiresIn)
                 .userId(user.getUserId())
                 .email(user.getEmail())
-                .profilePictureUrl(user.getProfilePictureUrl())
+                .profilePictureUrl(profilePictureUrl)
                 .role(user.getRole() != null ? user.getRole().getRoleName() : null)
                 .authenticated(true)
                 .build();
@@ -141,14 +144,15 @@ public class AuthService implements IAuthService {
         String newAccessToken = jwtService.generateToken(user, tokenVersion);
         String newRefreshToken = tokenRedisService.createAndStoreRefreshToken(user.getUserId());
 
-        // 7. Build response
+        // 7. Build response (profilePictureUrl: full URL for frontend)
+        String profilePictureUrl = toFullAvatarUrl(user.getProfilePictureUrl());
         return LoginResponse.builder()
                 .accessToken(newAccessToken)
                 .refreshToken(newRefreshToken)
                 .expiresIn(accessTokenExpiresIn)
                 .userId(user.getUserId())
                 .email(user.getEmail())
-                .profilePictureUrl(user.getProfilePictureUrl())
+                .profilePictureUrl(profilePictureUrl)
                 .role(user.getRole() != null ? user.getRole().getRoleName() : null)
                 .authenticated(true)
                 .build();
@@ -284,5 +288,11 @@ public class AuthService implements IAuthService {
                 .message("Password changed successfully. Please login again.")
                 .loggedOutDevices(loggedOutDevices)
                 .build();
+    }
+
+    private String toFullAvatarUrl(String profilePictureUrl) {
+        if (profilePictureUrl == null || profilePictureUrl.isBlank()) return null;
+        if (profilePictureUrl.startsWith("http://") || profilePictureUrl.startsWith("https://")) return profilePictureUrl;
+        return storageService.getPublicUrl(profilePictureUrl);
     }
 }

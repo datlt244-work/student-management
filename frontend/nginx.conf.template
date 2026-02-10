@@ -7,6 +7,12 @@ server {
 
     # 1. Cấu hình cho Vue Router (SPA)
     # Giúp F5 không bị lỗi 404 khi đang ở trang con (ví dụ /admin/users)
+    # Static assets phải được trả đúng file, nếu không có thì 404 (không fallback index.html)
+    location /assets/ {
+        try_files $uri =404;
+    }
+
+    # Các route còn lại của SPA fallback về index.html
     location / {
         try_files $uri $uri/ /index.html;
     }

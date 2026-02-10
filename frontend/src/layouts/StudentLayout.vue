@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { apiFetch } from '@/utils/api'
@@ -9,6 +9,11 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const user = computed(() => authStore.user)
+const mobileMenuOpen = ref(false)
+
+function closeMobileMenu() {
+  mobileMenuOpen.value = false
+}
 
 const navItems = [
   { name: 'Dashboard', routeName: 'student-dashboard' },
@@ -47,10 +52,18 @@ function getInitials(email: string | undefined): string {
 <template>
   <div class="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark font-display min-h-screen flex flex-col antialiased">
     <!-- Top Navigation -->
-    <header class="flex items-center justify-between whitespace-nowrap border-b border-border-light dark:border-border-dark px-6 lg:px-10 py-4 bg-surface-light dark:bg-surface-dark shrink-0">
-      <div class="flex items-center gap-8">
+    <header class="flex items-center justify-between whitespace-nowrap border-b border-border-light dark:border-border-dark px-4 sm:px-6 lg:px-10 py-4 bg-surface-light dark:bg-surface-dark shrink-0">
+      <div class="flex items-center gap-4 sm:gap-8">
+        <!-- Mobile menu button -->
+        <button
+          class="md:hidden size-10 flex items-center justify-center rounded-lg hover:bg-background-light dark:hover:bg-stone-800 -ml-2"
+          aria-label="Open menu"
+          @click="mobileMenuOpen = true"
+        >
+          <span class="material-symbols-outlined text-2xl">menu</span>
+        </button>
         <div class="flex items-center gap-4">
-          <div class="size-8 text-primary">
+          <div class="size-8 text-primary shrink-0">
             <span class="material-symbols-outlined text-4xl">school</span>
           </div>
           <h2 class="text-lg font-bold leading-tight tracking-tight">Student Portal</h2>
@@ -112,9 +125,66 @@ function getInitials(email: string | undefined): string {
       </div>
     </header>
 
+    <!-- Mobile menu overlay -->
+    <Teleport to="body">
+      <Transition name="slide">
+        <div
+          v-if="mobileMenuOpen"
+          class="fixed inset-0 z-[100] md:hidden"
+        >
+          <div
+            class="absolute inset-0 bg-black/50"
+            aria-hidden="true"
+            @click="closeMobileMenu"
+          />
+          <div
+            class="absolute top-0 left-0 bottom-0 w-72 max-w-[85vw] bg-surface-light dark:bg-surface-dark shadow-xl flex flex-col"
+          >
+            <div class="flex items-center justify-between p-4 border-b border-border-light dark:border-border-dark">
+              <h2 class="text-lg font-bold">Student Portal</h2>
+              <button
+                class="size-10 flex items-center justify-center rounded-lg hover:bg-background-light dark:hover:bg-stone-800"
+                aria-label="Close menu"
+                @click="closeMobileMenu"
+              >
+                <span class="material-symbols-outlined text-2xl">close</span>
+              </button>
+            </div>
+            <nav class="flex-1 overflow-y-auto p-4 flex flex-col gap-1">
+              <router-link
+                v-for="item in navItems"
+                :key="item.routeName"
+                :to="{ name: item.routeName }"
+                :class="[
+                  'px-4 py-3 rounded-lg text-sm font-medium transition-colors',
+                  isActive(item.routeName)
+                    ? 'text-primary bg-primary/10'
+                    : 'text-text-main-light dark:text-stone-200 hover:bg-background-light dark:hover:bg-stone-800',
+                ]"
+                @click="closeMobileMenu"
+              >
+                {{ item.name }}
+              </router-link>
+            </nav>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
     <!-- Main Content -->
     <main class="flex-1 flex flex-col overflow-y-auto">
       <router-view />
     </main>
   </div>
 </template>
+
+<style scoped>
+.slide-enter-active,
+.slide-leave-active {
+  transition: opacity 0.2s ease;
+}
+.slide-enter-from,
+.slide-leave-to {
+  opacity: 0;
+}
+</style>

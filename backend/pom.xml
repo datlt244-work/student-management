@@ -97,6 +97,19 @@
 			<version>8.6.0</version>
 			<scope>compile</scope>
 		</dependency>
+		<!-- OkHttp3 required by MinIO client -->
+		<dependency>
+			<groupId>com.squareup.okhttp3</groupId>
+			<artifactId>okhttp</artifactId>
+			<version>4.12.0</version>
+		</dependency>
+
+		<!-- Image resize/processing -->
+		<dependency>
+			<groupId>net.coobird</groupId>
+			<artifactId>thumbnailator</artifactId>
+			<version>0.4.20</version>
+		</dependency>
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

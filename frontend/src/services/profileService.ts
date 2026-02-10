@@ -79,6 +79,12 @@ export interface UpdateProfileRequest {
   teacherProfile?: UpdateTeacherProfileRequest
 }
 
+export interface AvatarUploadResult {
+  profilePictureUrl: string
+  fullUrl: string
+  message: string
+}
+
 // ========== API Functions ==========
 
 /**
@@ -114,4 +120,27 @@ export async function updateMyProfile(request: UpdateProfileRequest): Promise<Co
 
   const data = await response.json()
   return data.result as CombinedProfile
+}
+
+/**
+ * Upload ảnh đại diện
+ * Endpoint: POST /profile/me/avatar
+ * Content-Type: multipart/form-data
+ */
+export async function uploadAvatar(file: File): Promise<AvatarUploadResult> {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const response = await apiFetch('/profile/me/avatar', {
+    method: 'POST',
+    body: formData,
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    throw new Error(errorData?.message || `Failed to upload avatar (${response.status})`)
+  }
+
+  const data = await response.json()
+  return data.result as AvatarUploadResult
 }

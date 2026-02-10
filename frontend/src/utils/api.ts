@@ -122,8 +122,10 @@ export async function apiFetch(
   const url = getApiUrl(endpoint)
 
   // Tự động thêm Authorization header nếu có token
+  // Nếu body là FormData → không set Content-Type (để browser tự thêm boundary)
+  const isFormData = options?.body instanceof FormData
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(options?.headers as Record<string, string>),
   }
 

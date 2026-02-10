@@ -36,6 +36,13 @@ spring:
     jwt:
       signer-key: ${JWT_SECRET_KEY}
 
+# MinIO (prod: cấu hình qua env MINIO_URL, MINIO_ACCESS_KEY, MINIO_SECRET_KEY, MINIO_BUCKET)
+minio:
+  url: ${MINIO_URL:http://localhost:${MINIO_PORT:9000}}
+  access-key: ${MINIO_ACCESS_KEY:${MINIO_ROOT_USER:minioadmin}}
+  secret-key: ${MINIO_SECRET_KEY:${MINIO_ROOT_PASSWORD:minioadmin}}
+  bucket: ${MINIO_BUCKET:${MINIO_BUCKET_NAME:student-management}}
+
 management:
   endpoints:
     web:

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { apiFetch } from '@/utils/api'
@@ -9,6 +9,11 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const user = computed(() => authStore.user)
+const mobileMenuOpen = ref(false)
+
+function closeMobileMenu() {
+  mobileMenuOpen.value = false
+}
 
 const navItems = [
   { name: 'Dashboard', icon: 'dashboard', routeName: 'teacher-dashboard' },
@@ -48,10 +53,18 @@ function getInitials(email: string | undefined): string {
 <template>
   <div class="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark font-display antialiased">
     <!-- Header / Top Navigation -->
-    <header class="flex items-center justify-between border-b border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark px-6 py-3 lg:px-10 shrink-0">
-      <div class="flex items-center gap-8">
+    <header class="flex items-center justify-between border-b border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark px-4 sm:px-6 py-3 lg:px-10 shrink-0">
+      <div class="flex items-center gap-4 sm:gap-8">
+        <!-- Mobile menu button -->
+        <button
+          class="md:hidden size-10 flex items-center justify-center rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 -ml-2"
+          aria-label="Open menu"
+          @click="mobileMenuOpen = true"
+        >
+          <span class="material-symbols-outlined text-2xl">menu</span>
+        </button>
         <div class="flex items-center gap-3">
-          <div class="size-8 flex items-center justify-center bg-primary rounded-lg text-white">
+          <div class="size-8 flex items-center justify-center bg-primary rounded-lg text-white shrink-0">
             <span class="material-symbols-outlined">school</span>
           </div>
           <h2 class="text-lg font-bold leading-tight tracking-tight hidden md:block">EduPortal</h2>
@@ -93,8 +106,68 @@ function getInitials(email: string | undefined): string {
       </div>
     </header>
 
+    <!-- Mobile menu overlay -->
+    <Teleport to="body">
+      <Transition name="fade">
+        <div
+          v-if="mobileMenuOpen"
+          class="fixed inset-0 z-[100] md:hidden"
+        >
+          <div
+            class="absolute inset-0 bg-black/50"
+            aria-hidden="true"
+            @click="closeMobileMenu"
+          />
+          <div
+            class="absolute top-0 left-0 bottom-0 w-72 max-w-[85vw] bg-surface-light dark:bg-surface-dark shadow-xl flex flex-col"
+          >
+            <div class="flex items-center justify-between p-4 border-b border-border-light dark:border-border-dark">
+              <h2 class="text-lg font-bold">EduPortal</h2>
+              <button
+                class="size-10 flex items-center justify-center rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800"
+                aria-label="Close menu"
+                @click="closeMobileMenu"
+              >
+                <span class="material-symbols-outlined text-2xl">close</span>
+              </button>
+            </div>
+            <nav class="flex-1 overflow-y-auto p-4 flex flex-col gap-1">
+              <router-link
+                v-for="item in navItems"
+                :key="item.routeName"
+                :to="{ name: item.routeName }"
+                :class="[
+                  'flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors',
+                  isActive(item.routeName)
+                    ? 'bg-primary text-white'
+                    : 'text-text-muted-light dark:text-text-muted-dark hover:bg-stone-100 dark:hover:bg-stone-800',
+                ]"
+                @click="closeMobileMenu"
+              >
+                <span class="material-symbols-outlined">{{ item.icon }}</span>
+                <span>{{ item.name }}</span>
+              </router-link>
+            </nav>
+            <div class="p-4 border-t border-border-light dark:border-border-dark flex flex-col gap-1">
+              <a class="flex items-center gap-3 px-3 py-2 rounded-lg text-text-muted-light dark:text-text-muted-dark hover:bg-stone-100 dark:hover:bg-stone-800" href="#">
+                <span class="material-symbols-outlined">settings</span>
+                <span>Settings</span>
+              </a>
+              <button
+                class="flex items-center gap-3 px-3 py-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 w-full"
+                @click="handleLogout"
+              >
+                <span class="material-symbols-outlined">logout</span>
+                <span>Sign Out</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
     <div class="flex flex-1 overflow-hidden">
-      <!-- Sidebar Navigation -->
+      <!-- Sidebar Navigation (desktop) -->
       <aside class="hidden md:flex flex-col w-64 bg-surface-light dark:bg-surface-dark border-r border-border-light dark:border-border-dark p-4 gap-2 shrink-0">
         <div class="mb-4 px-3 py-2">
           <p class="text-[10px] font-bold uppercase tracking-widest text-text-muted-light dark:text-text-muted-dark">Main Menu</p>
@@ -137,3 +210,14 @@ function getInitials(email: string | undefined): string {
     </div>
   </div>
 </template>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>

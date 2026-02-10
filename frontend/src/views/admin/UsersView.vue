@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { watchDebounced } from '@vueuse/core'
 import { useRouter } from 'vue-router'
 import { getAdminUsers, type AdminUserListItem, type UserStatus } from '@/services/adminUserService'
 
@@ -51,7 +52,18 @@ onMounted(() => {
   fetchUsers()
 })
 
-watch([searchQuery, statusFilter, roleFilter, sortBy, pageSize], () => {
+// Search: debounce to tránh gọi API trên mỗi phím gõ
+watchDebounced(
+  searchQuery,
+  () => {
+    currentPage.value = 1
+    fetchUsers()
+  },
+  { debounce: 500, maxWait: 1000 },
+)
+
+// Các filter khác & page size: fetch ngay
+watch([statusFilter, roleFilter, sortBy, pageSize], () => {
   currentPage.value = 1
   fetchUsers()
 })
@@ -321,7 +333,14 @@ function processImport() {
           Manage student, teacher, and administrator accounts across the system.
         </p>
       </div>
-      <div class="flex flex-col sm:flex-row gap-3">
+      <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+        <div
+          v-if="isLoading"
+          class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-stone-100 dark:bg-stone-800 text-xs font-medium text-slate-600 dark:text-slate-300"
+        >
+          <span class="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></span>
+          <span>Loading...</span>
+        </div>
         <button
           class="flex items-center justify-center gap-2 px-4 py-2.5 bg-surface-light dark:bg-surface-dark border border-stone-200 dark:border-stone-700 text-slate-700 dark:text-slate-200 rounded-lg text-sm font-semibold shadow-sm hover:bg-stone-50 dark:hover:bg-stone-800 transition-all shrink-0"
           type="button"

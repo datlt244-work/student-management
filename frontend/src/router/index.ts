@@ -43,7 +43,7 @@ const router = createRouter({
         {
           path: 'users',
           name: 'admin-users',
-          component: () => import('@/views/admin/DashboardView.vue'), // TODO: create UserManagement page
+          component: () => import('@/views/admin/UsersView.vue'),
         },
         {
           path: 'courses',

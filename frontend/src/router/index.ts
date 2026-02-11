@@ -25,6 +25,12 @@ const router = createRouter({
       name: 'reset-password',
       component: () => import('@/views/ResetPasswordView.vue'),
     },
+    {
+      path: '/activate',
+      name: 'activate',
+      component: () => import('@/views/ActivateView.vue'),
+      meta: { guest: true },
+    },
     // Admin routes
     {
       path: '/admin',

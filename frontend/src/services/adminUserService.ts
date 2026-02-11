@@ -153,4 +153,70 @@ export async function getAdminUserById(userId: string): Promise<AdminUserDetailR
   return (data.result || data) as AdminUserDetailResult
 }
 
+// ========== Departments (for dropdown) ==========
+
+export interface AdminDepartmentItem {
+  departmentId: number
+  name: string
+  officeLocation?: string
+}
+
+/**
+ * GET /admin/departments — Danh sách khoa (cho select khi tạo user).
+ */
+export async function getAdminDepartments(): Promise<AdminDepartmentItem[]> {
+  const response = await apiFetch('/admin/departments')
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    throw new Error(errorData?.message || `Failed to fetch departments (${response.status})`)
+  }
+  const data = await response.json()
+  return (data.result ?? data) as AdminDepartmentItem[]
+}
+
+// ========== UC-11.3a Create User Request ==========
+
+export interface AdminCreateUserRequest {
+  role: 'TEACHER' | 'STUDENT'
+  email: string
+  departmentId: number
+  firstName: string
+  lastName: string
+  phone?: string
+  // Teacher-only
+  teacherCode?: string
+  specialization?: string
+  academicRank?: string
+  officeRoom?: string
+  degreesQualification?: string
+  // Student-only
+  studentCode?: string
+  dob?: string // YYYY-MM-DD
+  gender?: 'MALE' | 'FEMALE' | 'OTHER'
+  major?: string
+  address?: string
+  year?: number
+  manageClass?: string
+}
+
+/**
+ * UC-11.3a: Tạo User (Teacher hoặc Student)
+ * POST /admin/users — 201 Created, trả về user + profile.
+ */
+export async function createAdminUser(body: AdminCreateUserRequest): Promise<AdminUserDetailResult> {
+  const response = await apiFetch('/admin/users', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    const message = errorData?.message || `Failed to create user (${response.status})`
+    throw new Error(message)
+  }
+
+  const data = await response.json()
+  return (data.result || data) as AdminUserDetailResult
+}
+
 

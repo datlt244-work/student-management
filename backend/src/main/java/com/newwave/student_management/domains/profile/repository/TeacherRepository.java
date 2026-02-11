@@ -18,4 +18,6 @@ public interface TeacherRepository extends JpaRepository<Teacher, UUID> {
     Optional<Teacher> findByUserIdWithDepartment(@Param("userId") UUID userId);
 
     Optional<Teacher> findByUser_UserId(UUID userId);
+
+    boolean existsByTeacherCode(String teacherCode);
 }

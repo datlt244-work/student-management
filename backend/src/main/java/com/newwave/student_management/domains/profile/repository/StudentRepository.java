@@ -18,4 +18,6 @@ public interface StudentRepository extends JpaRepository<Student, UUID> {
     Optional<Student> findByUserIdWithDepartment(@Param("userId") UUID userId);
 
     Optional<Student> findByUser_UserId(UUID userId);
+
+    boolean existsByStudentCode(String studentCode);
 }

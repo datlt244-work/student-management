@@ -35,6 +35,10 @@ public enum ErrorCode {
     USER_EXISTED(1200, "User already exists", HttpStatus.CONFLICT),
     USER_NOT_EXISTED(1201, "User not found", HttpStatus.NOT_FOUND),
     USER_CREATION_FAILED(1202, "Failed to create user profile", HttpStatus.INTERNAL_SERVER_ERROR),
+    TEACHER_CODE_EXISTED(1203, "Teacher code already exists", HttpStatus.CONFLICT),
+    STUDENT_CODE_EXISTED(1204, "Student code already exists", HttpStatus.CONFLICT),
+    INVALID_ROLE(1210, "Invalid role (must be TEACHER or STUDENT)", HttpStatus.BAD_REQUEST),
+    DEPARTMENT_NOT_FOUND(1220, "Department not found", HttpStatus.BAD_REQUEST),
 
     // Business errors - Address (1250-1269)
     ADDRESS_NOT_FOUND(1250, "Address not found", HttpStatus.NOT_FOUND),
@@ -55,6 +59,7 @@ public enum ErrorCode {
             HttpStatus.TOO_MANY_REQUESTS),
     PASSWORD_MISMATCH(1310, "New password and confirm password do not match", HttpStatus.BAD_REQUEST),
     INVALID_RESET_TOKEN(1311, "Invalid or expired password reset token", HttpStatus.BAD_REQUEST),
+    ACTIVATION_TOKEN_INVALID(1314, "Invalid or expired activation link. Please request a new one.", HttpStatus.BAD_REQUEST),
     INCORRECT_PASSWORD(1312, "Current password is incorrect", HttpStatus.BAD_REQUEST),
     SAME_PASSWORD(1313, "New password must be different from current password", HttpStatus.BAD_REQUEST),
 

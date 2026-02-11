@@ -25,6 +25,8 @@ public class TokenRedisService implements ITokenRedisService {
     private static final String RESET_COUNT_PREFIX = "auth:reset:count:";
     private static final String RESET_TOKEN_PREFIX = "auth:reset:token:";
     private static final String RESET_TOKEN_TO_USER_PREFIX = "auth:reset:token-to-user:";
+    private static final String ACTIVATION_TOKEN_PREFIX = "auth:activation:token:";
+    private static final String ACTIVATION_TOKEN_TO_USER_PREFIX = "auth:activation:token-to-user:";
     private static final String TOKEN_VERSION_PREFIX = "auth:token-version:";
 
     private final StringRedisTemplate stringRedisTemplate;
@@ -203,6 +205,43 @@ public class TokenRedisService implements ITokenRedisService {
         } catch (IllegalArgumentException e) {
             log.warn("Invalid UUID for reset token, value={}", userIdStr);
             return null;
+        }
+    }
+
+    @Override
+    public String createActivationToken(UUID userId, long ttlSeconds) {
+        if (userId == null) return null;
+        String token = UUID.randomUUID().toString();
+        Duration ttl = Duration.ofSeconds(ttlSeconds);
+        String userKey = ACTIVATION_TOKEN_PREFIX + userId;
+        String tokenToUserKey = ACTIVATION_TOKEN_TO_USER_PREFIX + token;
+        stringRedisTemplate.opsForValue().set(userKey, token, ttl);
+        stringRedisTemplate.opsForValue().set(tokenToUserKey, userId.toString(), ttl);
+        return token;
+    }
+
+    @Override
+    public UUID getUserIdByActivationToken(String token) {
+        if (token == null || token.isBlank()) return null;
+        String key = ACTIVATION_TOKEN_TO_USER_PREFIX + token;
+        String userIdStr = stringRedisTemplate.opsForValue().get(key);
+        if (userIdStr == null || userIdStr.isBlank()) return null;
+        try {
+            return UUID.fromString(userIdStr);
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid UUID for activation token, value={}", userIdStr);
+            return null;
+        }
+    }
+
+    @Override
+    public void deleteActivationToken(UUID userId) {
+        if (userId == null) return;
+        String userKey = ACTIVATION_TOKEN_PREFIX + userId;
+        String token = stringRedisTemplate.opsForValue().get(userKey);
+        stringRedisTemplate.delete(userKey);
+        if (token != null && !token.isBlank()) {
+            stringRedisTemplate.delete(ACTIVATION_TOKEN_TO_USER_PREFIX + token);
         }
     }
 

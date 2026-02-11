@@ -1,5 +1,6 @@
 package com.newwave.student_management.domains.auth.service;
 
+import com.newwave.student_management.domains.auth.dto.request.AdminCreateUserRequest;
 import com.newwave.student_management.domains.auth.dto.response.AdminUserDetailResponse;
 import com.newwave.student_management.domains.auth.dto.response.AdminUserListResponse;
 import com.newwave.student_management.domains.auth.entity.UserStatus;
@@ -12,6 +13,8 @@ public interface IAdminUserService {
     AdminUserListResponse getUsers(String search, UserStatus status, Integer roleId, Pageable pageable);
 
     AdminUserDetailResponse getById(UUID userId);
+
+    AdminUserDetailResponse createUser(AdminCreateUserRequest request);
 }
 
 

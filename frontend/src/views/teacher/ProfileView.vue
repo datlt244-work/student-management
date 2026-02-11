@@ -360,16 +360,12 @@ function handleCancelPassword() {
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="flex flex-col gap-2">
                   <label class="text-sm font-bold">Academic Rank</label>
-                  <select
+                  <input
                     v-model="formData.academicRank"
-                    class="form-select rounded-lg border-border-light dark:border-border-dark bg-stone-50 dark:bg-stone-800 text-sm h-10 cursor-not-allowed"
+                    class="form-input rounded-lg border-border-light dark:border-border-dark bg-stone-50 dark:bg-stone-800 text-sm h-10 cursor-not-allowed"
+                    type="text"
                     disabled
-                  >
-                    <option>Associate Professor</option>
-                    <option>Assistant Professor</option>
-                    <option>Professor</option>
-                    <option>Lecturer</option>
-                  </select>
+                  />
                 </div>
                 <div class="flex flex-col gap-2">
                   <label class="text-sm font-bold">Specialization</label>

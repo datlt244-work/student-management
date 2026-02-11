@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { watchDebounced } from '@vueuse/core'
 import { useRouter } from 'vue-router'
-import { getAdminUsers, type AdminUserListItem, type UserStatus } from '@/services/adminUserService'
+import { createAdminUser, getAdminUsers, getAdminDepartments, type AdminUserListItem, type AdminCreateUserRequest, type AdminDepartmentItem, type UserStatus } from '@/services/adminUserService'
 
 const router = useRouter()
 
@@ -89,13 +89,12 @@ const newTeacher = ref({
   lastName: '',
   email: '',
   teacherCode: '',
-  dob: '',
   phone: '',
-  department: '',
-  address: '',
+  departmentId: null as number | null,
   specialization: '',
   academicRank: '',
   officeRoom: '',
+  degreesQualification: '',
 })
 
 // Student form model
@@ -105,12 +104,22 @@ const newStudent = ref({
   email: '',
   studentCode: '',
   dob: '',
-  gender: '',
+  gender: '' as '' | 'MALE' | 'FEMALE' | 'OTHER',
   major: '',
   phone: '',
-  department: '',
+  departmentId: null as number | null,
   address: '',
+  year: null as number | null,
+  manageClass: '',
 })
+
+// Create user submit state
+const createUserLoading = ref(false)
+const createUserError = ref<string | null>(null)
+
+// Departments for select (fetch when opening Add User modal)
+const departments = ref<AdminDepartmentItem[]>([])
+const departmentsLoading = ref(false)
 
 const filteredUsers = computed(() => {
   return users.value
@@ -207,21 +216,29 @@ function handleDelete(user: AdminUserListItem) {
   // TODO: confirm + gọi API
 }
 
-function handleAddUser() {
+async function handleAddUser() {
   showAddUserModal.value = true
   newUserRole.value = 'TEACHER'
+  createUserError.value = null
+  departmentsLoading.value = true
+  try {
+    departments.value = await getAdminDepartments()
+  } catch {
+    departments.value = []
+  } finally {
+    departmentsLoading.value = false
+  }
   newTeacher.value = {
     firstName: '',
     lastName: '',
     email: '',
     teacherCode: '',
-    dob: '',
     phone: '',
-    department: '',
-    address: '',
+    departmentId: null,
     specialization: '',
     academicRank: '',
     officeRoom: '',
+    degreesQualification: '',
   }
   newStudent.value = {
     firstName: '',
@@ -232,24 +249,68 @@ function handleAddUser() {
     gender: '',
     major: '',
     phone: '',
-    department: '',
+    departmentId: null,
     address: '',
+    year: null,
+    manageClass: '',
   }
 }
 
 function closeAddUserModal() {
   showAddUserModal.value = false
+  createUserError.value = null
 }
 
-function submitNewUser() {
-  // TODO: gọi API tạo user mới
-  const payload =
-    newUserRole.value === 'TEACHER'
-      ? { role: 'TEACHER', ...newTeacher.value }
-      : { role: 'STUDENT', ...newStudent.value }
+async function submitNewUser() {
+  createUserError.value = null
+  const isTeacher = newUserRole.value === 'TEACHER'
+  const deptId = isTeacher ? newTeacher.value.departmentId : newStudent.value.departmentId
+  if (deptId == null || deptId < 1) {
+    createUserError.value = 'Please select a department.'
+    return
+  }
 
-  console.log('Create user', payload)
-  showAddUserModal.value = false
+  const payload: AdminCreateUserRequest = isTeacher
+    ? {
+        role: 'TEACHER',
+        email: newTeacher.value.email.trim(),
+        departmentId: deptId,
+        firstName: newTeacher.value.firstName.trim(),
+        lastName: newTeacher.value.lastName.trim(),
+        phone: newTeacher.value.phone?.trim() || undefined,
+        teacherCode: newTeacher.value.teacherCode.trim(),
+        specialization: newTeacher.value.specialization?.trim() || undefined,
+        academicRank: newTeacher.value.academicRank?.trim() || undefined,
+        officeRoom: newTeacher.value.officeRoom?.trim() || undefined,
+        degreesQualification: newTeacher.value.degreesQualification?.trim() || undefined,
+      }
+    : {
+        role: 'STUDENT',
+        email: newStudent.value.email.trim(),
+        departmentId: deptId,
+        firstName: newStudent.value.firstName.trim(),
+        lastName: newStudent.value.lastName.trim(),
+        phone: newStudent.value.phone?.trim() || undefined,
+        studentCode: newStudent.value.studentCode.trim(),
+        dob: newStudent.value.dob || undefined,
+        gender: newStudent.value.gender || undefined,
+        major: newStudent.value.major?.trim() || undefined,
+        address: newStudent.value.address?.trim() || undefined,
+        year: newStudent.value.year ?? undefined,
+        manageClass: newStudent.value.manageClass?.trim() || undefined,
+      }
+
+  try {
+    createUserLoading.value = true
+    await createAdminUser(payload)
+    closeAddUserModal()
+    fetchUsers()
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to create user'
+    createUserError.value = msg
+  } finally {
+    createUserLoading.value = false
+  }
 }
 
 // Import Excel modal state
@@ -575,6 +636,9 @@ function processImport() {
             </button>
           </div>
           <form class="p-6 overflow-y-auto space-y-6 flex-1" @submit.prevent="submitNewUser">
+            <div v-if="createUserError" class="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm">
+              {{ createUserError }}
+            </div>
             <div class="space-y-3">
               <label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Role Selection</label>
               <div class="flex p-1 bg-stone-100 dark:bg-stone-800 rounded-lg gap-1">
@@ -639,43 +703,34 @@ function processImport() {
                     <input
                       v-model="newTeacher.teacherCode"
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
-                      placeholder="TCH-8821"
+                      placeholder="HJ170001"
                       type="text"
                     />
                   </div>
                   <div class="space-y-1.5">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Date of Birth</label>
-                    <input
-                      v-model="newTeacher.dob"
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Department</label>
+                    <select
+                      v-model.number="newTeacher.departmentId"
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
-                      type="date"
-                    />
+                    >
+                      <option :value="null">— Select department —</option>
+                      <option
+                        v-for="d in departments"
+                        :key="d.departmentId"
+                        :value="d.departmentId"
+                      >
+                        {{ d.name }}
+                      </option>
+                    </select>
+                    <p v-if="departmentsLoading" class="text-xs text-slate-500 mt-1">Loading departments…</p>
                   </div>
                   <div class="space-y-1.5">
                     <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Phone Number</label>
                     <input
                       v-model="newTeacher.phone"
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
-                      placeholder="+1 (555) 000-0000"
+                      placeholder="0901000001"
                       type="tel"
-                    />
-                  </div>
-                  <div class="space-y-1.5">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Department</label>
-                    <input
-                      v-model="newTeacher.department"
-                      class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
-                      placeholder="Mathematics"
-                      type="text"
-                    />
-                  </div>
-                  <div class="space-y-1.5 sm:col-span-2">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Home Address</label>
-                    <input
-                      v-model="newTeacher.address"
-                      class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
-                      placeholder="123 Faculty Lane, Academic City"
-                      type="text"
                     />
                   </div>
                   <div class="space-y-1.5">
@@ -696,13 +751,22 @@ function processImport() {
                       type="text"
                     />
                   </div>
-                  <div class="space-y-1.5 sm:col-span-2">
+                  <div class="space-y-1.5">
                     <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Office Room</label>
                     <input
                       v-model="newTeacher.officeRoom"
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
-                      placeholder="Building B, Room 402"
+                      placeholder="A-301"
                       type="text"
+                    />
+                  </div>
+                  <div class="space-y-1.5 sm:col-span-2">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Degrees / Qualifications</label>
+                    <textarea
+                      v-model="newTeacher.degreesQualification"
+                      class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all resize-none"
+                      placeholder="Ph.D. in Computer Science"
+                      rows="2"
                     />
                   </div>
                 </div>
@@ -743,9 +807,26 @@ function processImport() {
                     <input
                       v-model="newStudent.studentCode"
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
-                      placeholder="STU-2024-001"
+                      placeholder="HE170001"
                       type="text"
                     />
+                  </div>
+                  <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Department</label>
+                    <select
+                      v-model.number="newStudent.departmentId"
+                      class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
+                    >
+                      <option :value="null">— Select department —</option>
+                      <option
+                        v-for="d in departments"
+                        :key="d.departmentId"
+                        :value="d.departmentId"
+                      >
+                        {{ d.name }}
+                      </option>
+                    </select>
+                    <p v-if="departmentsLoading" class="text-xs text-slate-500 mt-1">Loading departments…</p>
                   </div>
                   <div class="space-y-1.5">
                     <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Major</label>
@@ -754,6 +835,17 @@ function processImport() {
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
                       placeholder="Software Engineering"
                       type="text"
+                    />
+                  </div>
+                  <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Year (1-4)</label>
+                    <input
+                      v-model.number="newStudent.year"
+                      class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
+                      placeholder="2"
+                      type="number"
+                      min="1"
+                      max="4"
                     />
                   </div>
                   <div class="space-y-1.5">
@@ -766,28 +858,31 @@ function processImport() {
                   </div>
                   <div class="space-y-1.5">
                     <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Gender</label>
-                    <input
+                    <select
                       v-model="newStudent.gender"
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
-                      placeholder="Female"
-                      type="text"
-                    />
+                    >
+                      <option value="">— Select —</option>
+                      <option value="MALE">Male</option>
+                      <option value="FEMALE">Female</option>
+                      <option value="OTHER">Other</option>
+                    </select>
                   </div>
                   <div class="space-y-1.5">
                     <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Phone Number</label>
                     <input
                       v-model="newStudent.phone"
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
-                      placeholder="+1 (555) 123-4567"
+                      placeholder="0912000001"
                       type="tel"
                     />
                   </div>
                   <div class="space-y-1.5">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Department</label>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Manage Class</label>
                     <input
-                      v-model="newStudent.department"
+                      v-model="newStudent.manageClass"
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
-                      placeholder="Engineering"
+                      placeholder="SE1701"
                       type="text"
                     />
                   </div>
@@ -796,7 +891,7 @@ function processImport() {
                     <input
                       v-model="newStudent.address"
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
-                      placeholder="456 University Blvd, Student Housing"
+                      placeholder="100 Le Loi, HCM"
                       type="text"
                     />
                   </div>
@@ -814,9 +909,10 @@ function processImport() {
               </button>
               <button
                 type="submit"
-                class="px-5 py-2.5 rounded-lg bg-primary hover:bg-primary-dark text-white font-bold shadow-lg shadow-primary/20 transition-all active:scale-95"
+                :disabled="createUserLoading"
+                class="px-5 py-2.5 rounded-lg bg-primary hover:bg-primary-dark text-white font-bold shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Create User
+                {{ createUserLoading ? 'Creating…' : 'Create User' }}
               </button>
             </div>
           </form>

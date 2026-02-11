@@ -237,7 +237,7 @@ public class AdminUserService implements IAdminUserService {
     @Override
     @Transactional
     public AdminUserDetailResponse updateUserProfile(UUID userId, AdminUpdateUserProfileRequest request) {
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByUserIdAndDeletedAtIsNull(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
         String roleName = user.getRole() != null && user.getRole().getRoleName() != null
@@ -251,7 +251,7 @@ public class AdminUserService implements IAdminUserService {
         }
 
         if ("TEACHER".equals(roleName)) {
-            Teacher teacher = teacherRepository.findByUser_UserId(userId)
+            Teacher teacher = teacherRepository.findByUser_UserIdAndDeletedAtIsNull(userId)
                     .orElseThrow(() -> new AppException(ErrorCode.TEACHER_PROFILE_NOT_FOUND));
 
             if (department != null) {
@@ -297,7 +297,7 @@ public class AdminUserService implements IAdminUserService {
         }
 
         if ("STUDENT".equals(roleName)) {
-            Student student = studentRepository.findByUser_UserId(userId)
+            Student student = studentRepository.findByUser_UserIdAndDeletedAtIsNull(userId)
                     .orElseThrow(() -> new AppException(ErrorCode.STUDENT_PROFILE_NOT_FOUND));
 
             if (department != null) {

@@ -14,10 +14,12 @@ public interface TeacherRepository extends JpaRepository<Teacher, UUID> {
 
     @Query("SELECT t FROM Teacher t " +
             "LEFT JOIN FETCH t.department " +
-            "WHERE t.user.userId = :userId")
+            "WHERE t.user.userId = :userId AND t.deletedAt IS NULL")
     Optional<Teacher> findByUserIdWithDepartment(@Param("userId") UUID userId);
 
     Optional<Teacher> findByUser_UserId(UUID userId);
+
+    Optional<Teacher> findByUser_UserIdAndDeletedAtIsNull(UUID userId);
 
     boolean existsByTeacherCode(String teacherCode);
 }

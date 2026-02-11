@@ -926,7 +926,7 @@ watch(
                 </div>
                 <div class="space-y-1.5">
                   <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Phone</label>
-                  <input v-model="editTeacher.phone" inputmode="numeric" pattern="\d*" class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm" type="tel" />
+                  <input v-model="editTeacher.phone" inputmode="numeric" @input="editTeacher.phone = editTeacher.phone.replace(/\\D/g, '')" class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm" type="tel" />
                 </div>
                 <div class="space-y-1.5">
                   <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Specialization</label>
@@ -972,7 +972,7 @@ watch(
                 </div>
                 <div class="space-y-1.5">
                   <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Phone</label>
-                  <input v-model="editStudent.phone" inputmode="numeric" pattern="\d*" class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm" type="tel" />
+                  <input v-model="editStudent.phone" inputmode="numeric" @input="editStudent.phone = editStudent.phone.replace(/\\D/g, '')" class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm" type="tel" />
                 </div>
                 <div class="space-y-1.5">
                   <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Date of Birth</label>

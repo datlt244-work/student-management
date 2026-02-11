@@ -784,7 +784,7 @@ function processImport() {
                       v-model="newTeacher.phone"
                       required
                       inputmode="numeric"
-                      pattern="\d*"
+                      @input="newTeacher.phone = newTeacher.phone.replace(/\\D/g, '')"
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
                       placeholder="0901000001"
                       type="tel"
@@ -972,7 +972,7 @@ function processImport() {
                       v-model="newStudent.phone"
                       required
                       inputmode="numeric"
-                      pattern="\d*"
+                      @input="newStudent.phone = newStudent.phone.replace(/\\D/g, '')"
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
                       placeholder="0912000001"
                       type="tel"

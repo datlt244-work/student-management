@@ -422,6 +422,35 @@ public class AdminUserService implements IAdminUserService {
         return getById(userId);
     }
 
+    @Override
+    @Transactional
+    public void softDeleteUser(UUID targetUserId, UUID actingAdminId) {
+        if (targetUserId.equals(actingAdminId)) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Admin cannot delete own account");
+        }
+
+        User user = userRepository.findByUserIdAndDeletedAtIsNull(targetUserId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        // Soft delete user
+        user.setDeletedAt(java.time.LocalDateTime.now());
+        userRepository.save(user);
+
+        // Soft delete related profiles if exist
+        teacherRepository.findByUser_UserIdAndDeletedAtIsNull(targetUserId).ifPresent(t -> {
+            t.setDeletedAt(java.time.LocalDateTime.now());
+            teacherRepository.save(t);
+        });
+        studentRepository.findByUser_UserIdAndDeletedAtIsNull(targetUserId).ifPresent(s -> {
+            s.setDeletedAt(java.time.LocalDateTime.now());
+            studentRepository.save(s);
+        });
+
+        // Force logout: invalidate tokens
+        tokenRedisService.deleteAllRefreshTokensForUser(targetUserId);
+        tokenRedisService.incrementTokenVersion(targetUserId);
+    }
+
     private static String generateRandomPassword() {
         SecureRandom r = new SecureRandom();
         StringBuilder sb = new StringBuilder(PASSWORD_LENGTH);

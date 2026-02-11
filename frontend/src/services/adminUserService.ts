@@ -108,6 +108,21 @@ export async function updateAdminUserStatus(
   return (data.result || data) as AdminUserDetailResult
 }
 
+// ========== UC-11.7: Soft Delete User ==========
+
+export async function deleteAdminUser(userId: string): Promise<void> {
+  const endpoint = `/admin/users/${encodeURIComponent(userId)}`
+  const response = await apiFetch(endpoint, {
+    method: 'DELETE',
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    const message = errorData?.message || `Failed to delete user (${response.status})`
+    throw new Error(message)
+  }
+}
+
 // ========== API Functions ==========
 
 /**

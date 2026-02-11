@@ -21,6 +21,8 @@ public interface IAdminUserService {
     AdminUserDetailResponse updateUserProfile(UUID userId, AdminUpdateUserProfileRequest request);
 
     AdminUserDetailResponse updateUserStatus(UUID userId, AdminUpdateUserStatusRequest request);
+
+    void softDeleteUser(UUID targetUserId, UUID actingAdminId);
 }
 
 

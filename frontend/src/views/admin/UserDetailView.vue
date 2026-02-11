@@ -84,6 +84,11 @@ const blockReason = ref('')
 const blockLoading = ref(false)
 const blockError = ref<string | null>(null)
 
+// Update profile result modal
+const showUpdateResultModal = ref(false)
+const updateResultSuccess = ref(false)
+const updateResultMessage = ref('')
+
 const defaultStudent: UserDetail & {
   studentCode: string
   phone: string
@@ -412,8 +417,14 @@ async function submitUpdate() {
     await updateAdminUserProfile(userId, payload)
     closeEditModal()
     await fetchUserDetail(userId)
+    updateResultSuccess.value = true
+    updateResultMessage.value = 'Profile has been updated successfully.'
+    showUpdateResultModal.value = true
   } catch (e) {
     editError.value = e instanceof Error ? e.message : 'Failed to update user'
+    updateResultSuccess.value = false
+    updateResultMessage.value = editError.value
+    showUpdateResultModal.value = true
   } finally {
     editLoading.value = false
   }
@@ -1124,6 +1135,53 @@ watch(
               </button>
             </div>
           </form>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
+
+  <!-- Update Profile Result Modal -->
+  <Teleport to="body">
+    <Transition name="fade">
+      <div
+        v-if="showUpdateResultModal"
+        class="fixed inset-0 z-130 flex items-center justify-center p-4 backdrop-blur-md bg-stone-900/40"
+      >
+        <div
+          class="bg-surface-light dark:bg-surface-dark w-full max-w-md rounded-xl shadow-2xl overflow-hidden border border-stone-200 dark:border-stone-800 max-h-[80vh] flex flex-col"
+        >
+          <div
+            :class="[
+              'px-6 py-4 flex items-center justify-between shrink-0',
+              updateResultSuccess ? 'bg-emerald-600' : 'bg-red-600',
+            ]"
+          >
+            <h2 class="text-white text-lg font-bold flex items-center gap-2">
+              <span class="material-symbols-outlined">
+                {{ updateResultSuccess ? 'check_circle' : 'error' }}
+              </span>
+              {{ updateResultSuccess ? 'Profile Updated' : 'Update Failed' }}
+            </h2>
+            <button class="text-white/80 hover:text-white transition-colors" type="button" @click="showUpdateResultModal = false">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+
+          <div class="p-6 flex-1 flex items-center">
+            <p class="text-sm text-slate-700 dark:text-slate-200">
+              {{ updateResultMessage }}
+            </p>
+          </div>
+
+          <div class="px-6 py-4 border-t border-stone-200 dark:border-stone-800 bg-stone-50/60 dark:bg-stone-900/40 shrink-0 flex justify-end">
+            <button
+              type="button"
+              class="px-5 py-2 rounded-lg bg-primary hover:bg-primary-dark text-white text-sm font-bold shadow-md shadow-primary/30 transition-all active:scale-95"
+              @click="showUpdateResultModal = false"
+            >
+              OK
+            </button>
+          </div>
         </div>
       </div>
     </Transition>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { getAdminHealth, type AdminHealthResponse } from '@/services/adminUserService'
 
 const currentDate = computed(() => {
   return new Date().toLocaleDateString('en-US', {
@@ -9,7 +10,12 @@ const currentDate = computed(() => {
   })
 })
 
-// Placeholder stats — sẽ fetch từ API sau
+// Health state
+const health = ref<AdminHealthResponse | null>(null)
+const healthLoading = ref(false)
+const healthError = ref<string | null>(null)
+
+// Placeholder stats — có thể nối với API thống kê sau
 const stats = [
   { label: 'Total Students', value: '2,450', icon: 'school', trend: '+12%', iconBg: 'bg-orange-100 dark:bg-orange-900/20', iconColor: 'text-primary', trendColor: 'text-green-600 dark:text-green-400', trendBg: 'bg-green-50 dark:bg-green-900/20' },
   { label: 'Total Teachers', value: '120', icon: 'cast_for_education', trend: '+5%', iconBg: 'bg-blue-100 dark:bg-blue-900/20', iconColor: 'text-blue-600 dark:text-blue-400', trendColor: 'text-green-600 dark:text-green-400', trendBg: 'bg-green-50 dark:bg-green-900/20' },
@@ -50,6 +56,44 @@ function getStatusClasses(type: string) {
       }
   }
 }
+
+const healthComponents = computed(() => {
+  if (!health.value) return []
+  return [
+    { key: 'backend', label: 'Backend API', icon: 'dns', data: health.value.backend },
+    { key: 'database', label: 'PostgreSQL', icon: 'storage', data: health.value.database },
+    { key: 'redis', label: 'Redis', icon: 'memory', data: health.value.redis },
+    { key: 'minio', label: 'MinIO', icon: 'cloud_upload', data: health.value.minio },
+    { key: 'nginx', label: 'Nginx', icon: 'router', data: health.value.nginx },
+    { key: 'frontend', label: 'Frontend SPA', icon: 'web', data: health.value.frontend },
+  ]
+})
+
+function getHealthBadgeClasses(status: string) {
+  const s = status?.toUpperCase()
+  if (s === 'UP') {
+    return 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 ring-1 ring-green-600/20'
+  }
+  if (s === 'DEGRADED') {
+    return 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 ring-1 ring-yellow-600/20'
+  }
+  if (s === 'DOWN') {
+    return 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 ring-1 ring-red-600/20'
+  }
+  return 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 ring-1 ring-stone-500/20'
+}
+
+onMounted(async () => {
+  try {
+    healthLoading.value = true
+    healthError.value = null
+    health.value = await getAdminHealth()
+  } catch (e) {
+    healthError.value = e instanceof Error ? e.message : 'Failed to load system health'
+  } finally {
+    healthLoading.value = false
+  }
+})
 </script>
 
 <template>
@@ -75,25 +119,103 @@ function getStatusClasses(type: string) {
       </div>
     </div>
 
-    <!-- Stats Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-      <div
-        v-for="stat in stats"
-        :key="stat.label"
-        class="flex flex-col justify-between gap-4 rounded-xl p-6 bg-surface-light dark:bg-surface-dark border border-stone-200 dark:border-stone-800 shadow-sm hover:shadow-md transition-shadow"
-      >
-        <div class="flex justify-between items-start">
-          <div :class="['p-2 rounded-lg', stat.iconBg, stat.iconColor]">
-            <span class="material-symbols-outlined">{{ stat.icon }}</span>
+    <!-- System Health -->
+    <div class="grid grid-cols-1 xl:grid-cols-4 gap-6 items-start">
+      <div class="xl:col-span-2 space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <h2 class="text-slate-900 dark:text-white text-xl font-bold">System Health</h2>
+            <span
+              v-if="health"
+              :class="[
+                'inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold',
+                getHealthBadgeClasses(health.overallStatus),
+              ]"
+            >
+              <span
+                :class="[
+                  'w-1.5 h-1.5 rounded-full',
+                  health?.overallStatus === 'UP'
+                    ? 'bg-green-500 animate-pulse'
+                    : health?.overallStatus === 'DEGRADED'
+                      ? 'bg-yellow-500 animate-pulse'
+                      : 'bg-red-500',
+                ]"
+              ></span>
+              {{ health.overallStatus || 'UNKNOWN' }}
+            </span>
           </div>
-          <span :class="['flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full', stat.trendColor, stat.trendBg]">
-            <span class="material-symbols-outlined text-[14px]">trending_up</span>
-            {{ stat.trend }}
+          <span v-if="health" class="text-xs text-slate-500 dark:text-slate-400">
+            Checked at: {{ new Date(health.timestamp).toLocaleTimeString() }}
           </span>
         </div>
-        <div>
-          <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">{{ stat.label }}</p>
-          <p class="text-slate-900 dark:text-white text-3xl font-bold mt-1">{{ stat.value }}</p>
+        <div
+          v-if="healthLoading"
+          class="rounded-xl border border-stone-200 dark:border-stone-800 bg-surface-light dark:bg-surface-dark px-4 py-3 text-sm text-slate-500 dark:text-slate-300 flex items-center gap-2"
+        >
+          <span class="material-symbols-outlined animate-spin text-primary">progress_activity</span>
+          Checking system health…
+        </div>
+        <div
+          v-else-if="healthError"
+          class="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 dark:text-red-300 flex items-center gap-2"
+        >
+          <span class="material-symbols-outlined">error</span>
+          {{ healthError }}
+        </div>
+        <div
+          v-else
+          class="grid grid-cols-1 sm:grid-cols-2 gap-4"
+        >
+          <div
+            v-for="hc in healthComponents"
+            :key="hc.key"
+            class="rounded-xl border border-stone-200 dark:border-stone-800 bg-surface-light dark:bg-surface-dark p-4 flex flex-col gap-2"
+          >
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary text-[20px]">{{ hc.icon }}</span>
+                <span class="text-sm font-semibold text-slate-900 dark:text-white">{{ hc.label }}</span>
+              </div>
+              <span
+                :class="[
+                  'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold',
+                  getHealthBadgeClasses(hc.data.status),
+                ]"
+              >
+                {{ hc.data.status || 'UNKNOWN' }}
+              </span>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
+              {{ hc.data.details }}
+            </p>
+            <p v-if="hc.data.latencyMs != null" class="text-[11px] text-slate-400 mt-1">
+              Latency: {{ hc.data.latencyMs }} ms
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div
+          v-for="stat in stats"
+          :key="stat.label"
+          class="flex flex-col justify-between gap-4 rounded-xl p-6 bg-surface-light dark:bg-surface-dark border border-stone-200 dark:border-stone-800 shadow-sm hover:bg-stone-50 dark:hover:bg-stone-800/60 transition-all"
+        >
+          <div class="flex justify-between items-start">
+            <div :class="['p-2 rounded-lg', stat.iconBg, stat.iconColor]">
+              <span class="material-symbols-outlined">{{ stat.icon }}</span>
+            </div>
+            <span :class="['flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full', stat.trendColor, stat.trendBg]">
+              <span class="material-symbols-outlined text-[14px]">trending_up</span>
+              {{ stat.trend }}
+            </span>
+          </div>
+          <div>
+            <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">{{ stat.label }}</p>
+            <p class="text-slate-900 dark:text-white text-3xl font-bold mt-1">{{ stat.value }}</p>
+          </div>
         </div>
       </div>
     </div>

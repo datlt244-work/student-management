@@ -1,3 +1,6 @@
+ # Rate limit cho API: tối đa 10 request/giây mỗi IP, cho phép burst thêm 20 request
+limit_req_zone $binary_remote_addr zone=api_rate_limit:10m rate=10r/s;
+
 server {
     listen ${VITE_NGINX_LISTEN_PORT};
     server_name ${VITE_NGINX_SERVER_NAME}; # Nhận diện domain của bạn
@@ -17,9 +20,11 @@ server {
         try_files $uri $uri/ /index.html;
     }
 
-    # 2. Cấu hình Reverse Proxy cho API Backend
+    # 2. Cấu hình Reverse Proxy cho API Backend (áp dụng rate limit)
     # Khi gọi admin-datlt244.io.vn/api/v1/... -> Chuyển vào container Backend
     location ${VITE_API_BASE_PATH}/ {
+        # Áp dụng rate limit theo IP
+        limit_req zone=api_rate_limit burst=20 nodelay;
         # "${VITE_BACKEND_CONTAINER_NAME}" là container_name của backend (trong network chung)
         # Port ${VITE_BACKEND_CONTAINER_PORT} là port nội bộ của container backend
         proxy_pass http://${VITE_BACKEND_CONTAINER_NAME}:${VITE_BACKEND_CONTAINER_PORT}${VITE_API_BASE_PATH}/;

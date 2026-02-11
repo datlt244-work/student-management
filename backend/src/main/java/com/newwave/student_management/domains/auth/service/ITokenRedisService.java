@@ -28,6 +28,13 @@ public interface ITokenRedisService {
 
     UUID getUserIdByResetToken(String token);
 
+    /** Activation token for new users (TTL e.g. 72h). */
+    String createActivationToken(UUID userId, long ttlSeconds);
+
+    UUID getUserIdByActivationToken(String token);
+
+    void deleteActivationToken(UUID userId);
+
     int deleteAllRefreshTokensForUser(UUID userId);
 
     /**

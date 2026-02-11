@@ -13,10 +13,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -102,6 +104,21 @@ public class AuthController {
                 java.util.Map.of(
                         "message",
                         "Password reset successfully. All sessions have been logged out. Please login again."
+                )
+        );
+    }
+
+    @GetMapping("/activate")
+    @Operation(
+            summary = "Kích hoạt tài khoản",
+            description = "Public. Dùng token từ link trong email welcome để kích hoạt tài khoản (status=ACTIVE, emailVerified=true). Token có hiệu lực 72h."
+    )
+    public ApiResponse<Object> activate(@RequestParam String token) {
+        authService.activateAccount(token != null ? token.trim() : "");
+        return ApiResponse.success(
+                java.util.Map.of(
+                        "message",
+                        "Account activated successfully. You can now log in."
                 )
         );
     }

@@ -21,5 +21,10 @@ public interface IAuthService {
 
     void resetPassword(ResetPasswordRequest request);
 
+    /**
+     * Kích hoạt tài khoản mới qua link trong email (token từ Redis, TTL 72h).
+     */
+    void activateAccount(String token);
+
     ChangePasswordResponse changePassword(UUID userId, ChangePasswordRequest request);
 }

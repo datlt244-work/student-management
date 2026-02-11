@@ -22,6 +22,12 @@ public class NoOpMailService implements IMailService {
 
     @Override
     @Async
+    public void sendWelcomeEmail(String toEmail, String firstName, String lastName, String plainPassword, String activationToken) {
+        log.debug("[No-op] Welcome email would be sent to: {}", toEmail);
+    }
+
+    @Override
+    @Async
     public void sendEmail(String toEmail, String subject, String htmlContent) {
         log.debug("[No-op] Email would be sent to: {} subject: {}", toEmail, subject);
     }

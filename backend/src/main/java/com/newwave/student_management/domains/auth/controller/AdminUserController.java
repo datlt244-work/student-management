@@ -1,18 +1,24 @@
 package com.newwave.student_management.domains.auth.controller;
 
 import com.newwave.student_management.common.dto.ApiResponse;
+import com.newwave.student_management.domains.auth.dto.request.AdminCreateUserRequest;
 import com.newwave.student_management.domains.auth.dto.response.AdminUserDetailResponse;
 import com.newwave.student_management.domains.auth.dto.response.AdminUserListResponse;
 import com.newwave.student_management.domains.auth.entity.UserStatus;
 import com.newwave.student_management.domains.auth.service.IAdminUserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -54,6 +60,18 @@ public class AdminUserController {
     public ApiResponse<AdminUserDetailResponse> getUserById(@PathVariable UUID userId) {
         AdminUserDetailResponse response = adminUserService.getById(userId);
         return ApiResponse.success(response);
+    }
+
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "UC-11.3a - Tạo User (Teacher hoặc Student)",
+            description = "Tạo tài khoản mới với role TEACHER hoặc STUDENT. Password tự sinh, gửi welcome email với link kích hoạt (72h). " +
+                    "User tạo xong có status PENDING_VERIFICATION. Không tạo tài khoản ADMIN."
+    )
+    public ResponseEntity<ApiResponse<AdminUserDetailResponse>> createUser(@Valid @RequestBody AdminCreateUserRequest request) {
+        AdminUserDetailResponse response = adminUserService.createUser(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
     }
 }
 

@@ -293,6 +293,25 @@ public class AuthService implements IAuthService {
                 .build();
     }
 
+    @Override
+    public void activateAccount(String token) {
+        if (token == null || token.isBlank()) {
+            throw new AppException(ErrorCode.TOKEN_REQUIRED);
+        }
+        UUID userId = tokenRedisService.getUserIdByActivationToken(token);
+        if (userId == null) {
+            throw new AppException(ErrorCode.ACTIVATION_TOKEN_INVALID);
+        }
+        User user = userRepository.findByUserIdAndDeletedAtIsNull(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        user.setStatus(UserStatus.ACTIVE);
+        user.setEmailVerified(true);
+        user.setEmailVerifiedAt(LocalDateTime.now());
+        userRepository.save(user);
+        tokenRedisService.deleteActivationToken(userId);
+        log.info("Account activated for userId={}", userId);
+    }
+
     private String toFullAvatarUrl(String profilePictureUrl) {
         if (profilePictureUrl == null || profilePictureUrl.isBlank()) return null;
         if (profilePictureUrl.startsWith("http://") || profilePictureUrl.startsWith("https://")) return profilePictureUrl;

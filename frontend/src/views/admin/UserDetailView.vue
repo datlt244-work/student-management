@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
+import { getAdminUserById, type AdminUserDetailResult } from '@/services/adminUserService'
 
 interface StudentCourse {
   code: string
@@ -26,6 +27,8 @@ interface UserDetail {
 const route = useRoute()
 
 const activeTab = ref<'personal' | 'academic' | 'grades'>('personal')
+const loading = ref(false)
+const fetchError = ref<string | null>(null)
 
 const defaultStudent: UserDetail & {
   studentCode: string
@@ -74,7 +77,85 @@ const defaultStudent: UserDetail & {
   ],
 }
 
-// Placeholder data — sẽ fetch từ API sau dựa trên route.params.userId
+/** Map API user detail to view UserDetail shape */
+function mapDetailToUserDetail(d: AdminUserDetailResult): UserDetail {
+  const base = {
+    id: d.userId,
+    userId: d.userId,
+    email: d.email,
+    role: d.role.roleName,
+    status: d.status,
+    avatar: undefined as string | undefined,
+  }
+
+  if (d.studentProfile) {
+    const p = d.studentProfile
+    const name = [p.firstName, p.lastName].filter(Boolean).join(' ') || d.email
+    const dobFormatted = p.dob
+      ? new Date(p.dob + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+      : '—'
+    return {
+      ...base,
+      ...defaultStudent,
+      name,
+      userId: d.userId,
+      email: p.email ?? d.email,
+      role: 'STUDENT',
+      status: d.status,
+      studentCode: p.studentCode ?? '—',
+      phone: p.phone ?? '—',
+      dob: dobFormatted,
+      gender: p.gender ?? '—',
+      address: p.address ?? '—',
+      major: p.major ?? '—',
+      gpa: p.gpa ?? 0,
+      gpaMax: 4.0,
+      year: p.year != null ? `Year ${p.year}` : '—',
+      manageClass: p.manageClass ?? '—',
+      advisor: '—',
+      currentSemester: '—',
+      attendance: 0,
+      credits: 0,
+      creditsTotal: 0,
+      creditsProgress: 0,
+      courses: [],
+    }
+  }
+
+  if (d.teacherProfile) {
+    const p = d.teacherProfile
+    const name = [p.firstName, p.lastName].filter(Boolean).join(' ') || d.email
+    return {
+      ...base,
+      ...teacherData,
+      name,
+      userId: d.userId,
+      email: p.email ?? d.email,
+      role: 'TEACHER',
+      status: d.status,
+      title: p.academicRank ?? '—',
+      employeeId: p.teacherCode ?? '—',
+      department: p.department?.name ?? '—',
+      phone: p.phone ?? '—',
+      office: p.officeRoom ?? '—',
+      specializations: p.specialization ? [p.specialization] : [],
+      degreesQualification: p.degreesQualification ?? null,
+      classes: [],
+      schedule: [],
+    }
+  }
+
+  // ADMIN or no profile
+  return {
+    ...base,
+    name: d.email,
+    userId: d.userId,
+    role: d.role.roleName,
+    status: d.status,
+  } as UserDetail
+}
+
+// Placeholder data — overwritten by fetch
 const user = ref<UserDetail>(defaultStudent)
 
 // Teacher-specific data
@@ -91,11 +172,7 @@ const teacherData: UserDetail = {
   department: 'Mathematics',
   phone: '+1 (555) 012-3456',
   office: 'Science Building, Room 402',
-  degrees: [
-    'Ph.D. in Theoretical Mathematics - Stanford University',
-    'M.Sc. in Applied Statistics - MIT',
-    'B.A. in Mathematics - UC Berkeley',
-  ],
+  degreesQualification: 'Ph.D. in Theoretical Mathematics - Stanford University\nM.Sc. in Applied Statistics - MIT\nB.A. in Mathematics - UC Berkeley',
   specializations: ['Calculus', 'Linear Algebra', 'Graph Theory', 'Number Theory'],
   experience: 'Over 12 years of teaching experience in higher education. Joined the institution in 2018. Previously held research positions at the Global Math Research Institute.',
   classes: [
@@ -142,17 +219,27 @@ const studentCourses = computed<StudentCourse[]>(() => {
   return Array.isArray(c) ? c : []
 })
 
+async function fetchUserDetail(userId: string) {
+  loading.value = true
+  fetchError.value = null
+  try {
+    const data = await getAdminUserById(userId)
+    user.value = mapDetailToUserDetail(data)
+  } catch (e) {
+    const message = e instanceof Error ? e.message : 'Failed to load user'
+    fetchError.value = message === 'USER_NOT_FOUND' ? 'User not found.' : message
+    user.value = defaultStudent
+  } finally {
+    loading.value = false
+  }
+}
+
 // Fetch user khi route thay đổi
 watch(
-  () => route.params.userId,
+  () => route.params.userId as string | undefined,
   (userId) => {
     if (userId) {
-      // TODO: fetch user từ API — tạm dùng mock theo userId
-      if (String(userId).includes('0002') || String(userId).includes('002')) {
-        user.value = { ...teacherData }
-      } else {
-        user.value = { ...defaultStudent }
-      }
+      fetchUserDetail(userId)
     }
   },
   { immediate: true },
@@ -170,8 +257,20 @@ watch(
       <span class="text-slate-900 dark:text-white">{{ isTeacher ? 'Teacher Profile' : 'Student Details' }}</span>
     </nav>
 
+    <!-- Loading -->
+    <div v-if="loading" class="flex items-center justify-center py-16">
+      <span class="material-symbols-outlined animate-spin text-4xl text-primary">progress_activity</span>
+    </div>
+
+    <!-- Error -->
+    <div v-else-if="fetchError" class="rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/10 p-4 flex items-center gap-3">
+      <span class="material-symbols-outlined text-red-500">error</span>
+      <p class="text-red-700 dark:text-red-400 font-medium">{{ fetchError }}</p>
+      <RouterLink :to="{ name: 'admin-users' }" class="ml-auto text-red-600 dark:text-red-400 hover:underline font-semibold">Back to list</RouterLink>
+    </div>
+
     <!-- ========== STUDENT LAYOUT ========== -->
-    <template v-if="!isTeacher">
+    <template v-else-if="!isTeacher">
     <!-- Header -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <h1 class="text-slate-900 dark:text-white text-3xl font-bold leading-tight tracking-tight">Student Profile</h1>
@@ -327,8 +426,8 @@ watch(
                     <p class="text-slate-900 dark:text-white font-bold">{{ user.year }}</p>
                   </div>
                   <div class="bg-stone-50 dark:bg-stone-900/50 p-5 rounded-lg border border-stone-100 dark:border-stone-800">
-                    <p class="text-xs font-bold text-slate-400 uppercase mb-1">Advisor</p>
-                    <p class="text-slate-900 dark:text-white font-bold">{{ user.advisor }}</p>
+                    <p class="text-xs font-bold text-slate-400 uppercase mb-1">Class</p>
+                    <p class="text-slate-900 dark:text-white font-bold">{{ user.manageClass ?? '—' }}</p>
                   </div>
                 </div>
               </div>
@@ -521,16 +620,7 @@ watch(
           <div class="grid md:grid-cols-2 gap-6">
             <div>
               <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Degrees & Qualifications</h4>
-              <ul class="space-y-3">
-                <li
-                  v-for="(deg, i) in (user.degrees as string[])"
-                  :key="i"
-                  class="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-300"
-                >
-                  <span class="w-1.5 h-1.5 rounded-full bg-primary shrink-0"></span>
-                  {{ deg }}
-                </li>
-              </ul>
+              <p class="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-line">{{ user.degreesQualification ?? '—' }}</p>
             </div>
             <div>
               <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Specializations</h4>
@@ -543,8 +633,6 @@ watch(
                   {{ spec }}
                 </span>
               </div>
-              <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mt-6 mb-3">Professional Experience</h4>
-              <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{{ user.experience }}</p>
             </div>
           </div>
         </div>

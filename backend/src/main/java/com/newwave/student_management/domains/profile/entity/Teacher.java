@@ -61,5 +61,11 @@ public class Teacher extends JpaBaseEntity {
 
     @Column(name = "office_room", length = 50)
     private String officeRoom;
+
+    /**
+     * Degrees / qualifications (free text, e.g. "Ph.D. Mathematics - Stanford; M.Sc. Statistics - MIT").
+     */
+    @Column(name = "degrees_qualification", columnDefinition = "TEXT")
+    private String degreesQualification;
 }
 

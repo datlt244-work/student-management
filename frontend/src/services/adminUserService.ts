@@ -29,6 +29,57 @@ export interface AdminUserListResult {
   totalPages: number
 }
 
+// UC-11.2: User detail + profile
+export interface AdminUserDetailDepartment {
+  departmentId: number
+  name: string
+}
+
+export interface AdminUserDetailStudentProfile {
+  studentId: string
+  studentCode: string
+  firstName: string
+  lastName: string
+  dob: string | null
+  gender: string | null
+  major: string | null
+  email: string
+  phone: string | null
+  address: string | null
+  gpa: number | null
+  year: number | null
+  manageClass: string | null
+  department: AdminUserDetailDepartment | null
+}
+
+export interface AdminUserDetailTeacherProfile {
+  teacherId: string
+  teacherCode: string
+  firstName: string
+  lastName: string
+  email: string
+  phone: string | null
+  specialization: string | null
+  academicRank: string | null
+  officeRoom: string | null
+  degreesQualification: string | null
+  department: AdminUserDetailDepartment | null
+}
+
+export interface AdminUserDetailResult {
+  userId: string
+  email: string
+  role: AdminUserRoleSummary
+  status: UserStatus
+  emailVerified: boolean
+  banReason: string | null
+  lastLoginAt: string | null
+  loginCount: number
+  createdAt: string
+  studentProfile: AdminUserDetailStudentProfile | null
+  teacherProfile: AdminUserDetailTeacherProfile | null
+}
+
 // ========== API Functions ==========
 
 /**
@@ -78,6 +129,28 @@ export async function getAdminUsers(params: {
 
   const data = await response.json()
   return (data.result || data) as AdminUserListResult
+}
+
+/**
+ * UC-11.2: Xem chi tiết User (Admin)
+ * Endpoint: GET /admin/users/{userId}
+ * Trả về user + teacherProfile hoặc studentProfile theo role.
+ */
+export async function getAdminUserById(userId: string): Promise<AdminUserDetailResult> {
+  const endpoint = `/admin/users/${encodeURIComponent(userId)}`
+  const response = await apiFetch(endpoint)
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    const message = errorData?.message || `Failed to fetch user (${response.status})`
+    if (response.status === 404) {
+      throw new Error('USER_NOT_FOUND')
+    }
+    throw new Error(message)
+  }
+
+  const data = await response.json()
+  return (data.result || data) as AdminUserDetailResult
 }
 
 

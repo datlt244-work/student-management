@@ -5,8 +5,10 @@ import {
   getAdminDepartments,
   getAdminUserById,
   updateAdminUserProfile,
+  updateAdminUserStatus,
   type AdminDepartmentItem,
   type AdminUpdateUserProfileRequest,
+  type AdminUpdateUserStatusRequest,
   type AdminUserDetailResult,
 } from '@/services/adminUserService'
 
@@ -75,6 +77,12 @@ const editStudent = ref({
   year: null as number | null,
   manageClass: '',
 })
+
+// Block modal state
+const showBlockModal = ref(false)
+const blockReason = ref('')
+const blockLoading = ref(false)
+const blockError = ref<string | null>(null)
 
 const defaultStudent: UserDetail & {
   studentCode: string
@@ -244,8 +252,15 @@ const statusBadgeClasses = computed(() => {
 })
 
 function handleBlock() {
-  // TODO: confirm + gọi API block
-  console.log('Block user')
+  const currentStatus = user.value.status
+  if (currentStatus === 'BLOCKED') {
+    // Unblock without reason
+    void submitStatusChange('ACTIVE')
+  } else {
+    blockError.value = null
+    blockReason.value = ''
+    showBlockModal.value = true
+  }
 }
 
 function handleEdit() {
@@ -329,6 +344,28 @@ async function fetchUserDetail(userId: string) {
     detail.value = null
   } finally {
     loading.value = false
+  }
+}
+
+async function submitStatusChange(targetStatus: 'ACTIVE' | 'INACTIVE' | 'BLOCKED') {
+  const userId = route.params.userId as string | undefined
+  if (!userId) return
+
+  const payload: AdminUpdateUserStatusRequest = {
+    status: targetStatus,
+    banReason: targetStatus === 'BLOCKED' ? blockReason.value.trim() || undefined : undefined,
+  }
+
+  try {
+    blockLoading.value = true
+    blockError.value = null
+    await updateAdminUserStatus(userId, payload)
+    showBlockModal.value = false
+    await fetchUserDetail(userId)
+  } catch (e) {
+    blockError.value = e instanceof Error ? e.message : 'Failed to update status'
+  } finally {
+    blockLoading.value = false
   }
 }
 
@@ -427,8 +464,8 @@ watch(
           class="flex items-center gap-2 px-5 py-2.5 border border-red-500 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg font-bold transition-all active:scale-95"
           @click="handleBlock"
         >
-          <span class="material-symbols-outlined text-[20px]">block</span>
-          Block Account
+          <span class="material-symbols-outlined text-[20px]">{{ user.status === 'BLOCKED' ? 'how_to_reg' : 'block' }}</span>
+          {{ user.status === 'BLOCKED' ? 'Unblock Account' : 'Block Account' }}
         </button>
         <button
           class="flex items-center gap-2 px-6 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-lg font-bold shadow-lg shadow-primary/20 transition-all active:scale-95"
@@ -664,8 +701,8 @@ watch(
           class="flex items-center gap-2 px-4 py-2 border border-red-200 dark:border-red-900/30 bg-white dark:bg-stone-900 text-red-600 dark:text-red-400 rounded-lg text-sm font-semibold hover:bg-red-50 dark:hover:bg-red-900/10 transition-all"
           @click="handleBlock"
         >
-          <span class="material-symbols-outlined text-[18px]">block</span>
-          Block Account
+          <span class="material-symbols-outlined text-[18px]">{{ user.status === 'BLOCKED' ? 'how_to_reg' : 'block' }}</span>
+          {{ user.status === 'BLOCKED' ? 'Unblock Account' : 'Block Account' }}
         </button>
         <button
           class="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg text-sm font-bold shadow-lg shadow-primary/20 transition-all active:scale-95"
@@ -1020,6 +1057,70 @@ watch(
                 class="px-5 py-2.5 rounded-lg bg-primary hover:bg-primary-dark text-white font-bold shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {{ editLoading ? 'Saving…' : 'Save Changes' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
+
+  <!-- Block User Modal -->
+  <Teleport to="body">
+    <Transition name="fade">
+      <div
+        v-if="showBlockModal"
+        class="fixed inset-0 z-120 flex items-center justify-center p-4 backdrop-blur-md bg-stone-900/40"
+      >
+        <div
+          class="bg-surface-light dark:bg-surface-dark w-full max-w-md rounded-xl shadow-2xl overflow-hidden border border-stone-200 dark:border-stone-800 max-h-[90vh] flex flex-col"
+        >
+          <div class="bg-red-600 px-6 py-4 flex items-center justify-between shrink-0">
+            <h2 class="text-white text-lg font-bold flex items-center gap-2">
+              <span class="material-symbols-outlined">block</span>
+              Block User
+            </h2>
+            <button class="text-white/80 hover:text-white transition-colors" type="button" @click="showBlockModal = false">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+
+          <form class="p-6 space-y-4 flex-1" @submit.prevent="submitStatusChange('BLOCKED')">
+            <div
+              v-if="blockError"
+              class="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm"
+            >
+              {{ blockError }}
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-300">
+              Please provide a reason for blocking this account. The user will be logged out from all devices.
+            </p>
+            <div class="space-y-1.5">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                Ban Reason <span class="text-red-500">*</span>
+              </label>
+              <textarea
+                v-model="blockReason"
+                rows="3"
+                class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-red-500 focus:border-red-500 transition-all"
+                placeholder="Vi phạm nội quy trường…"
+              />
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-4 border-t border-stone-200 dark:border-stone-800 shrink-0">
+              <button
+                type="button"
+                class="px-4 py-2 rounded-lg text-slate-600 dark:text-slate-400 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-sm font-bold transition-all"
+                @click="showBlockModal = false"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                :disabled="blockLoading || !blockReason.trim()"
+                class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-bold shadow-lg shadow-red-600/30 transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {{ blockLoading ? 'Blocking…' : 'Confirm Block' }}
               </button>
             </div>
           </form>

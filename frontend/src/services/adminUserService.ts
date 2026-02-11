@@ -81,6 +81,33 @@ export interface AdminUserDetailResult {
   teacherProfile: AdminUserDetailTeacherProfile | null
 }
 
+// ========== UC-11.5: Update User Status ==========
+
+export interface AdminUpdateUserStatusRequest {
+  status: UserStatus
+  banReason?: string
+}
+
+export async function updateAdminUserStatus(
+  userId: string,
+  body: AdminUpdateUserStatusRequest,
+): Promise<AdminUserDetailResult> {
+  const endpoint = `/admin/users/${encodeURIComponent(userId)}/status`
+  const response = await apiFetch(endpoint, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    const message = errorData?.message || `Failed to update user status (${response.status})`
+    throw new Error(message)
+  }
+
+  const data = await response.json()
+  return (data.result || data) as AdminUserDetailResult
+}
+
 // ========== API Functions ==========
 
 /**

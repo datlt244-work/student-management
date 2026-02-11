@@ -2,6 +2,7 @@ package com.newwave.student_management.domains.auth.service;
 
 import com.newwave.student_management.domains.auth.dto.request.AdminCreateUserRequest;
 import com.newwave.student_management.domains.auth.dto.request.AdminUpdateUserProfileRequest;
+import com.newwave.student_management.domains.auth.dto.request.AdminUpdateUserStatusRequest;
 import com.newwave.student_management.domains.auth.dto.response.AdminUserDetailResponse;
 import com.newwave.student_management.domains.auth.dto.response.AdminUserListResponse;
 import com.newwave.student_management.domains.auth.entity.UserStatus;
@@ -18,6 +19,8 @@ public interface IAdminUserService {
     AdminUserDetailResponse createUser(AdminCreateUserRequest request);
 
     AdminUserDetailResponse updateUserProfile(UUID userId, AdminUpdateUserProfileRequest request);
+
+    AdminUserDetailResponse updateUserStatus(UUID userId, AdminUpdateUserStatusRequest request);
 }
 
 

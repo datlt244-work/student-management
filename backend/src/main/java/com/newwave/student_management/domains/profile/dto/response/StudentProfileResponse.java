@@ -26,6 +26,8 @@ public class StudentProfileResponse {
     private String phone;
     private String address;
     private BigDecimal gpa;
+    private Integer year;
+    private String manageClass;
     private DepartmentResponse department;
     private SemesterResponse currentSemester;
 
@@ -42,6 +44,8 @@ public class StudentProfileResponse {
                 .phone(student.getPhone())
                 .address(student.getAddress())
                 .gpa(student.getGpa())
+                .year(student.getYear())
+                .manageClass(student.getManageClass())
                 .department(DepartmentResponse.fromEntity(student.getDepartment()))
                 .build();
     }

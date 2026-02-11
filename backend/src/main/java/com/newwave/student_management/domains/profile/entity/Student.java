@@ -72,5 +72,17 @@ public class Student extends JpaBaseEntity {
      */
     @Column(name = "gpa", precision = 3, scale = 2)
     private BigDecimal gpa;
+
+    /**
+     * Year of study (e.g. 1, 2, 3, 4).
+     */
+    @Column(name = "year")
+    private Integer year;
+
+    /**
+     * Manage class / class code (e.g. SE1701, IT-01).
+     */
+    @Column(name = "manage_class", length = 50)
+    private String manageClass;
 }
 

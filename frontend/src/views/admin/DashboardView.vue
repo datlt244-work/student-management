@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { getAdminHealth, type AdminHealthResponse } from '@/services/adminUserService'
+import { getSystemHealthOverall, type SystemHealthResponse } from '@/services/systemStatusService'
 
 const currentDate = computed(() => {
   return new Date().toLocaleDateString('en-US', {
@@ -10,8 +10,8 @@ const currentDate = computed(() => {
   })
 })
 
-// Health state
-const health = ref<AdminHealthResponse | null>(null)
+// Health state (tổng quan từ /admin/system/health/overall)
+const health = ref<SystemHealthResponse | null>(null)
 const healthLoading = ref(false)
 const healthError = ref<string | null>(null)
 
@@ -57,14 +57,27 @@ function getStatusClasses(type: string) {
   }
 }
 
+async function refreshHealth() {
+  try {
+    healthLoading.value = true
+    healthError.value = null
+    health.value = await getSystemHealthOverall()
+  } catch (e) {
+    healthError.value = e instanceof Error ? e.message : 'Failed to load system health'
+  } finally {
+    healthLoading.value = false
+  }
+}
+
 const healthComponents = computed(() => {
   if (!health.value) return []
   return [
-    { key: 'backend', label: 'Backend API', icon: 'dns', data: health.value.backend },
-    { key: 'database', label: 'PostgreSQL', icon: 'storage', data: health.value.database },
+    { key: 'api', label: 'API (Backend)', icon: 'dns', data: health.value.api },
+    { key: 'database', label: 'Database (PostgreSQL)', icon: 'storage', data: health.value.database },
     { key: 'redis', label: 'Redis', icon: 'memory', data: health.value.redis },
-    { key: 'minio', label: 'MinIO', icon: 'cloud_upload', data: health.value.minio },
-    { key: 'nginx', label: 'Nginx', icon: 'router', data: health.value.nginx },
+    { key: 'mail', label: 'Mail (SMTP)', icon: 'mail', data: health.value.mail },
+    { key: 'minio', label: 'MinIO (Storage)', icon: 'cloud_upload', data: health.value.minio },
+    { key: 'nginx', label: 'Nginx (Reverse Proxy)', icon: 'router', data: health.value.nginx },
     { key: 'frontend', label: 'Frontend SPA', icon: 'web', data: health.value.frontend },
   ]
 })
@@ -83,17 +96,7 @@ function getHealthBadgeClasses(status: string) {
   return 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 ring-1 ring-stone-500/20'
 }
 
-onMounted(async () => {
-  try {
-    healthLoading.value = true
-    healthError.value = null
-    health.value = await getAdminHealth()
-  } catch (e) {
-    healthError.value = e instanceof Error ? e.message : 'Failed to load system health'
-  } finally {
-    healthLoading.value = false
-  }
-})
+onMounted(refreshHealth)
 </script>
 
 <template>
@@ -120,8 +123,7 @@ onMounted(async () => {
     </div>
 
     <!-- System Health -->
-    <div class="grid grid-cols-1 xl:grid-cols-4 gap-6 items-start">
-      <div class="xl:col-span-2 space-y-4">
+    <div class="space-y-4">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
             <h2 class="text-slate-900 dark:text-white text-xl font-bold">System Health</h2>
@@ -145,9 +147,25 @@ onMounted(async () => {
               {{ health.overallStatus || 'UNKNOWN' }}
             </span>
           </div>
-          <span v-if="health" class="text-xs text-slate-500 dark:text-slate-400">
-            Checked at: {{ new Date(health.timestamp).toLocaleTimeString() }}
-          </span>
+          <div class="flex items-center gap-3">
+            <span v-if="health" class="text-xs text-slate-500 dark:text-slate-400">
+              Checked at: {{ new Date(health.timestamp).toLocaleTimeString() }}
+            </span>
+            <button
+              type="button"
+              class="inline-flex items-center gap-1 rounded-md border border-stone-200 dark:border-stone-700 bg-white dark:bg-surface-dark px-2.5 py-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors disabled:opacity-60"
+              :disabled="healthLoading"
+              @click="refreshHealth"
+            >
+              <span
+                class="material-symbols-outlined text-[16px]"
+                :class="healthLoading ? 'animate-spin text-primary' : 'text-slate-500 dark:text-slate-300'"
+              >
+                refresh
+              </span>
+              <span>{{ healthLoading ? 'Refreshing…' : 'Refresh' }}</span>
+            </button>
+          </div>
         </div>
         <div
           v-if="healthLoading"
@@ -165,7 +183,7 @@ onMounted(async () => {
         </div>
         <div
           v-else
-          class="grid grid-cols-1 sm:grid-cols-2 gap-4"
+          class="grid grid-cols-1 md:grid-cols-3 gap-4"
         >
           <div
             v-for="hc in healthComponents"
@@ -187,35 +205,34 @@ onMounted(async () => {
               </span>
             </div>
             <p class="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
-              {{ hc.data.details }}
+              {{ hc.data.message }}
             </p>
             <p v-if="hc.data.latencyMs != null" class="text-[11px] text-slate-400 mt-1">
               Latency: {{ hc.data.latencyMs }} ms
             </p>
           </div>
         </div>
-      </div>
+    </div>
 
-      <!-- Stats Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div
-          v-for="stat in stats"
-          :key="stat.label"
-          class="flex flex-col justify-between gap-4 rounded-xl p-6 bg-surface-light dark:bg-surface-dark border border-stone-200 dark:border-stone-800 shadow-sm hover:bg-stone-50 dark:hover:bg-stone-800/60 transition-all"
-        >
-          <div class="flex justify-between items-start">
-            <div :class="['p-2 rounded-lg', stat.iconBg, stat.iconColor]">
-              <span class="material-symbols-outlined">{{ stat.icon }}</span>
-            </div>
-            <span :class="['flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full', stat.trendColor, stat.trendBg]">
-              <span class="material-symbols-outlined text-[14px]">trending_up</span>
-              {{ stat.trend }}
-            </span>
+    <!-- Stats Grid (Total Students/Teachers/Courses/Logs) -->
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+      <div
+        v-for="stat in stats"
+        :key="stat.label"
+        class="flex flex-col justify-between gap-4 rounded-xl p-6 bg-surface-light dark:bg-surface-dark border border-stone-200 dark:border-stone-800 shadow-sm hover:bg-stone-50 dark:hover:bg-stone-800/60 transition-all"
+      >
+        <div class="flex justify-between items-start">
+          <div :class="['p-2 rounded-lg', stat.iconBg, stat.iconColor]">
+            <span class="material-symbols-outlined">{{ stat.icon }}</span>
           </div>
-          <div>
-            <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">{{ stat.label }}</p>
-            <p class="text-slate-900 dark:text-white text-3xl font-bold mt-1">{{ stat.value }}</p>
-          </div>
+          <span :class="['flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full', stat.trendColor, stat.trendBg]">
+            <span class="material-symbols-outlined text-[14px]">trending_up</span>
+            {{ stat.trend }}
+          </span>
+        </div>
+        <div>
+          <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">{{ stat.label }}</p>
+          <p class="text-slate-900 dark:text-white text-3xl font-bold mt-1">{{ stat.value }}</p>
         </div>
       </div>
     </div>

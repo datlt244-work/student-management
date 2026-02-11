@@ -172,7 +172,7 @@ public class AdminUserService implements IAdminUserService {
             if (code.isBlank()) {
                 throw new AppException(ErrorCode.VALIDATION_ERROR, "Teacher code is required");
             }
-            if (teacherRepository.existsByTeacherCode(code)) {
+            if (teacherRepository.existsByTeacherCodeAndDeletedAtIsNull(code)) {
                 throw new AppException(ErrorCode.TEACHER_CODE_EXISTED);
             }
         } else {
@@ -180,7 +180,7 @@ public class AdminUserService implements IAdminUserService {
             if (code.isBlank()) {
                 throw new AppException(ErrorCode.VALIDATION_ERROR, "Student code is required");
             }
-            if (studentRepository.existsByStudentCode(code)) {
+            if (studentRepository.existsByStudentCodeAndDeletedAtIsNull(code)) {
                 throw new AppException(ErrorCode.STUDENT_CODE_EXISTED);
             }
         }
@@ -268,7 +268,7 @@ public class AdminUserService implements IAdminUserService {
             if (request.getTeacherCode() != null) {
                 String newCode = trimRequired(request.getTeacherCode(), 10, "Teacher code must not be blank");
                 if (teacher.getTeacherCode() == null || !teacher.getTeacherCode().equals(newCode)) {
-                    if (teacherRepository.existsByTeacherCode(newCode)) {
+                    if (teacherRepository.existsByTeacherCodeAndDeletedAtIsNull(newCode)) {
                         throw new AppException(ErrorCode.TEACHER_CODE_EXISTED);
                     }
                 }
@@ -314,7 +314,7 @@ public class AdminUserService implements IAdminUserService {
             if (request.getStudentCode() != null) {
                 String newCode = trimRequired(request.getStudentCode(), 10, "Student code must not be blank");
                 if (student.getStudentCode() == null || !student.getStudentCode().equals(newCode)) {
-                    if (studentRepository.existsByStudentCode(newCode)) {
+                    if (studentRepository.existsByStudentCodeAndDeletedAtIsNull(newCode)) {
                         throw new AppException(ErrorCode.STUDENT_CODE_EXISTED);
                     }
                 }

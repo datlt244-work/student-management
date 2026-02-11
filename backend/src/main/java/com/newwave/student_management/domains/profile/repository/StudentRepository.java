@@ -22,4 +22,6 @@ public interface StudentRepository extends JpaRepository<Student, UUID> {
     Optional<Student> findByUser_UserIdAndDeletedAtIsNull(UUID userId);
 
     boolean existsByStudentCode(String studentCode);
+
+    boolean existsByStudentCodeAndDeletedAtIsNull(String studentCode);
 }

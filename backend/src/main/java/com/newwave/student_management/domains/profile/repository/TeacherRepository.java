@@ -22,4 +22,6 @@ public interface TeacherRepository extends JpaRepository<Teacher, UUID> {
     Optional<Teacher> findByUser_UserIdAndDeletedAtIsNull(UUID userId);
 
     boolean existsByTeacherCode(String teacherCode);
+
+    boolean existsByTeacherCodeAndDeletedAtIsNull(String teacherCode);
 }

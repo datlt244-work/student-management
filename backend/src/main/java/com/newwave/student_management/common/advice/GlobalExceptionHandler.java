@@ -44,10 +44,16 @@ public class GlobalExceptionHandler {
                 : "VALIDATION_ERROR";
 
         ErrorCode errorCode = ErrorCode.VALIDATION_ERROR;
+        String messageOverride = null;
         try {
             errorCode = ErrorCode.valueOf(enumKey);
         } catch (IllegalArgumentException e) {
             log.warn("Unknown validation error key: {}", enumKey);
+            // If message is not an ErrorCode key, return the raw message
+            // so clients that only read ApiResponse.message still see a specific reason.
+            if (enumKey != null && !enumKey.isBlank()) {
+                messageOverride = enumKey;
+            }
         }
 
         // Collect all field errors
@@ -69,7 +75,7 @@ public class GlobalExceptionHandler {
 
         ApiResponse<Map<String, String>> apiResponse = ApiResponse.<Map<String, String>>builder()
                 .code(errorCode.getCode())
-                .message(errorCode.getMessage())
+                .message(messageOverride != null ? messageOverride : errorCode.getMessage())
                 .result(fieldErrors)
                 .build();
 

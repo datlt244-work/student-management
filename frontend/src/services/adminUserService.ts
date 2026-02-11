@@ -199,6 +199,54 @@ export interface AdminCreateUserRequest {
   manageClass?: string
 }
 
+// ========== UC - Admin Update User Profile ==========
+
+export interface AdminUpdateUserProfileRequest {
+  // Common
+  firstName?: string
+  lastName?: string
+  phone?: string
+  departmentId?: number
+  // Teacher-only
+  teacherCode?: string
+  specialization?: string
+  academicRank?: string
+  officeRoom?: string
+  degreesQualification?: string
+  // Student-only
+  studentCode?: string
+  dob?: string // YYYY-MM-DD
+  gender?: 'MALE' | 'FEMALE' | 'OTHER'
+  major?: string
+  address?: string
+  year?: number
+  manageClass?: string
+}
+
+/**
+ * Admin update profile fields for Teacher/Student
+ * Endpoint: PUT /admin/users/{userId}/profile
+ */
+export async function updateAdminUserProfile(
+  userId: string,
+  body: AdminUpdateUserProfileRequest,
+): Promise<AdminUserDetailResult> {
+  const endpoint = `/admin/users/${encodeURIComponent(userId)}/profile`
+  const response = await apiFetch(endpoint, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    const message = errorData?.message || `Failed to update user (${response.status})`
+    throw new Error(message)
+  }
+
+  const data = await response.json()
+  return (data.result || data) as AdminUserDetailResult
+}
+
 /**
  * UC-11.3a: Tạo User (Teacher hoặc Student)
  * POST /admin/users — 201 Created, trả về user + profile.

@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
-import { getAdminUserById, type AdminUserDetailResult } from '@/services/adminUserService'
+import {
+  getAdminDepartments,
+  getAdminUserById,
+  updateAdminUserProfile,
+  type AdminDepartmentItem,
+  type AdminUpdateUserProfileRequest,
+  type AdminUserDetailResult,
+} from '@/services/adminUserService'
 
 interface StudentCourse {
   code: string
@@ -29,6 +36,45 @@ const route = useRoute()
 const activeTab = ref<'personal' | 'academic' | 'grades'>('personal')
 const loading = ref(false)
 const fetchError = ref<string | null>(null)
+
+// Raw API detail (for edit)
+const detail = ref<AdminUserDetailResult | null>(null)
+
+// Edit modal state
+const showEditModal = ref(false)
+const editLoading = ref(false)
+const editError = ref<string | null>(null)
+
+// Departments for select
+const departments = ref<AdminDepartmentItem[]>([])
+const departmentsLoading = ref(false)
+
+// Edit form models
+const editTeacher = ref({
+  firstName: '',
+  lastName: '',
+  teacherCode: '',
+  phone: '',
+  departmentId: null as number | null,
+  specialization: '',
+  academicRank: '',
+  officeRoom: '',
+  degreesQualification: '',
+})
+
+const editStudent = ref({
+  firstName: '',
+  lastName: '',
+  studentCode: '',
+  dob: '',
+  gender: '' as '' | 'MALE' | 'FEMALE' | 'OTHER',
+  major: '',
+  phone: '',
+  departmentId: null as number | null,
+  address: '',
+  year: null as number | null,
+  manageClass: '',
+})
 
 const defaultStudent: UserDetail & {
   studentCode: string
@@ -203,8 +249,58 @@ function handleBlock() {
 }
 
 function handleEdit() {
-  // TODO: mở modal/form edit
-  console.log('Edit user')
+  editError.value = null
+  showEditModal.value = true
+
+  // Load departments (best-effort)
+  if (departments.value.length === 0) {
+    departmentsLoading.value = true
+    getAdminDepartments()
+      .then((d) => {
+        departments.value = d
+      })
+      .catch(() => {
+        departments.value = []
+      })
+      .finally(() => {
+        departmentsLoading.value = false
+      })
+  }
+
+  const d = detail.value
+  if (!d) return
+
+  if (d.teacherProfile) {
+    const p = d.teacherProfile
+    editTeacher.value = {
+      firstName: p.firstName ?? '',
+      lastName: p.lastName ?? '',
+      teacherCode: p.teacherCode ?? '',
+      phone: p.phone ?? '',
+      departmentId: p.department?.departmentId ?? null,
+      specialization: p.specialization ?? '',
+      academicRank: p.academicRank ?? '',
+      officeRoom: p.officeRoom ?? '',
+      degreesQualification: p.degreesQualification ?? '',
+    }
+  }
+
+  if (d.studentProfile) {
+    const p = d.studentProfile
+    editStudent.value = {
+      firstName: p.firstName ?? '',
+      lastName: p.lastName ?? '',
+      studentCode: p.studentCode ?? '',
+      dob: p.dob ?? '',
+      gender: (p.gender as '' | 'MALE' | 'FEMALE' | 'OTHER') ?? '',
+      major: p.major ?? '',
+      phone: p.phone ?? '',
+      departmentId: p.department?.departmentId ?? null,
+      address: p.address ?? '',
+      year: p.year ?? null,
+      manageClass: p.manageClass ?? '',
+    }
+  }
 }
 
 function viewTranscript() {
@@ -224,13 +320,65 @@ async function fetchUserDetail(userId: string) {
   fetchError.value = null
   try {
     const data = await getAdminUserById(userId)
+    detail.value = data
     user.value = mapDetailToUserDetail(data)
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Failed to load user'
     fetchError.value = message === 'USER_NOT_FOUND' ? 'User not found.' : message
     user.value = defaultStudent
+    detail.value = null
   } finally {
     loading.value = false
+  }
+}
+
+function closeEditModal() {
+  showEditModal.value = false
+  editError.value = null
+}
+
+async function submitUpdate() {
+  const userId = route.params.userId as string | undefined
+  if (!userId) return
+
+  editError.value = null
+  const isTeacherRole = detail.value?.role?.roleName === 'TEACHER'
+
+  const payload: AdminUpdateUserProfileRequest = isTeacherRole
+    ? {
+        firstName: editTeacher.value.firstName,
+        lastName: editTeacher.value.lastName,
+        phone: editTeacher.value.phone,
+        departmentId: editTeacher.value.departmentId ?? undefined,
+        teacherCode: editTeacher.value.teacherCode,
+        specialization: editTeacher.value.specialization,
+        academicRank: editTeacher.value.academicRank,
+        officeRoom: editTeacher.value.officeRoom,
+        degreesQualification: editTeacher.value.degreesQualification,
+      }
+    : {
+        firstName: editStudent.value.firstName,
+        lastName: editStudent.value.lastName,
+        phone: editStudent.value.phone,
+        departmentId: editStudent.value.departmentId ?? undefined,
+        studentCode: editStudent.value.studentCode,
+        dob: editStudent.value.dob || undefined,
+        gender: (editStudent.value.gender || undefined) as 'MALE' | 'FEMALE' | 'OTHER' | undefined,
+        major: editStudent.value.major,
+        address: editStudent.value.address,
+        year: editStudent.value.year ?? undefined,
+        manageClass: editStudent.value.manageClass,
+      }
+
+  try {
+    editLoading.value = true
+    await updateAdminUserProfile(userId, payload)
+    closeEditModal()
+    await fetchUserDetail(userId)
+  } catch (e) {
+    editError.value = e instanceof Error ? e.message : 'Failed to update user'
+  } finally {
+    editLoading.value = false
   }
 }
 
@@ -720,4 +868,163 @@ watch(
     </div>
     </template>
   </div>
+
+  <!-- Edit Profile Modal -->
+  <Teleport to="body">
+    <Transition name="fade">
+      <div
+        v-if="showEditModal"
+        class="fixed inset-0 z-110 flex items-center justify-center p-4 backdrop-blur-md bg-stone-900/40"
+      >
+        <div
+          class="bg-surface-light dark:bg-surface-dark w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden border border-stone-200 dark:border-stone-800 max-h-[90vh] flex flex-col"
+        >
+          <div class="bg-primary px-6 py-4 flex items-center justify-between shrink-0">
+            <h2 class="text-white text-xl font-bold flex items-center gap-2">
+              <span class="material-symbols-outlined">edit</span>
+              Update Profile
+            </h2>
+            <button class="text-white/80 hover:text-white transition-colors" type="button" @click="closeEditModal">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+
+          <form class="p-6 overflow-y-auto space-y-6 flex-1" @submit.prevent="submitUpdate">
+            <div
+              v-if="editError"
+              class="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm"
+            >
+              {{ editError }}
+            </div>
+
+            <div class="p-3 rounded-lg bg-stone-50 dark:bg-stone-900/40 border border-stone-200 dark:border-stone-800 text-sm text-slate-600 dark:text-slate-300">
+              Email / Role / Status are read-only in this use case.
+            </div>
+
+            <!-- Teacher form -->
+            <div v-if="detail?.teacherProfile" class="space-y-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="space-y-1.5">
+                  <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">First Name</label>
+                  <input v-model="editTeacher.firstName" class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm" type="text" />
+                </div>
+                <div class="space-y-1.5">
+                  <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Last Name</label>
+                  <input v-model="editTeacher.lastName" class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm" type="text" />
+                </div>
+                <div class="space-y-1.5 sm:col-span-2">
+                  <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Teacher Code</label>
+                  <input v-model="editTeacher.teacherCode" class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm" type="text" placeholder="HJ170001" />
+                </div>
+                <div class="space-y-1.5">
+                  <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Department</label>
+                  <select v-model.number="editTeacher.departmentId" class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm">
+                    <option :value="null">— Select department —</option>
+                    <option v-for="d in departments" :key="d.departmentId" :value="d.departmentId">{{ d.name }}</option>
+                  </select>
+                  <p v-if="departmentsLoading" class="text-xs text-slate-500 mt-1">Loading departments…</p>
+                </div>
+                <div class="space-y-1.5">
+                  <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Phone</label>
+                  <input v-model="editTeacher.phone" inputmode="numeric" pattern="\d*" class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm" type="tel" />
+                </div>
+                <div class="space-y-1.5">
+                  <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Specialization</label>
+                  <input v-model="editTeacher.specialization" class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm" type="text" />
+                </div>
+                <div class="space-y-1.5">
+                  <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Academic Rank</label>
+                  <input v-model="editTeacher.academicRank" class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm" type="text" />
+                </div>
+                <div class="space-y-1.5">
+                  <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Office Room</label>
+                  <input v-model="editTeacher.officeRoom" class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm" type="text" />
+                </div>
+                <div class="space-y-1.5 sm:col-span-2">
+                  <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Degrees / Qualifications</label>
+                  <textarea v-model="editTeacher.degreesQualification" class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm resize-none" rows="3" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Student form -->
+            <div v-else-if="detail?.studentProfile" class="space-y-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="space-y-1.5">
+                  <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">First Name</label>
+                  <input v-model="editStudent.firstName" class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm" type="text" />
+                </div>
+                <div class="space-y-1.5">
+                  <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Last Name</label>
+                  <input v-model="editStudent.lastName" class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm" type="text" />
+                </div>
+                <div class="space-y-1.5 sm:col-span-2">
+                  <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Student Code</label>
+                  <input v-model="editStudent.studentCode" class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm" type="text" placeholder="HE170001" />
+                </div>
+                <div class="space-y-1.5">
+                  <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Department</label>
+                  <select v-model.number="editStudent.departmentId" class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm">
+                    <option :value="null">— Select department —</option>
+                    <option v-for="d in departments" :key="d.departmentId" :value="d.departmentId">{{ d.name }}</option>
+                  </select>
+                  <p v-if="departmentsLoading" class="text-xs text-slate-500 mt-1">Loading departments…</p>
+                </div>
+                <div class="space-y-1.5">
+                  <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Phone</label>
+                  <input v-model="editStudent.phone" inputmode="numeric" pattern="\d*" class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm" type="tel" />
+                </div>
+                <div class="space-y-1.5">
+                  <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Date of Birth</label>
+                  <input v-model="editStudent.dob" class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm" type="date" />
+                </div>
+                <div class="space-y-1.5">
+                  <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Gender</label>
+                  <select v-model="editStudent.gender" class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm">
+                    <option value="">— Select —</option>
+                    <option value="MALE">Male</option>
+                    <option value="FEMALE">Female</option>
+                    <option value="OTHER">Other</option>
+                  </select>
+                </div>
+                <div class="space-y-1.5">
+                  <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Major</label>
+                  <input v-model="editStudent.major" class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm" type="text" />
+                </div>
+                <div class="space-y-1.5">
+                  <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Year</label>
+                  <input v-model.number="editStudent.year" class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm" type="number" min="1" max="4" />
+                </div>
+                <div class="space-y-1.5">
+                  <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Manage Class</label>
+                  <input v-model="editStudent.manageClass" class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm" type="text" />
+                </div>
+                <div class="space-y-1.5 sm:col-span-2">
+                  <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Address</label>
+                  <input v-model="editStudent.address" class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm" type="text" />
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-6 border-t border-stone-200 dark:border-stone-800 shrink-0">
+              <button
+                type="button"
+                class="px-5 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 font-bold transition-all"
+                @click="closeEditModal"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                :disabled="editLoading"
+                class="px-5 py-2.5 rounded-lg bg-primary hover:bg-primary-dark text-white font-bold shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {{ editLoading ? 'Saving…' : 'Save Changes' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
 </template>

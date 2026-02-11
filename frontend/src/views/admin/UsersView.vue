@@ -43,7 +43,7 @@ async function fetchUsers() {
     totalElements.value = result.totalElements
   } catch (err: unknown) {
     if (err && typeof err === 'object' && 'message' in err) {
-      // eslint-disable-next-line @typescript-eslint/no-base-to-string
+       
       errorMessage.value = String((err as { message?: unknown }).message) || 'Failed to load users'
     } else {
       errorMessage.value = 'Failed to load users'
@@ -658,12 +658,12 @@ function processImport() {
     <Transition name="fade">
       <div
         v-if="showAddUserModal"
-        class="fixed inset-0 z-[100] flex items-center justify-center p-4 backdrop-blur-md bg-stone-900/40"
+        class="fixed inset-0 z-100 flex items-center justify-center p-4 backdrop-blur-md bg-stone-900/40"
       >
         <div
           class="bg-surface-light dark:bg-surface-dark w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden border border-stone-200 dark:border-stone-800 max-h-[90vh] flex flex-col"
         >
-          <div class="bg-primary px-6 py-4 flex items-center justify-between flex-shrink-0">
+          <div class="bg-primary px-6 py-4 flex items-center justify-between shrink-0">
             <h2 class="text-white text-xl font-bold flex items-center gap-2">
               <span class="material-symbols-outlined">person_add</span>
               Add New User
@@ -783,6 +783,8 @@ function processImport() {
                     <input
                       v-model="newTeacher.phone"
                       required
+                      inputmode="numeric"
+                      pattern="\d*"
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
                       placeholder="0901000001"
                       type="tel"
@@ -969,6 +971,8 @@ function processImport() {
                     <input
                       v-model="newStudent.phone"
                       required
+                      inputmode="numeric"
+                      pattern="\d*"
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
                       placeholder="0912000001"
                       type="tel"
@@ -1002,7 +1006,7 @@ function processImport() {
               </div>
             </div>
 
-            <div class="flex items-center justify-end gap-3 pt-6 border-t border-stone-200 dark:border-stone-800 flex-shrink-0">
+            <div class="flex items-center justify-end gap-3 pt-6 border-t border-stone-200 dark:border-stone-800 shrink-0">
               <button
                 type="button"
                 class="px-5 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 font-bold transition-all"
@@ -1029,7 +1033,7 @@ function processImport() {
     <Transition name="fade">
       <div
         v-if="showImportExcelModal"
-        class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4"
+        class="fixed inset-0 z-100 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4"
       >
         <div
           class="bg-surface-light dark:bg-surface-dark w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-stone-200 dark:border-stone-800"

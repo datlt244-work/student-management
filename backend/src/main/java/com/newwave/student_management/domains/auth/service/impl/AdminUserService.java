@@ -3,6 +3,7 @@ package com.newwave.student_management.domains.auth.service.impl;
 import com.newwave.student_management.common.exception.AppException;
 import com.newwave.student_management.common.exception.ErrorCode;
 import com.newwave.student_management.domains.auth.dto.request.AdminCreateUserRequest;
+import com.newwave.student_management.domains.auth.dto.request.AdminUpdateUserProfileRequest;
 import com.newwave.student_management.domains.auth.dto.response.AdminUserDetailResponse;
 import com.newwave.student_management.domains.auth.dto.response.AdminUserListItemResponse;
 import com.newwave.student_management.domains.auth.dto.response.AdminUserListResponse;
@@ -233,6 +234,123 @@ public class AdminUserService implements IAdminUserService {
         return getById(userId);
     }
 
+    @Override
+    @Transactional
+    public AdminUserDetailResponse updateUserProfile(UUID userId, AdminUpdateUserProfileRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        String roleName = user.getRole() != null && user.getRole().getRoleName() != null
+                ? user.getRole().getRoleName().trim().toUpperCase()
+                : "";
+
+        Department department = null;
+        if (request.getDepartmentId() != null) {
+            department = departmentRepository.findById(request.getDepartmentId())
+                    .orElseThrow(() -> new AppException(ErrorCode.DEPARTMENT_NOT_FOUND));
+        }
+
+        if ("TEACHER".equals(roleName)) {
+            Teacher teacher = teacherRepository.findByUser_UserId(userId)
+                    .orElseThrow(() -> new AppException(ErrorCode.TEACHER_PROFILE_NOT_FOUND));
+
+            if (department != null) {
+                teacher.setDepartment(department);
+            }
+
+            if (request.getFirstName() != null) {
+                teacher.setFirstName(trimRequired(request.getFirstName(), 50, "First name must not be blank"));
+            }
+            if (request.getLastName() != null) {
+                teacher.setLastName(trimRequired(request.getLastName(), 50, "Last name must not be blank"));
+            }
+
+            if (request.getTeacherCode() != null) {
+                String newCode = trimRequired(request.getTeacherCode(), 10, "Teacher code must not be blank");
+                if (teacher.getTeacherCode() == null || !teacher.getTeacherCode().equals(newCode)) {
+                    if (teacherRepository.existsByTeacherCode(newCode)) {
+                        throw new AppException(ErrorCode.TEACHER_CODE_EXISTED);
+                    }
+                }
+                teacher.setTeacherCode(newCode);
+            }
+
+            if (request.getPhone() != null) {
+                teacher.setPhone(trimToNull(request.getPhone(), 20));
+            }
+            if (request.getSpecialization() != null) {
+                teacher.setSpecialization(trimToNull(request.getSpecialization(), 100));
+            }
+            if (request.getAcademicRank() != null) {
+                teacher.setAcademicRank(trimToNull(request.getAcademicRank(), 50));
+            }
+            if (request.getOfficeRoom() != null) {
+                teacher.setOfficeRoom(trimToNull(request.getOfficeRoom(), 50));
+            }
+            if (request.getDegreesQualification() != null) {
+                String dq = request.getDegreesQualification();
+                teacher.setDegreesQualification(dq == null || dq.isBlank() ? null : dq.trim());
+            }
+
+            teacherRepository.save(teacher);
+            return getById(userId);
+        }
+
+        if ("STUDENT".equals(roleName)) {
+            Student student = studentRepository.findByUser_UserId(userId)
+                    .orElseThrow(() -> new AppException(ErrorCode.STUDENT_PROFILE_NOT_FOUND));
+
+            if (department != null) {
+                student.setDepartment(department);
+            }
+
+            if (request.getFirstName() != null) {
+                student.setFirstName(trimRequired(request.getFirstName(), 50, "First name must not be blank"));
+            }
+            if (request.getLastName() != null) {
+                student.setLastName(trimRequired(request.getLastName(), 50, "Last name must not be blank"));
+            }
+
+            if (request.getStudentCode() != null) {
+                String newCode = trimRequired(request.getStudentCode(), 10, "Student code must not be blank");
+                if (student.getStudentCode() == null || !student.getStudentCode().equals(newCode)) {
+                    if (studentRepository.existsByStudentCode(newCode)) {
+                        throw new AppException(ErrorCode.STUDENT_CODE_EXISTED);
+                    }
+                }
+                student.setStudentCode(newCode);
+            }
+
+            if (request.getDob() != null) {
+                student.setDob(request.getDob());
+            }
+            if (request.getGender() != null) {
+                String g = request.getGender();
+                student.setGender(g == null || g.isBlank() ? null : g.trim().toUpperCase());
+            }
+            if (request.getMajor() != null) {
+                student.setMajor(trimToNull(request.getMajor(), 100));
+            }
+            if (request.getPhone() != null) {
+                student.setPhone(trimToNull(request.getPhone(), 20));
+            }
+            if (request.getAddress() != null) {
+                student.setAddress(trimToNull(request.getAddress(), 255));
+            }
+            if (request.getYear() != null) {
+                student.setYear(request.getYear());
+            }
+            if (request.getManageClass() != null) {
+                student.setManageClass(trimToNull(request.getManageClass(), 50));
+            }
+
+            studentRepository.save(student);
+            return getById(userId);
+        }
+
+        throw new AppException(ErrorCode.INVALID_ROLE);
+    }
+
     private static String generateRandomPassword() {
         SecureRandom r = new SecureRandom();
         StringBuilder sb = new StringBuilder(PASSWORD_LENGTH);
@@ -258,6 +376,15 @@ public class AdminUserService implements IAdminUserService {
     private static String trimToNull(String s, int maxLen) {
         if (s == null || s.isBlank()) return null;
         String t = s.trim();
+        return t.length() > maxLen ? t.substring(0, maxLen) : t;
+    }
+
+    private static String trimRequired(String s, int maxLen, String errorMessage) {
+        if (s == null) return null;
+        String t = s.trim();
+        if (t.isBlank()) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, errorMessage);
+        }
         return t.length() > maxLen ? t.substring(0, maxLen) : t;
     }
 

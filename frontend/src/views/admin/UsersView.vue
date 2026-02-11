@@ -543,12 +543,12 @@ function processImport() {
                       class="w-full h-full object-cover"
                     />
                     <span v-else class="text-primary font-bold text-sm">
-                      {{ buildDisplayName(user.email).substring(0, 2).toUpperCase() }}
+                      {{ (user.fullName && user.fullName.length > 0 ? user.fullName : buildDisplayName(user.email)).substring(0, 2).toUpperCase() }}
                     </span>
                   </div>
                   <div class="flex flex-col min-w-0">
                     <span class="text-sm font-bold text-slate-900 dark:text-white leading-none truncate">
-                      {{ buildDisplayName(user.email) }}
+                      {{ user.fullName && user.fullName.length > 0 ? user.fullName : buildDisplayName(user.email) }}
                     </span>
                     <span class="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">{{ user.email }}</span>
                   </div>

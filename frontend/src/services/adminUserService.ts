@@ -12,6 +12,7 @@ export interface AdminUserRoleSummary {
 export interface AdminUserListItem {
   userId: string
   email: string
+  fullName?: string
   role: AdminUserRoleSummary
   status: UserStatus
   emailVerified: boolean

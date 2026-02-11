@@ -76,9 +76,27 @@ public class AdminUserService implements IAdminUserService {
                             ? storageService.getPublicUrl(rawAvatar)
                             : null;
 
+                    String fullName = null;
+                    int rId = user.getRole().getRoleId();
+                    UUID uid = user.getUserId();
+                    if (rId == ROLE_TEACHER) {
+                        fullName = teacherRepository.findByUser_UserIdAndDeletedAtIsNull(uid)
+                                .map(t -> (t.getFirstName() + " " + t.getLastName()).trim())
+                                .orElse(null);
+                    } else if (rId == ROLE_STUDENT) {
+                        fullName = studentRepository.findByUser_UserIdAndDeletedAtIsNull(uid)
+                                .map(s -> (s.getFirstName() + " " + s.getLastName()).trim())
+                                .orElse(null);
+                    }
+
+                    if (fullName == null || fullName.isBlank()) {
+                        fullName = buildDisplayNameFromEmail(user.getEmail());
+                    }
+
                     return AdminUserListItemResponse.builder()
                             .userId(user.getUserId())
                             .email(user.getEmail())
+                            .fullName(fullName)
                             .role(AdminUserListItemResponse.RoleSummary.builder()
                                     .roleId(user.getRole().getRoleId())
                                     .roleName(user.getRole().getRoleName())
@@ -377,6 +395,21 @@ public class AdminUserService implements IAdminUserService {
         if (s == null || s.isBlank()) return null;
         String t = s.trim();
         return t.length() > maxLen ? t.substring(0, maxLen) : t;
+    }
+
+    private static String buildDisplayNameFromEmail(String email) {
+        if (email == null || email.isBlank()) return "";
+        String local = email.split("@", 2)[0];
+        if (local == null || local.isBlank()) return email;
+        String[] parts = local.split("[._]");
+        StringBuilder sb = new StringBuilder();
+        for (String p : parts) {
+            if (p == null || p.isBlank()) continue;
+            if (sb.length() > 0) sb.append(' ');
+            sb.append(Character.toUpperCase(p.charAt(0)))
+                    .append(p.substring(1));
+        }
+        return sb.length() > 0 ? sb.toString() : email;
     }
 
     private static String trimRequired(String s, int maxLen, String errorMessage) {

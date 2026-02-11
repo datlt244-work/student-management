@@ -264,17 +264,54 @@ function closeAddUserModal() {
 async function submitNewUser() {
   createUserError.value = null
   const isTeacher = newUserRole.value === 'TEACHER'
-  const deptId = isTeacher ? newTeacher.value.departmentId : newStudent.value.departmentId
-  if (deptId == null || deptId < 1) {
-    createUserError.value = 'Please select a department.'
-    return
+
+  // Validation: all fields required for the selected role
+  if (isTeacher) {
+    const t = newTeacher.value
+    if (
+      !t.firstName?.trim() ||
+      !t.lastName?.trim() ||
+      !t.email?.trim() ||
+      !t.teacherCode?.trim() ||
+      t.departmentId == null ||
+      t.departmentId < 1 ||
+      !t.phone?.trim() ||
+      !t.specialization?.trim() ||
+      !t.academicRank?.trim() ||
+      !t.officeRoom?.trim() ||
+      !t.degreesQualification?.trim()
+    ) {
+      createUserError.value = 'Please fill in all fields.'
+      return
+    }
+  } else {
+    const s = newStudent.value
+    if (
+      !s.firstName?.trim() ||
+      !s.lastName?.trim() ||
+      !s.email?.trim() ||
+      !s.studentCode?.trim() ||
+      s.departmentId == null ||
+      s.departmentId < 1 ||
+      !s.major?.trim() ||
+      s.year == null ||
+      !s.dob ||
+      !s.gender ||
+      !s.phone?.trim() ||
+      !s.manageClass?.trim() ||
+      !s.address?.trim()
+    ) {
+      createUserError.value = 'Please fill in all fields.'
+      return
+    }
   }
 
+  const deptId = isTeacher ? newTeacher.value.departmentId : newStudent.value.departmentId
   const payload: AdminCreateUserRequest = isTeacher
     ? {
         role: 'TEACHER',
         email: newTeacher.value.email.trim(),
-        departmentId: deptId,
+        departmentId: deptId!,
         firstName: newTeacher.value.firstName.trim(),
         lastName: newTeacher.value.lastName.trim(),
         phone: newTeacher.value.phone?.trim() || undefined,
@@ -287,7 +324,7 @@ async function submitNewUser() {
     : {
         role: 'STUDENT',
         email: newStudent.value.email.trim(),
-        departmentId: deptId,
+        departmentId: deptId!,
         firstName: newStudent.value.firstName.trim(),
         lastName: newStudent.value.lastName.trim(),
         phone: newStudent.value.phone?.trim() || undefined,
@@ -672,45 +709,60 @@ function processImport() {
               <div v-if="newUserRole === 'TEACHER'" class="pt-4 space-y-4">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div class="space-y-1.5">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">First Name</label>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      First Name <span class="text-red-500">*</span>
+                    </label>
                     <input
                       v-model="newTeacher.firstName"
+                      required
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
                       placeholder="John"
                       type="text"
                     />
                   </div>
                   <div class="space-y-1.5">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Last Name</label>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Last Name <span class="text-red-500">*</span>
+                    </label>
                     <input
                       v-model="newTeacher.lastName"
+                      required
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
                       placeholder="Doe"
                       type="text"
                     />
                   </div>
                   <div class="space-y-1.5 sm:col-span-2">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Email Address</label>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Email Address <span class="text-red-500">*</span>
+                    </label>
                     <input
                       v-model="newTeacher.email"
+                      required
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
-                      placeholder="j.doe@university.edu"
+                      placeholder="j.doe@fpt.edu.vn"
                       type="email"
                     />
                   </div>
                   <div class="space-y-1.5">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Teacher Code</label>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Teacher Code <span class="text-red-500">*</span>
+                    </label>
                     <input
                       v-model="newTeacher.teacherCode"
+                      required
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
                       placeholder="HJ170001"
                       type="text"
                     />
                   </div>
                   <div class="space-y-1.5">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Department</label>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Department <span class="text-red-500">*</span>
+                    </label>
                     <select
                       v-model.number="newTeacher.departmentId"
+                      required
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
                     >
                       <option :value="null">— Select department —</option>
@@ -725,45 +777,60 @@ function processImport() {
                     <p v-if="departmentsLoading" class="text-xs text-slate-500 mt-1">Loading departments…</p>
                   </div>
                   <div class="space-y-1.5">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Phone Number</label>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Phone Number <span class="text-red-500">*</span>
+                    </label>
                     <input
                       v-model="newTeacher.phone"
+                      required
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
                       placeholder="0901000001"
                       type="tel"
                     />
                   </div>
                   <div class="space-y-1.5">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Specialization</label>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Specialization <span class="text-red-500">*</span>
+                    </label>
                     <input
                       v-model="newTeacher.specialization"
+                      required
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
                       placeholder="Artificial Intelligence"
                       type="text"
                     />
                   </div>
                   <div class="space-y-1.5">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Academic Rank</label>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Academic Rank <span class="text-red-500">*</span>
+                    </label>
                     <input
                       v-model="newTeacher.academicRank"
+                      required
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
                       placeholder="Professor"
                       type="text"
                     />
                   </div>
                   <div class="space-y-1.5">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Office Room</label>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Office Room <span class="text-red-500">*</span>
+                    </label>
                     <input
                       v-model="newTeacher.officeRoom"
+                      required
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
                       placeholder="A-301"
                       type="text"
                     />
                   </div>
                   <div class="space-y-1.5 sm:col-span-2">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Degrees / Qualifications</label>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Degrees / Qualifications <span class="text-red-500">*</span>
+                    </label>
                     <textarea
                       v-model="newTeacher.degreesQualification"
+                      required
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all resize-none"
                       placeholder="Ph.D. in Computer Science"
                       rows="2"
@@ -776,45 +843,60 @@ function processImport() {
               <div v-else class="pt-4 space-y-4">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div class="space-y-1.5">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">First Name</label>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      First Name <span class="text-red-500">*</span>
+                    </label>
                     <input
                       v-model="newStudent.firstName"
+                      required
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
                       placeholder="Sarah"
                       type="text"
                     />
                   </div>
                   <div class="space-y-1.5">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Last Name</label>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Last Name <span class="text-red-500">*</span>
+                    </label>
                     <input
                       v-model="newStudent.lastName"
+                      required
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
                       placeholder="Miller"
                       type="text"
                     />
                   </div>
                   <div class="space-y-1.5 sm:col-span-2">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Email Address</label>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Email Address <span class="text-red-500">*</span>
+                    </label>
                     <input
                       v-model="newStudent.email"
+                      required
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
-                      placeholder="s.miller@student.edu"
+                      placeholder="s.miller@fpt.edu.vn"
                       type="email"
                     />
                   </div>
                   <div class="space-y-1.5">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Student Code</label>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Student Code <span class="text-red-500">*</span>
+                    </label>
                     <input
                       v-model="newStudent.studentCode"
+                      required
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
                       placeholder="HE170001"
                       type="text"
                     />
                   </div>
                   <div class="space-y-1.5">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Department</label>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Department <span class="text-red-500">*</span>
+                    </label>
                     <select
                       v-model.number="newStudent.departmentId"
+                      required
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
                     >
                       <option :value="null">— Select department —</option>
@@ -829,18 +911,24 @@ function processImport() {
                     <p v-if="departmentsLoading" class="text-xs text-slate-500 mt-1">Loading departments…</p>
                   </div>
                   <div class="space-y-1.5">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Major</label>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Major <span class="text-red-500">*</span>
+                    </label>
                     <input
                       v-model="newStudent.major"
+                      required
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
                       placeholder="Software Engineering"
                       type="text"
                     />
                   </div>
                   <div class="space-y-1.5">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Year (1-4)</label>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Year (1-4) <span class="text-red-500">*</span>
+                    </label>
                     <input
                       v-model.number="newStudent.year"
+                      required
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
                       placeholder="2"
                       type="number"
@@ -849,17 +937,23 @@ function processImport() {
                     />
                   </div>
                   <div class="space-y-1.5">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Date of Birth</label>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Date of Birth <span class="text-red-500">*</span>
+                    </label>
                     <input
                       v-model="newStudent.dob"
+                      required
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
                       type="date"
                     />
                   </div>
                   <div class="space-y-1.5">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Gender</label>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Gender <span class="text-red-500">*</span>
+                    </label>
                     <select
                       v-model="newStudent.gender"
+                      required
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
                     >
                       <option value="">— Select —</option>
@@ -869,27 +963,36 @@ function processImport() {
                     </select>
                   </div>
                   <div class="space-y-1.5">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Phone Number</label>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Phone Number <span class="text-red-500">*</span>
+                    </label>
                     <input
                       v-model="newStudent.phone"
+                      required
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
                       placeholder="0912000001"
                       type="tel"
                     />
                   </div>
                   <div class="space-y-1.5">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Manage Class</label>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Manage Class <span class="text-red-500">*</span>
+                    </label>
                     <input
                       v-model="newStudent.manageClass"
+                      required
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
                       placeholder="SE1701"
                       type="text"
                     />
                   </div>
                   <div class="space-y-1.5 sm:col-span-2">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Home Address</label>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Home Address <span class="text-red-500">*</span>
+                    </label>
                     <input
                       v-model="newStudent.address"
+                      required
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
                       placeholder="100 Le Loi, HCM"
                       type="text"

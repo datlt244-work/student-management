@@ -16,6 +16,8 @@ public class AdminUserListItemResponse {
 
     private UUID userId;
     private String email;
+    /** Optional display name derived from profile (firstName + lastName) when available. */
+    private String fullName;
     private RoleSummary role;
     private String status;
     private boolean emailVerified;

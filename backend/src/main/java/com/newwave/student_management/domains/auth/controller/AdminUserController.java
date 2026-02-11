@@ -2,6 +2,7 @@ package com.newwave.student_management.domains.auth.controller;
 
 import com.newwave.student_management.common.dto.ApiResponse;
 import com.newwave.student_management.domains.auth.dto.request.AdminCreateUserRequest;
+import com.newwave.student_management.domains.auth.dto.request.AdminUpdateUserProfileRequest;
 import com.newwave.student_management.domains.auth.dto.response.AdminUserDetailResponse;
 import com.newwave.student_management.domains.auth.dto.response.AdminUserListResponse;
 import com.newwave.student_management.domains.auth.entity.UserStatus;
@@ -18,6 +19,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -72,6 +74,20 @@ public class AdminUserController {
     public ResponseEntity<ApiResponse<AdminUserDetailResponse>> createUser(@Valid @RequestBody AdminCreateUserRequest request) {
         AdminUserDetailResponse response = adminUserService.createUser(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
+    }
+
+    @PutMapping("/{userId}/profile")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "UC - Cập nhật profile User (Admin)",
+            description = "Admin cập nhật các field của teacher/student profile. Không cho phép cập nhật: email, password, status, role."
+    )
+    public ApiResponse<AdminUserDetailResponse> updateUserProfile(
+            @PathVariable UUID userId,
+            @Valid @RequestBody AdminUpdateUserProfileRequest request
+    ) {
+        AdminUserDetailResponse response = adminUserService.updateUserProfile(userId, request);
+        return ApiResponse.success(response);
     }
 }
 

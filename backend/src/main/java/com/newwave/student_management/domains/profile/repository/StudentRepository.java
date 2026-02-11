@@ -14,10 +14,14 @@ public interface StudentRepository extends JpaRepository<Student, UUID> {
 
     @Query("SELECT s FROM Student s " +
             "LEFT JOIN FETCH s.department " +
-            "WHERE s.user.userId = :userId")
+            "WHERE s.user.userId = :userId AND s.deletedAt IS NULL")
     Optional<Student> findByUserIdWithDepartment(@Param("userId") UUID userId);
 
     Optional<Student> findByUser_UserId(UUID userId);
 
+    Optional<Student> findByUser_UserIdAndDeletedAtIsNull(UUID userId);
+
     boolean existsByStudentCode(String studentCode);
+
+    boolean existsByStudentCodeAndDeletedAtIsNull(String studentCode);
 }

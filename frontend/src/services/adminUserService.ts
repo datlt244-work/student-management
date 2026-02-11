@@ -81,6 +81,35 @@ export interface AdminUserDetailResult {
   teacherProfile: AdminUserDetailTeacherProfile | null
 }
 
+// ========== Admin health ==========
+
+export interface HealthComponent {
+  status: string
+  details: string
+  latencyMs?: number | null
+}
+
+export interface AdminHealthResponse {
+  overallStatus: string
+  timestamp: string
+  backend: HealthComponent
+  database: HealthComponent
+  redis: HealthComponent
+  minio: HealthComponent
+  nginx: HealthComponent
+  frontend: HealthComponent
+}
+
+export async function getAdminHealth(): Promise<AdminHealthResponse> {
+  const response = await apiFetch('/admin/health')
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    throw new Error(errorData?.message || `Failed to fetch health (${response.status})`)
+  }
+  const data = await response.json()
+  return (data.result || data) as AdminHealthResponse
+}
+
 // ========== UC-11.5: Update User Status ==========
 
 export interface AdminUpdateUserStatusRequest {
@@ -106,6 +135,21 @@ export async function updateAdminUserStatus(
 
   const data = await response.json()
   return (data.result || data) as AdminUserDetailResult
+}
+
+// ========== UC-11.7: Soft Delete User ==========
+
+export async function deleteAdminUser(userId: string): Promise<void> {
+  const endpoint = `/admin/users/${encodeURIComponent(userId)}`
+  const response = await apiFetch(endpoint, {
+    method: 'DELETE',
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    const message = errorData?.message || `Failed to delete user (${response.status})`
+    throw new Error(message)
+  }
 }
 
 // ========== API Functions ==========

@@ -2,7 +2,16 @@
 import { computed, onMounted, ref } from 'vue'
 import { watchDebounced } from '@vueuse/core'
 import { useRouter } from 'vue-router'
-import { createAdminUser, getAdminUsers, getAdminDepartments, type AdminUserListItem, type AdminCreateUserRequest, type AdminDepartmentItem, type UserStatus } from '@/services/adminUserService'
+import {
+  createAdminUser,
+  getAdminUsers,
+  getAdminDepartments,
+  deleteAdminUser,
+  type AdminUserListItem,
+  type AdminCreateUserRequest,
+  type AdminDepartmentItem,
+  type UserStatus,
+} from '@/services/adminUserService'
 
 const router = useRouter()
 
@@ -22,6 +31,15 @@ const errorMessage = ref<string | null>(null)
 
 // Server data
 const users = ref<AdminUserListItem[]>([])
+
+// Delete user modal state
+const showDeleteConfirmModal = ref(false)
+const showDeleteResultModal = ref(false)
+const deleteTargetUser = ref<AdminUserListItem | null>(null)
+const deleteLoading = ref(false)
+const deleteError = ref<string | null>(null)
+const deleteResultMessage = ref('')
+const deleteResultSuccess = ref(false)
 
 async function fetchUsers() {
   try {
@@ -117,6 +135,11 @@ const newStudent = ref({
 const createUserLoading = ref(false)
 const createUserError = ref<string | null>(null)
 
+// Create user result modal state
+const showCreateResultModal = ref(false)
+const createResultSuccess = ref(false)
+const createResultMessage = ref('')
+
 // Departments for select (fetch when opening Add User modal)
 const departments = ref<AdminDepartmentItem[]>([])
 const departmentsLoading = ref(false)
@@ -211,9 +234,45 @@ function handleEdit(user: AdminUserListItem) {
   }
 }
 
-function handleDelete(user: AdminUserListItem) {
-  console.log('Delete', user)
-  // TODO: confirm + gọi API
+async function handleDelete(user: AdminUserListItem) {
+  deleteTargetUser.value = user
+  deleteError.value = null
+  deleteLoading.value = false
+  showDeleteConfirmModal.value = true
+}
+
+async function confirmDeleteUser() {
+  if (!deleteTargetUser.value) return
+  deleteLoading.value = true
+  deleteError.value = null
+  try {
+    await deleteAdminUser(deleteTargetUser.value.userId)
+    await fetchUsers()
+    showDeleteConfirmModal.value = false
+    deleteResultSuccess.value = true
+    deleteResultMessage.value = 'User has been deleted successfully.'
+    showDeleteResultModal.value = true
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Failed to delete user'
+    deleteResultSuccess.value = false
+    deleteResultMessage.value = msg
+    showDeleteConfirmModal.value = false
+    showDeleteResultModal.value = true
+  } finally {
+    deleteLoading.value = false
+  }
+}
+
+function closeDeleteModals() {
+  showDeleteConfirmModal.value = false
+  showDeleteResultModal.value = false
+  deleteTargetUser.value = null
+  deleteError.value = null
+  deleteResultMessage.value = ''
+}
+
+function closeCreateResultModal() {
+  showCreateResultModal.value = false
 }
 
 async function handleAddUser() {
@@ -341,10 +400,16 @@ async function submitNewUser() {
     createUserLoading.value = true
     await createAdminUser(payload)
     closeAddUserModal()
-    fetchUsers()
+    await fetchUsers()
+    createResultSuccess.value = true
+    createResultMessage.value = 'User has been created successfully.'
+    showCreateResultModal.value = true
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Failed to create user'
     createUserError.value = msg
+    createResultSuccess.value = false
+    createResultMessage.value = msg
+    showCreateResultModal.value = true
   } finally {
     createUserLoading.value = false
   }
@@ -1140,6 +1205,164 @@ function processImport() {
               @click="processImport"
             >
               Process Import
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
+
+  <!-- Delete User Confirm Modal -->
+  <Teleport to="body">
+    <Transition name="fade">
+      <div
+        v-if="showDeleteConfirmModal"
+        class="fixed inset-0 z-120 flex items-center justify-center p-4 backdrop-blur-md bg-stone-900/40"
+      >
+        <div
+          class="bg-surface-light dark:bg-surface-dark w-full max-w-md rounded-xl shadow-2xl overflow-hidden border border-stone-200 dark:border-stone-800 max-h-[90vh] flex flex-col"
+        >
+          <div class="bg-red-600 px-6 py-4 flex items-center justify-between shrink-0">
+            <h2 class="text-white text-lg font-bold flex items-center gap-2">
+              <span class="material-symbols-outlined">delete</span>
+              Delete User
+            </h2>
+            <button class="text-white/80 hover:text-white transition-colors" type="button" @click="showDeleteConfirmModal = false">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+
+          <div class="p-6 space-y-4 flex-1">
+            <p class="text-sm text-slate-700 dark:text-slate-200">
+              Are you sure you want to delete this user? This action will
+              <span class="font-bold">soft delete</span>
+              the account and log the user out from all devices.
+            </p>
+            <div class="rounded-lg bg-stone-50 dark:bg-stone-900/40 border border-stone-200 dark:border-stone-800 p-3 text-sm">
+              <p class="font-semibold text-slate-900 dark:text-white">
+                {{ deleteTargetUser?.fullName || deleteTargetUser?.email }}
+              </p>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                {{ deleteTargetUser?.email }} • {{ deleteTargetUser?.role.roleName }}
+              </p>
+            </div>
+            <div
+              v-if="deleteError"
+              class="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm"
+            >
+              {{ deleteError }}
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-4 border-t border-stone-200 dark:border-stone-800 shrink-0">
+              <button
+                type="button"
+                class="px-4 py-2 rounded-lg text-slate-600 dark:text-slate-400 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-sm font-bold transition-all"
+                @click="showDeleteConfirmModal = false"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                :disabled="deleteLoading"
+                class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-bold shadow-lg shadow-red-600/30 transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                @click="confirmDeleteUser"
+              >
+                {{ deleteLoading ? 'Deleting…' : 'Delete User' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
+
+  <!-- Delete User Result Modal -->
+  <Teleport to="body">
+    <Transition name="fade">
+      <div
+        v-if="showDeleteResultModal"
+        class="fixed inset-0 z-120 flex items-center justify-center p-4 backdrop-blur-md bg-stone-900/40"
+      >
+        <div
+          class="bg-surface-light dark:bg-surface-dark w-full max-w-md rounded-xl shadow-2xl overflow-hidden border border-stone-200 dark:border-stone-800 max-h-[80vh] flex flex-col"
+        >
+          <div
+            :class="[
+              'px-6 py-4 flex items-center justify-between shrink-0',
+              deleteResultSuccess ? 'bg-emerald-600' : 'bg-red-600',
+            ]"
+          >
+            <h2 class="text-white text-lg font-bold flex items-center gap-2">
+              <span class="material-symbols-outlined">
+                {{ deleteResultSuccess ? 'check_circle' : 'error' }}
+              </span>
+              {{ deleteResultSuccess ? 'Deleted Successfully' : 'Delete Failed' }}
+            </h2>
+            <button class="text-white/80 hover:text-white transition-colors" type="button" @click="closeDeleteModals">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+
+          <div class="p-6 flex-1 flex items-center">
+            <p class="text-sm text-slate-700 dark:text-slate-200">
+              {{ deleteResultMessage }}
+            </p>
+          </div>
+
+          <div class="px-6 py-4 border-t border-stone-200 dark:border-stone-800 bg-stone-50/60 dark:bg-stone-900/40 shrink-0 flex justify-end">
+            <button
+              type="button"
+              class="px-5 py-2 rounded-lg bg-primary hover:bg-primary-dark text-white text-sm font-bold shadow-md shadow-primary/30 transition-all active:scale-95"
+              @click="closeDeleteModals"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
+
+  <!-- Create User Result Modal -->
+  <Teleport to="body">
+    <Transition name="fade">
+      <div
+        v-if="showCreateResultModal"
+        class="fixed inset-0 z-120 flex items-center justify-center p-4 backdrop-blur-md bg-stone-900/40"
+      >
+        <div
+          class="bg-surface-light dark:bg-surface-dark w-full max-w-md rounded-xl shadow-2xl overflow-hidden border border-stone-200 dark:border-stone-800 max-h-[80vh] flex flex-col"
+        >
+          <div
+            :class="[
+              'px-6 py-4 flex items-center justify-between shrink-0',
+              createResultSuccess ? 'bg-emerald-600' : 'bg-red-600',
+            ]"
+          >
+            <h2 class="text-white text-lg font-bold flex items-center gap-2">
+              <span class="material-symbols-outlined">
+                {{ createResultSuccess ? 'check_circle' : 'error' }}
+              </span>
+              {{ createResultSuccess ? 'User Created' : 'Create Failed' }}
+            </h2>
+            <button class="text-white/80 hover:text-white transition-colors" type="button" @click="closeCreateResultModal">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+
+          <div class="p-6 flex-1 flex items-center">
+            <p class="text-sm text-slate-700 dark:text-slate-200">
+              {{ createResultMessage }}
+            </p>
+          </div>
+
+          <div class="px-6 py-4 border-t border-stone-200 dark:border-stone-800 bg-stone-50/60 dark:bg-stone-900/40 shrink-0 flex justify-end">
+            <button
+              type="button"
+              class="px-5 py-2 rounded-lg bg-primary hover:bg-primary-dark text-white text-sm font-bold shadow-md shadow-primary/30 transition-all active:scale-95"
+              @click="closeCreateResultModal"
+            >
+              OK
             </button>
           </div>
         </div>

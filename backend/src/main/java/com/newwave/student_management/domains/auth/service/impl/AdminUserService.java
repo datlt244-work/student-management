@@ -4,6 +4,7 @@ import com.newwave.student_management.common.exception.AppException;
 import com.newwave.student_management.common.exception.ErrorCode;
 import com.newwave.student_management.domains.auth.dto.request.AdminCreateUserRequest;
 import com.newwave.student_management.domains.auth.dto.request.AdminUpdateUserProfileRequest;
+import com.newwave.student_management.domains.auth.dto.request.AdminUpdateUserStatusRequest;
 import com.newwave.student_management.domains.auth.dto.response.AdminUserDetailResponse;
 import com.newwave.student_management.domains.auth.dto.response.AdminUserListItemResponse;
 import com.newwave.student_management.domains.auth.dto.response.AdminUserListResponse;
@@ -367,6 +368,58 @@ public class AdminUserService implements IAdminUserService {
         }
 
         throw new AppException(ErrorCode.INVALID_ROLE);
+    }
+
+    @Override
+    @Transactional
+    public AdminUserDetailResponse updateUserStatus(UUID userId, AdminUpdateUserStatusRequest request) {
+        User user = userRepository.findByUserIdAndDeletedAtIsNull(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        UserStatus current = user.getStatus();
+        UserStatus target = request.getStatus();
+
+        if (target == null) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Status is required");
+        }
+
+        // Validate transition theo state machine trong UC-11.5
+        if (current == UserStatus.PENDING_VERIFICATION && target == UserStatus.BLOCKED) {
+            // Cho phép block luôn từ pending
+        } else if (current == UserStatus.PENDING_VERIFICATION && target == UserStatus.INACTIVE) {
+            // Cho phép đặt INACTIVE nếu cần
+        } else if (current == UserStatus.PENDING_VERIFICATION && target == UserStatus.ACTIVE) {
+            // Thông thường ACTIVE sẽ qua flow activate, nhưng cho phép admin override
+        }
+
+        if (target == UserStatus.BLOCKED) {
+            String reason = request.getBanReason() != null ? request.getBanReason().trim() : "";
+            if (reason.isBlank()) {
+                throw new AppException(ErrorCode.VALIDATION_ERROR, "Ban reason is required when blocking user");
+            }
+            user.setStatus(UserStatus.BLOCKED);
+            user.setBanReason(reason);
+
+            // Force logout: invalidate all tokens
+            tokenRedisService.deleteAllRefreshTokensForUser(userId);
+            tokenRedisService.incrementTokenVersion(userId);
+        } else if (target == UserStatus.ACTIVE) {
+            user.setStatus(UserStatus.ACTIVE);
+            user.setBanReason(null);
+        } else if (target == UserStatus.INACTIVE) {
+            user.setStatus(UserStatus.INACTIVE);
+            // Optional banReason when inactive
+            String reason = request.getBanReason();
+            user.setBanReason(reason == null || reason.isBlank() ? null : reason.trim());
+
+            tokenRedisService.deleteAllRefreshTokensForUser(userId);
+            tokenRedisService.incrementTokenVersion(userId);
+        } else if (target == UserStatus.PENDING_VERIFICATION) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Cannot set status back to PENDING_VERIFICATION");
+        }
+
+        userRepository.save(user);
+        return getById(userId);
     }
 
     private static String generateRandomPassword() {

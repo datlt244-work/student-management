@@ -3,6 +3,7 @@ package com.newwave.student_management.domains.auth.controller;
 import com.newwave.student_management.common.dto.ApiResponse;
 import com.newwave.student_management.domains.auth.dto.request.AdminCreateUserRequest;
 import com.newwave.student_management.domains.auth.dto.request.AdminUpdateUserProfileRequest;
+import com.newwave.student_management.domains.auth.dto.request.AdminUpdateUserStatusRequest;
 import com.newwave.student_management.domains.auth.dto.response.AdminUserDetailResponse;
 import com.newwave.student_management.domains.auth.dto.response.AdminUserListResponse;
 import com.newwave.student_management.domains.auth.entity.UserStatus;
@@ -17,6 +18,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -87,6 +89,20 @@ public class AdminUserController {
             @Valid @RequestBody AdminUpdateUserProfileRequest request
     ) {
         AdminUserDetailResponse response = adminUserService.updateUserProfile(userId, request);
+        return ApiResponse.success(response);
+    }
+
+    @PatchMapping("/{userId}/status")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "UC-11.5 - Thay đổi trạng thái User (Block/Unblock)",
+            description = "Admin thay đổi trạng thái user giữa ACTIVE / INACTIVE / BLOCKED, kèm banReason khi BLOCKED."
+    )
+    public ApiResponse<AdminUserDetailResponse> updateUserStatus(
+            @PathVariable UUID userId,
+            @Valid @RequestBody AdminUpdateUserStatusRequest request
+    ) {
+        AdminUserDetailResponse response = adminUserService.updateUserStatus(userId, request);
         return ApiResponse.success(response);
     }
 }

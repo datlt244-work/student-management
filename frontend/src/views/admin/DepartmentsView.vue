@@ -3,7 +3,11 @@ import { computed, onMounted, ref } from 'vue'
 import { watchDebounced } from '@vueuse/core'
 import {
   getAdminDepartmentList,
+  createAdminDepartment,
+  updateAdminDepartment,
   type AdminDepartmentListItem,
+  type AdminCreateDepartmentRequest,
+  type AdminUpdateDepartmentRequest,
 } from '@/services/adminUserService'
 
 // Filters & pagination
@@ -23,6 +27,34 @@ const departments = ref<AdminDepartmentListItem[]>([])
 
 // Stats (computed from data)
 const totalDepartments = computed(() => totalElements.value)
+
+// Add Department modal state
+const showAddDepartmentModal = ref(false)
+const newDepartment = ref({
+  name: '',
+  officeLocation: '',
+})
+
+// Create department submit state
+const createDepartmentLoading = ref(false)
+const createDepartmentError = ref<string | null>(null)
+
+// Create department result modal state
+const showCreateResultModal = ref(false)
+const createResultSuccess = ref(false)
+const createResultMessage = ref('')
+
+// Edit Department modal state
+const showEditDepartmentModal = ref(false)
+const editingDepartment = ref<AdminDepartmentListItem | null>(null)
+const editDepartment = ref({
+  name: '',
+  officeLocation: '',
+})
+
+// Update department submit state
+const updateDepartmentLoading = ref(false)
+const updateDepartmentError = ref<string | null>(null)
 
 async function fetchDepartments() {
   try {
@@ -90,6 +122,120 @@ const paginationPages = computed(() => {
   return pages
 })
 
+// Modal handlers
+function handleAddDepartment() {
+  showAddDepartmentModal.value = true
+  createDepartmentError.value = null
+  newDepartment.value = {
+    name: '',
+    officeLocation: '',
+  }
+}
+
+function closeAddDepartmentModal() {
+  showAddDepartmentModal.value = false
+  createDepartmentError.value = null
+  newDepartment.value = {
+    name: '',
+    officeLocation: '',
+  }
+}
+
+async function submitNewDepartment() {
+  createDepartmentError.value = null
+  createDepartmentLoading.value = true
+
+  try {
+    // Validation
+    if (!newDepartment.value.name?.trim()) {
+      createDepartmentError.value = 'Department name is required'
+      createDepartmentLoading.value = false
+      return
+    }
+
+    const payload: AdminCreateDepartmentRequest = {
+      name: newDepartment.value.name.trim(),
+      officeLocation: newDepartment.value.officeLocation?.trim() || undefined,
+    }
+
+    await createAdminDepartment(payload)
+    closeAddDepartmentModal()
+    await fetchDepartments()
+    createResultSuccess.value = true
+    createResultMessage.value = 'Department has been created successfully.'
+    showCreateResultModal.value = true
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to create department'
+    createDepartmentError.value = msg
+    createResultSuccess.value = false
+    createResultMessage.value = msg
+    showCreateResultModal.value = true
+  } finally {
+    createDepartmentLoading.value = false
+  }
+}
+
+function closeCreateResultModal() {
+  showCreateResultModal.value = false
+}
+
+// Edit modal handlers
+function handleEditDepartment(dept: AdminDepartmentListItem) {
+  editingDepartment.value = dept
+  editDepartment.value = {
+    name: dept.name,
+    officeLocation: dept.officeLocation || '',
+  }
+  updateDepartmentError.value = null
+  showEditDepartmentModal.value = true
+}
+
+function closeEditDepartmentModal() {
+  showEditDepartmentModal.value = false
+  editingDepartment.value = null
+  updateDepartmentError.value = null
+  editDepartment.value = {
+    name: '',
+    officeLocation: '',
+  }
+}
+
+async function submitUpdateDepartment() {
+  if (!editingDepartment.value) return
+
+  updateDepartmentError.value = null
+  updateDepartmentLoading.value = true
+
+  try {
+    // Validation
+    if (!editDepartment.value.name?.trim()) {
+      updateDepartmentError.value = 'Department name is required'
+      updateDepartmentLoading.value = false
+      return
+    }
+
+    const payload: AdminUpdateDepartmentRequest = {
+      name: editDepartment.value.name.trim(),
+      officeLocation: editDepartment.value.officeLocation?.trim() || undefined,
+    }
+
+    await updateAdminDepartment(editingDepartment.value.departmentId, payload)
+    closeEditDepartmentModal()
+    await fetchDepartments()
+    createResultSuccess.value = true
+    createResultMessage.value = 'Department has been updated successfully.'
+    showCreateResultModal.value = true
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to update department'
+    updateDepartmentError.value = msg
+    createResultSuccess.value = false
+    createResultMessage.value = msg
+    showCreateResultModal.value = true
+  } finally {
+    updateDepartmentLoading.value = false
+  }
+}
+
 </script>
 
 <template>
@@ -106,7 +252,7 @@ const paginationPages = computed(() => {
       </div>
       <button
         class="inline-flex items-center gap-2 rounded-lg bg-primary hover:bg-primary-dark text-white px-5 py-2.5 text-sm font-bold shadow-md shadow-orange-500/20 transition-all whitespace-nowrap"
-        @click="() => {}"
+        @click="handleAddDepartment"
       >
         <span class="material-symbols-outlined text-[20px]">add_circle</span>
         Add New Department
@@ -205,7 +351,7 @@ const paginationPages = computed(() => {
               <td class="p-4 text-right space-x-2">
                 <button
                   class="p-2 text-slate-400 hover:text-primary transition-colors"
-                  @click="() => {}"
+                  @click="handleEditDepartment(dept)"
                 >
                   <span class="material-symbols-outlined text-[20px]">edit</span>
                 </button>
@@ -273,6 +419,226 @@ const paginationPages = computed(() => {
         </div>
       </div>
     </div>
+
+    <!-- Add New Department Modal -->
+    <Teleport to="body">
+      <Transition name="fade">
+        <div
+          v-if="showAddDepartmentModal"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm bg-stone-900/50"
+          role="dialog"
+          @click.self="closeAddDepartmentModal"
+        >
+          <div class="w-full max-w-md bg-surface-light dark:bg-surface-dark rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div class="bg-primary px-6 py-4 flex items-center justify-between">
+              <h2 class="text-white text-lg font-bold">Add New Department</h2>
+              <button
+                class="text-white/80 hover:text-white transition-colors rounded-lg p-1 hover:bg-white/10"
+                @click="closeAddDepartmentModal"
+              >
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <form class="p-6 flex flex-col gap-5" @submit.prevent="submitNewDepartment">
+              <div v-if="createDepartmentError" class="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm">
+                {{ createDepartmentError }}
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <label class="text-sm font-semibold text-slate-700 dark:text-slate-300" for="name">
+                  Department Name <span class="text-red-500">*</span>
+                </label>
+                <input
+                  id="name"
+                  v-model="newDepartment.name"
+                  required
+                  class="w-full px-4 py-2.5 bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all placeholder:text-slate-400"
+                  placeholder="e.g. Computer Science"
+                  type="text"
+                />
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <label class="text-sm font-semibold text-slate-700 dark:text-slate-300" for="officeLocation">
+                  Office Location
+                </label>
+                <input
+                  id="officeLocation"
+                  v-model="newDepartment.officeLocation"
+                  class="w-full px-4 py-2.5 bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all placeholder:text-slate-400"
+                  placeholder="e.g. Building A, Floor 3"
+                  type="text"
+                />
+              </div>
+              <div class="px-0 py-0 bg-stone-50 dark:bg-stone-900/30 border-t border-stone-100 dark:border-stone-800 flex items-center justify-end gap-3 mt-2 pt-4">
+                <button
+                  type="button"
+                  class="px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors"
+                  @click="closeAddDepartmentModal"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  :disabled="createDepartmentLoading"
+                  class="px-4 py-2 rounded-lg text-sm font-bold text-white bg-primary hover:bg-primary-dark shadow-md shadow-orange-500/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {{ createDepartmentLoading ? 'Creating...' : 'Create Department' }}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Edit Department Modal -->
+    <Teleport to="body">
+      <Transition name="fade">
+        <div
+          v-if="showEditDepartmentModal"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm bg-stone-900/50"
+          role="dialog"
+          @click.self="closeEditDepartmentModal"
+        >
+          <div class="w-full max-w-md bg-surface-light dark:bg-surface-dark rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div class="bg-primary px-6 py-4 flex items-center justify-between">
+              <h2 class="text-white text-lg font-bold">Edit Department</h2>
+              <button
+                class="text-white/80 hover:text-white transition-colors rounded-lg p-1 hover:bg-white/10"
+                @click="closeEditDepartmentModal"
+              >
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <form class="p-6 flex flex-col gap-5" @submit.prevent="submitUpdateDepartment">
+              <div v-if="updateDepartmentError" class="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm">
+                {{ updateDepartmentError }}
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <label class="text-sm font-semibold text-slate-700 dark:text-slate-300" for="edit-name">
+                  Department Name <span class="text-red-500">*</span>
+                </label>
+                <input
+                  id="edit-name"
+                  v-model="editDepartment.name"
+                  required
+                  class="w-full px-4 py-2.5 bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all placeholder:text-slate-400"
+                  placeholder="e.g. Computer Science"
+                  type="text"
+                />
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <label class="text-sm font-semibold text-slate-700 dark:text-slate-300" for="edit-officeLocation">
+                  Office Location
+                </label>
+                <input
+                  id="edit-officeLocation"
+                  v-model="editDepartment.officeLocation"
+                  class="w-full px-4 py-2.5 bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all placeholder:text-slate-400"
+                  placeholder="e.g. Building A, Floor 3"
+                  type="text"
+                />
+              </div>
+              <div class="px-0 py-0 bg-stone-50 dark:bg-stone-900/30 border-t border-stone-100 dark:border-stone-800 flex items-center justify-end gap-3 mt-2 pt-4">
+                <button
+                  type="button"
+                  class="px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors"
+                  @click="closeEditDepartmentModal"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  :disabled="updateDepartmentLoading"
+                  class="px-4 py-2 rounded-lg text-sm font-bold text-white bg-primary hover:bg-primary-dark shadow-md shadow-orange-500/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {{ updateDepartmentLoading ? 'Updating...' : 'Update Department' }}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Create Department Result Modal -->
+    <Teleport to="body">
+      <Transition name="fade">
+        <div
+          v-if="showCreateResultModal"
+          class="fixed inset-0 z-120 flex items-center justify-center p-4 backdrop-blur-md bg-stone-900/40"
+        >
+          <div
+            class="bg-surface-light dark:bg-surface-dark w-full max-w-md rounded-xl shadow-2xl overflow-hidden border border-stone-200 dark:border-stone-800 max-h-[80vh] flex flex-col"
+          >
+            <div
+              :class="[
+                'px-6 py-4 flex items-center justify-between shrink-0',
+                createResultSuccess ? 'bg-emerald-600' : 'bg-red-600',
+              ]"
+            >
+              <h2 class="text-white text-lg font-bold flex items-center gap-2">
+                <span class="material-symbols-outlined">
+                  {{ createResultSuccess ? 'check_circle' : 'error' }}
+                </span>
+                {{ createResultSuccess ? 'Department Created' : 'Create Failed' }}
+              </h2>
+              <button class="text-white/80 hover:text-white transition-colors" type="button" @click="closeCreateResultModal">
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div class="p-6 flex-1 flex items-center">
+              <p class="text-sm text-slate-700 dark:text-slate-200">
+                {{ createResultMessage }}
+              </p>
+            </div>
+
+            <div class="px-6 py-4 border-t border-stone-200 dark:border-stone-800 bg-stone-50/60 dark:bg-stone-900/40 shrink-0 flex justify-end">
+              <button
+                type="button"
+                class="px-5 py-2 rounded-lg bg-primary hover:bg-primary-dark text-white text-sm font-bold shadow-md shadow-primary/30 transition-all active:scale-95"
+                @click="closeCreateResultModal"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes zoom-in {
+  from {
+    transform: scale(0.95);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+.animate-in {
+  animation: fade-in 0.2s ease, zoom-in 0.2s ease;
+}
+</style>
 

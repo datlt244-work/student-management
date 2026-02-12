@@ -305,6 +305,72 @@ export async function getAdminDepartmentList(params: {
   return (data.result || data) as AdminDepartmentListResult
 }
 
+// ========== UC-13.2: Create Department ==========
+
+export interface AdminCreateDepartmentRequest {
+  name: string
+  officeLocation?: string
+}
+
+export interface AdminDepartmentDetailResponse {
+  departmentId: number
+  name: string
+  officeLocation: string | null
+  createdAt: string
+}
+
+/**
+ * UC-13.2: Tạo Department (Admin)
+ * Endpoint: POST /admin/departments
+ */
+export async function createAdminDepartment(
+  body: AdminCreateDepartmentRequest,
+): Promise<AdminDepartmentDetailResponse> {
+  const response = await apiFetch('/admin/departments', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    const message = errorData?.message || `Failed to create department (${response.status})`
+    throw new Error(message)
+  }
+
+  const data = await response.json()
+  return (data.result || data) as AdminDepartmentDetailResponse
+}
+
+// ========== UC-13.3: Update Department ==========
+
+export interface AdminUpdateDepartmentRequest {
+  name?: string
+  officeLocation?: string
+}
+
+/**
+ * UC-13.3: Cập Nhật Department (Admin)
+ * Endpoint: PUT /admin/departments/{departmentId}
+ */
+export async function updateAdminDepartment(
+  departmentId: number,
+  body: AdminUpdateDepartmentRequest,
+): Promise<AdminDepartmentDetailResponse> {
+  const response = await apiFetch(`/admin/departments/${departmentId}`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    const message = errorData?.message || `Failed to update department (${response.status})`
+    throw new Error(message)
+  }
+
+  const data = await response.json()
+  return (data.result || data) as AdminDepartmentDetailResponse
+}
+
 // ========== UC-11.3a Create User Request ==========
 
 export interface AdminCreateUserRequest {

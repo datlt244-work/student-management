@@ -1,6 +1,11 @@
 package com.newwave.student_management.domains.auth.service.impl;
 
+import com.newwave.student_management.common.exception.AppException;
+import com.newwave.student_management.common.exception.ErrorCode;
 import com.newwave.student_management.common.util.PaginationUtil;
+import com.newwave.student_management.domains.auth.dto.request.AdminCreateDepartmentRequest;
+import com.newwave.student_management.domains.auth.dto.request.AdminUpdateDepartmentRequest;
+import com.newwave.student_management.domains.auth.dto.response.AdminDepartmentDetailResponse;
 import com.newwave.student_management.domains.auth.dto.response.AdminDepartmentListResponse;
 import com.newwave.student_management.domains.auth.dto.response.AdminDepartmentListItemResponse;
 import com.newwave.student_management.domains.auth.service.IAdminDepartmentService;
@@ -47,6 +52,76 @@ public class AdminDepartmentService implements IAdminDepartmentService {
                 .size(metadata.size)
                 .totalElements(metadata.totalElements)
                 .totalPages(metadata.totalPages)
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public AdminDepartmentDetailResponse createDepartment(AdminCreateDepartmentRequest request) {
+        String name = request.getName() != null ? request.getName().trim() : "";
+        if (name.isBlank()) {
+            throw new AppException(ErrorCode.DEPARTMENT_NAME_REQUIRED);
+        }
+
+        // Check if department name already exists (case-insensitive)
+        if (departmentRepository.existsByNameIgnoreCaseAndDeletedAtIsNull(name)) {
+            throw new AppException(ErrorCode.DEPARTMENT_NAME_EXISTED);
+        }
+
+        String officeLocation = request.getOfficeLocation() != null ? request.getOfficeLocation().trim() : null;
+        if (officeLocation != null && officeLocation.isBlank()) {
+            officeLocation = null;
+        }
+
+        Department department = new Department();
+        department.setName(name);
+        department.setOfficeLocation(officeLocation);
+
+        Department saved = departmentRepository.save(department);
+
+        return AdminDepartmentDetailResponse.builder()
+                .departmentId(saved.getDepartmentId())
+                .name(saved.getName())
+                .officeLocation(saved.getOfficeLocation())
+                .createdAt(saved.getCreatedAt())
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public AdminDepartmentDetailResponse updateDepartment(Integer departmentId, AdminUpdateDepartmentRequest request) {
+        Department department = departmentRepository.findByDepartmentIdAndDeletedAtIsNull(departmentId)
+                .orElseThrow(() -> new AppException(ErrorCode.DEPARTMENT_NOT_FOUND));
+
+        // Update name if provided
+        if (request.getName() != null) {
+            String name = request.getName().trim();
+            if (name.isBlank()) {
+                throw new AppException(ErrorCode.DEPARTMENT_NAME_REQUIRED);
+            }
+
+            // Check if new name conflicts with existing department (excluding current one)
+            if (!name.equalsIgnoreCase(department.getName()) &&
+                    departmentRepository.existsByNameIgnoreCaseAndDeletedAtIsNull(name)) {
+                throw new AppException(ErrorCode.DEPARTMENT_NAME_EXISTED);
+            }
+
+            department.setName(name);
+        }
+
+        // Update officeLocation if provided
+        if (request.getOfficeLocation() != null) {
+            String officeLocation = request.getOfficeLocation().trim();
+            department.setOfficeLocation(officeLocation.isBlank() ? null : officeLocation);
+        }
+
+        Department saved = departmentRepository.save(department);
+
+        return AdminDepartmentDetailResponse.builder()
+                .departmentId(saved.getDepartmentId())
+                .name(saved.getName())
+                .officeLocation(saved.getOfficeLocation())
+                .createdAt(saved.getCreatedAt())
                 .build();
     }
 }

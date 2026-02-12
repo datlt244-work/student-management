@@ -253,6 +253,7 @@ export interface AdminDepartmentListItem {
   departmentId: number
   name: string
   officeLocation: string | null
+  courseCount: number
   createdAt: string
 }
 
@@ -262,6 +263,7 @@ export interface AdminDepartmentListResult {
   size: number
   totalElements: number
   totalPages: number
+  totalCourses: number
 }
 
 /**

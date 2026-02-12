@@ -9,6 +9,7 @@ import com.newwave.student_management.domains.auth.dto.response.AdminDepartmentD
 import com.newwave.student_management.domains.auth.dto.response.AdminDepartmentListResponse;
 import com.newwave.student_management.domains.auth.dto.response.AdminDepartmentListItemResponse;
 import com.newwave.student_management.domains.auth.service.IAdminDepartmentService;
+import com.newwave.student_management.domains.curriculum.repository.CourseRepository;
 import com.newwave.student_management.domains.profile.entity.Department;
 import com.newwave.student_management.domains.profile.repository.DepartmentRepository;
 import com.newwave.student_management.domains.profile.repository.StudentRepository;
@@ -20,7 +21,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +33,7 @@ public class AdminDepartmentService implements IAdminDepartmentService {
     private final DepartmentRepository departmentRepository;
     private final TeacherRepository teacherRepository;
     private final StudentRepository studentRepository;
+    private final CourseRepository courseRepository;
 
     @Override
     public AdminDepartmentListResponse getDepartments(String search, Pageable pageable) {
@@ -40,11 +44,25 @@ public class AdminDepartmentService implements IAdminDepartmentService {
                 pageable
         );
 
+        List<Integer> departmentIds = pageResult.getContent().stream()
+                .map(Department::getDepartmentId)
+                .toList();
+
+        Map<Integer, Long> courseCountByDepartmentId = new HashMap<>();
+        if (!departmentIds.isEmpty()) {
+            for (Object[] row : courseRepository.countActiveCoursesByDepartmentIds(departmentIds)) {
+                Integer departmentId = (Integer) row[0];
+                Long count = (Long) row[1];
+                courseCountByDepartmentId.put(departmentId, count);
+            }
+        }
+
         List<AdminDepartmentListItemResponse> items = pageResult.getContent().stream()
                 .map(department -> AdminDepartmentListItemResponse.builder()
                         .departmentId(department.getDepartmentId())
                         .name(department.getName())
                         .officeLocation(department.getOfficeLocation())
+                        .courseCount(courseCountByDepartmentId.getOrDefault(department.getDepartmentId(), 0L))
                         .createdAt(department.getCreatedAt())
                         .build())
                 .toList();
@@ -57,6 +75,7 @@ public class AdminDepartmentService implements IAdminDepartmentService {
                 .size(metadata.size)
                 .totalElements(metadata.totalElements)
                 .totalPages(metadata.totalPages)
+                .totalCourses(courseRepository.countByDeletedAtIsNull())
                 .build();
     }
 
@@ -139,9 +158,13 @@ public class AdminDepartmentService implements IAdminDepartmentService {
         // Check if department has active teachers or students
         long teacherCount = teacherRepository.countByDepartment_DepartmentIdAndDeletedAtIsNull(departmentId);
         long studentCount = studentRepository.countByDepartment_DepartmentIdAndDeletedAtIsNull(departmentId);
+        long courseCount = courseRepository.countByDepartment_DepartmentIdAndDeletedAtIsNull(departmentId);
 
         if (teacherCount > 0 || studentCount > 0) {
             throw new AppException(ErrorCode.DEPARTMENT_HAS_ACTIVE_MEMBERS);
+        }
+        if (courseCount > 0) {
+            throw new AppException(ErrorCode.DEPARTMENT_HAS_ACTIVE_COURSES);
         }
 
         // Soft delete department

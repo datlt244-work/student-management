@@ -4,11 +4,13 @@ import com.newwave.student_management.common.entity.JpaBaseEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "departments")
 @Data
+@EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 @AllArgsConstructor
 public class Department extends JpaBaseEntity {
@@ -18,7 +20,8 @@ public class Department extends JpaBaseEntity {
     @Column(name = "department_id")
     private Integer departmentId;
 
-    @Column(name = "name", length = 100, nullable = false, unique = true)
+    // Uniqueness is enforced via DB migration using a partial unique index (deleted_at IS NULL).
+    @Column(name = "name", length = 100, nullable = false)
     private String name;
 
     @Column(name = "office_location", length = 100)

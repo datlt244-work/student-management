@@ -235,15 +235,74 @@ export interface AdminDepartmentItem {
 
 /**
  * GET /admin/departments — Danh sách khoa (cho select khi tạo user).
+ * Endpoint đơn giản không có pagination.
  */
 export async function getAdminDepartments(): Promise<AdminDepartmentItem[]> {
-  const response = await apiFetch('/admin/departments')
+  const response = await apiFetch('/admin/departments/simple')
   if (!response.ok) {
     const errorData = await response.json().catch(() => null)
     throw new Error(errorData?.message || `Failed to fetch departments (${response.status})`)
   }
   const data = await response.json()
   return (data.result ?? data) as AdminDepartmentItem[]
+}
+
+// ========== UC-13.1: Department List (Admin) ==========
+
+export interface AdminDepartmentListItem {
+  departmentId: number
+  name: string
+  officeLocation: string | null
+  createdAt: string
+}
+
+export interface AdminDepartmentListResult {
+  content: AdminDepartmentListItem[]
+  page: number
+  size: number
+  totalElements: number
+  totalPages: number
+}
+
+/**
+ * UC-13.1: Danh sách Departments (Admin) với pagination
+ * Endpoint: GET /admin/departments
+ * Query params: page, size, sort, search
+ */
+export async function getAdminDepartmentList(params: {
+  page?: number
+  size?: number
+  sort?: string
+  search?: string
+}): Promise<AdminDepartmentListResult> {
+  const searchParams = new URLSearchParams()
+
+  if (params.page !== undefined) {
+    // BE dùng page 0-based, UI dùng 1-based → chuyển đổi tại đây
+    searchParams.set('page', String(Math.max(0, params.page)))
+  }
+  if (params.size !== undefined) {
+    searchParams.set('size', String(params.size))
+  }
+  if (params.sort) {
+    searchParams.set('sort', params.sort)
+  }
+  if (params.search) {
+    searchParams.set('search', params.search.trim())
+  }
+
+  const queryString = searchParams.toString()
+  const endpoint = queryString ? `/admin/departments?${queryString}` : '/admin/departments'
+
+  const response = await apiFetch(endpoint)
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    throw new Error(errorData?.message || `Failed to fetch departments (${response.status})`)
+  }
+
+  const data = await response.json()
+  return (data.result || data) as AdminDepartmentListResult
 }
 
 // ========== UC-11.3a Create User Request ==========

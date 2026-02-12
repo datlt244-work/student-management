@@ -18,6 +18,7 @@ function closeMobileMenu() {
 const navItems = [
   { name: 'Dashboard', icon: 'dashboard', routeName: 'admin-dashboard' },
   { name: 'User Management', icon: 'group', routeName: 'admin-users' },
+  { name: 'Department Management', icon: 'account_tree', routeName: 'admin-departments' },
   { name: 'Course Management', icon: 'menu_book', routeName: 'admin-courses' },
   { name: 'Class Management', icon: 'school', routeName: 'admin-classes' },
   { name: 'System Logs', icon: 'description', routeName: 'admin-logs' },

@@ -20,7 +20,7 @@ const searchQuery = ref('')
 const statusFilter = ref<UserStatus | ''>('')
 const roleFilter = ref('')
 const sortBy = ref<'createdAt,desc' | 'createdAt,asc' | ''>('createdAt,desc')
-const pageSize = ref(20)
+const pageSize = ref(10)
 const currentPage = ref(1) // UI 1-based
 const totalPages = ref(0)
 const totalElements = ref(0)
@@ -675,6 +675,7 @@ function processImport() {
             v-model="pageSize"
             class="h-9 py-0 pr-8 pl-3 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-sm"
           >
+            <option :value="10">10</option>
             <option :value="20">20</option>
             <option :value="50">50</option>
             <option :value="100">100</option>

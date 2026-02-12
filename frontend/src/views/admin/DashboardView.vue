@@ -14,6 +14,7 @@ const currentDate = computed(() => {
 const health = ref<SystemHealthResponse | null>(null)
 const healthLoading = ref(false)
 const healthError = ref<string | null>(null)
+const lastCheckedAt = ref<Date | null>(null)
 
 // Placeholder stats — có thể nối với API thống kê sau
 const stats = [
@@ -62,6 +63,7 @@ async function refreshHealth() {
     healthLoading.value = true
     healthError.value = null
     health.value = await getSystemHealthOverall()
+    lastCheckedAt.value = new Date()
   } catch (e) {
     healthError.value = e instanceof Error ? e.message : 'Failed to load system health'
   } finally {
@@ -148,8 +150,8 @@ onMounted(refreshHealth)
             </span>
           </div>
           <div class="flex items-center gap-3">
-            <span v-if="health" class="text-xs text-slate-500 dark:text-slate-400">
-              Checked at: {{ new Date(health.timestamp).toLocaleTimeString() }}
+            <span v-if="lastCheckedAt" class="text-xs text-slate-500 dark:text-slate-400">
+              Checked at: {{ lastCheckedAt.toLocaleTimeString() }}
             </span>
             <button
               type="button"

@@ -4,6 +4,7 @@ import com.newwave.student_management.common.dto.ApiResponse;
 import com.newwave.student_management.common.exception.AppException;
 import com.newwave.student_management.common.exception.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -93,6 +94,43 @@ public class GlobalExceptionHandler {
         ApiResponse<Void> apiResponse = ApiResponse.<Void>builder()
                 .code(errorCode.getCode())
                 .message(errorCode.getMessage())
+                .build();
+
+        return ResponseEntity.status(errorCode.getStatusCode()).body(apiResponse);
+    }
+
+    /**
+     * Handle database integrity violations (unique constraints, foreign keys, etc.)
+     */
+    @ExceptionHandler(value = DataIntegrityViolationException.class)
+    ResponseEntity<ApiResponse<Void>> handlingDataIntegrityViolation(DataIntegrityViolationException exception) {
+        log.warn("Data integrity violation: {}", exception.getMessage());
+
+        String message = exception.getMessage();
+        ErrorCode errorCode = ErrorCode.VALIDATION_ERROR;
+        String errorMessage = "Data integrity violation";
+
+        // Check for common unique constraint violations
+        if (message != null) {
+            String lowerMessage = message.toLowerCase();
+            if (lowerMessage.contains("departments") && lowerMessage.contains("name")) {
+                errorCode = ErrorCode.DEPARTMENT_NAME_EXISTED;
+                errorMessage = errorCode.getMessage();
+            } else if (lowerMessage.contains("teacher_code") || lowerMessage.contains("teachers_teacher_code")) {
+                errorCode = ErrorCode.TEACHER_CODE_EXISTED;
+                errorMessage = errorCode.getMessage();
+            } else if (lowerMessage.contains("student_code") || lowerMessage.contains("students_student_code")) {
+                errorCode = ErrorCode.STUDENT_CODE_EXISTED;
+                errorMessage = errorCode.getMessage();
+            } else if (lowerMessage.contains("email") || lowerMessage.contains("users_email")) {
+                errorCode = ErrorCode.USER_EXISTED;
+                errorMessage = errorCode.getMessage();
+            }
+        }
+
+        ApiResponse<Void> apiResponse = ApiResponse.<Void>builder()
+                .code(errorCode.getCode())
+                .message(errorMessage)
                 .build();
 
         return ResponseEntity.status(errorCode.getStatusCode()).body(apiResponse);

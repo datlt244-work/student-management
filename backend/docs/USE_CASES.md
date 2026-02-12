@@ -1654,60 +1654,603 @@ Content-Type: image/jpeg
 
 ---
 
-### UC-11: Quản Lý Users (Admin)
+### UC-11: Quản Lý Users (Admin) — Chi Tiết ✅ IMPLEMENTED
 
 | Thuộc tính | Giá trị |
 |------------|---------|
-| **Endpoints** | `GET/POST/PUT/DELETE /admin/users` |
+| **Base URL** | `/admin/users` |
 | **Actor** | Admin |
-| **Mục đích** | CRUD tài khoản người dùng |
+| **Mục đích** | CRUD tài khoản (Teacher/Student), quản lý trạng thái, reset password |
+| **Authorization** | `Bearer {token}` với `role = ADMIN` (`@PreAuthorize("hasRole('ADMIN')")`) |
 
-**GET /admin/users** - Danh sách users (có phân trang):
+> **⚠️ Quy tắc quan trọng:**
+> - Tài khoản **ADMIN** là mặc định (seeded), **KHÔNG** tạo thêm qua API.
+> - Admin **KHÔNG** thể tự xóa chính mình.
+> - Khi tạo user, admin chọn role (`TEACHER` hoặc `STUDENT`) → form hiển thị fields tương ứng.
+> - Tất cả xóa đều là **soft delete** (`deleted_at = NOW()`).
+
+---
+
+#### UC-11.1: Danh Sách Users ✅ IMPLEMENTED
+
+| Thuộc tính | Giá trị |
+|------------|---------|
+| **Endpoint** | `GET /admin/users` |
+| **Actor** | Admin |
+| **Mục đích** | Xem danh sách users với phân trang, filter, search |
+
+**Query Params:**
+
+| Param | Type | Default | Mô tả |
+|-------|------|---------|-------|
+| `page` | int | 0 | Trang hiện tại |
+| `size` | int | 20 | Số record/trang (max 100) |
+| `sort` | string | `createdAt,desc` | Sắp xếp |
+| `search` | string | | Tìm theo email (LIKE, case-insensitive) |
+| `status` | string | | Filter: `ACTIVE`, `INACTIVE`, `BLOCKED`, `PENDING_VERIFICATION` |
+| `roleId` | int | | Filter: 1=ADMIN, 2=TEACHER, 3=STUDENT |
+
+**Luồng hoạt động:**
+```
+┌───────┐      ┌──────────────────┐      ┌────────────┐
+│ Admin │      │ AdminUserService │      │ PostgreSQL │
+└───┬───┘      └────────┬─────────┘      └──────┬─────┘
+    │                   │                       │
+    │ 1. GET /admin/users?search=&status=&roleId=
+    │──────────────────►│                       │
+    │                   │                       │
+    │                   │ 2. Normalize search   │
+    │                   │    (lowercase, escape %, _)
+    │                   │ 3. Query with filters │
+    │                   │──────────────────────►│
+    │                   │◄──────────────────────│
+    │                   │                       │
+    │                   │ 4. For each user:     │
+    │                   │    - Resolve fullName from Teacher/Student profile
+    │                   │    - Resolve avatar URL via StorageService
+    │                   │──────────────────────►│
+    │                   │◄──────────────────────│
+    │                   │                       │
+    │ 5. Return paginated list                  │
+    │◄──────────────────│                       │
+```
+
+**Response:**
 ```json
 {
   "code": 1000,
   "result": {
-    "content": [...],
+    "content": [
+      {
+        "userId": "uuid-001",
+        "email": "admin@fpt.edu.vn",
+        "fullName": "Admin User",
+        "role": { "roleId": 1, "roleName": "ADMIN" },
+        "status": "ACTIVE",
+        "emailVerified": true,
+        "profilePictureUrl": "http://localhost:9000/student-management/avatar/...",
+        "lastLoginAt": "2026-02-10T08:00:00",
+        "loginCount": 42,
+        "createdAt": "2025-09-01T08:00:00"
+      }
+    ],
     "page": 0,
     "size": 20,
-    "totalElements": 100,
-    "totalPages": 5
+    "totalElements": 22,
+    "totalPages": 2
   }
 }
 ```
 
-**POST /admin/users** - Tạo user mới:
+> **Implementation notes:**
+> - `fullName` được resolve từ `teachers`/`students` table (firstName + lastName), fallback build từ email nếu chưa có profile.
+> - `profilePictureUrl` trả full URL qua `IStorageService.getPublicUrl()`.
+> - Search dùng `LOWER(email) LIKE :search` với `%keyword%`.
+
+---
+
+#### UC-11.2: Xem Chi Tiết User ✅ IMPLEMENTED
+
+| Thuộc tính | Giá trị |
+|------------|---------|
+| **Endpoint** | `GET /admin/users/{userId}` |
+| **Actor** | Admin |
+| **Mục đích** | Xem thông tin user + profile (student/teacher) |
+
+**Luồng hoạt động:**
+```
+┌───────┐      ┌──────────────────┐      ┌────────────┐
+│ Admin │      │ AdminUserService │      │ PostgreSQL │
+└───┬───┘      └────────┬─────────┘      └──────┬─────┘
+    │                   │                       │
+    │ 1. GET /admin/users/{userId}              │
+    │──────────────────►│                       │
+    │                   │                       │
+    │                   │ 2. Find user (deletedAt IS NULL)
+    │                   │──────────────────────►│
+    │                   │◄──────────────────────│
+    │                   │                       │
+    │                   │ 3. Switch by role:    │
+    │                   │    IF TEACHER → fetch teacher + department
+    │                   │    IF STUDENT → fetch student + department
+    │                   │──────────────────────►│
+    │                   │◄──────────────────────│
+    │                   │                       │
+    │ 4. Return user + profile                  │
+    │◄──────────────────│                       │
+```
+
+**Response (Student):**
 ```json
 {
-  "email": "newuser@example.com",
-  "password": "Password123!",
-  "roleId": 2,
+  "code": 1000,
+  "result": {
+    "userId": "uuid-201",
+    "email": "hoang.minh.tuan@fpt.edu.vn",
+    "role": { "roleId": 3, "roleName": "STUDENT" },
+    "status": "ACTIVE",
+    "emailVerified": true,
+    "banReason": null,
+    "lastLoginAt": "2026-02-10T07:30:00",
+    "loginCount": 45,
+    "createdAt": "2025-09-01T08:00:00",
+    "studentProfile": {
+      "studentId": "uuid-2001",
+      "studentCode": "HE170001",
+      "firstName": "Tuan",
+      "lastName": "Hoang Minh",
+      "dob": "2003-03-15",
+      "gender": "MALE",
+      "major": "Software Engineering",
+      "email": "hoang.minh.tuan@fpt.edu.vn",
+      "phone": "0912000001",
+      "address": "12 Tran Phu, Ha Noi",
+      "gpa": 3.45,
+      "year": 2,
+      "manageClass": "SE1701",
+      "department": { "departmentId": 1, "name": "Computer Science" }
+    },
+    "teacherProfile": null
+  }
+}
+```
+
+**Response (Teacher):**
+```json
+{
+  "code": 1000,
+  "result": {
+    "userId": "uuid-101",
+    "email": "nguyen.van.an@fpt.edu.vn",
+    "role": { "roleId": 2, "roleName": "TEACHER" },
+    "status": "ACTIVE",
+    "emailVerified": true,
+    "banReason": null,
+    "lastLoginAt": "2026-02-10T08:00:00",
+    "loginCount": 30,
+    "createdAt": "2025-06-01T08:00:00",
+    "studentProfile": null,
+    "teacherProfile": {
+      "teacherId": "uuid-1001",
+      "teacherCode": "HJ170001",
+      "firstName": "An",
+      "lastName": "Nguyen Van",
+      "email": "nguyen.van.an@fpt.edu.vn",
+      "phone": "0901000001",
+      "specialization": "Artificial Intelligence",
+      "academicRank": "Associate Professor",
+      "officeRoom": "A-201",
+      "degreesQualification": "PhD Computer Science",
+      "department": { "departmentId": 1, "name": "Computer Science" }
+    }
+  }
+}
+```
+
+**Error Responses:**
+
+| Code | Message | HTTP Status |
+|------|---------|-------------|
+| 1201 | User not found | 404 |
+
+---
+
+#### UC-11.3a: Tạo User (Teacher hoặc Student) ✅ IMPLEMENTED
+
+| Thuộc tính | Giá trị |
+|------------|---------|
+| **Endpoint** | `POST /admin/users` |
+| **Actor** | Admin |
+| **Mục đích** | Tạo tài khoản mới + profile (Teacher/Student) |
+| **Postcondition** | User tạo xong có `status = PENDING_VERIFICATION`, gửi welcome email |
+
+**Luồng hoạt động:**
+```
+┌───────┐      ┌──────────────────┐      ┌────────────┐      ┌───────┐      ┌────────────┐
+│ Admin │      │ AdminUserService │      │ PostgreSQL │      │ Redis │      │ Email SMTP │
+└───┬───┘      └────────┬─────────┘      └──────┬─────┘      └───┬───┘      └─────┬──────┘
+    │                   │                       │                │                │
+    │ 1. POST /admin/users                      │                │                │
+    │    {role, email, profile fields}           │                │                │
+    │──────────────────►│                       │                │                │
+    │                   │                       │                │                │
+    │                   │ 2. Validate role (TEACHER/STUDENT only)│                │
+    │                   │ 3. Check email unique │                │                │
+    │                   │ 4. Check code unique  │                │                │
+    │                   │    (teacherCode/studentCode)           │                │
+    │                   │ 5. Find department    │                │                │
+    │                   │──────────────────────►│                │                │
+    │                   │◄──────────────────────│                │                │
+    │                   │                       │                │                │
+    │                   │ 6. Generate random password (12 chars) │                │
+    │                   │ 7. Hash password (BCrypt)              │                │
+    │                   │ 8. Create users record │                │                │
+    │                   │    (PENDING_VERIFICATION)              │                │
+    │                   │ 9. Create profile:    │                │                │
+    │                   │    teachers/students  │                │                │
+    │                   │──────────────────────►│                │                │
+    │                   │                       │                │                │
+    │                   │ 10. Create activation token (TTL: 72h) │                │
+    │                   │────────────────────────────────────────►│                │
+    │                   │                       │                │                │
+    │                   │ 11. Send welcome email│                │                │
+    │                   │    (email + password + activation link)│                │
+    │                   │──────────────────────────────────────────────────────────►│
+    │                   │                       │                │                │
+    │ 12. Return user + profile (201 CREATED)   │                │                │
+    │◄──────────────────│                       │                │                │
+```
+
+**Request (role = TEACHER):**
+```json
+{
+  "role": "TEACHER",
+  "email": "nguyen.thi.hoa@fpt.edu.vn",
+  "departmentId": 1,
+  "teacherCode": "HJ170006",
+  "firstName": "Hoa",
+  "lastName": "Nguyen Thi",
+  "phone": "0901000006",
+  "specialization": "Cloud Computing",
+  "academicRank": "Lecturer",
+  "officeRoom": "A-301",
+  "degreesQualification": "PhD"
+}
+```
+
+**Request (role = STUDENT):**
+```json
+{
+  "role": "STUDENT",
+  "email": "tran.thi.anh@fpt.edu.vn",
+  "departmentId": 1,
+  "studentCode": "HE170016",
+  "firstName": "Anh",
+  "lastName": "Tran Thi",
+  "dob": "2003-05-20",
+  "gender": "FEMALE",
+  "major": "Software Engineering",
+  "phone": "0912000016",
+  "address": "100 Le Loi, HCM",
+  "year": 2,
+  "manageClass": "SE1701"
+}
+```
+
+**Validation Rules:**
+
+| Field | Rule | Áp dụng |
+|-------|------|---------|
+| role | Required, `TEACHER` hoặc `STUDENT` | Cả hai |
+| email | Required, `@fpt.edu.vn`, unique, max 100 | Cả hai |
+| departmentId | Required, must exist | Cả hai |
+| firstName | Required, max 50 | Cả hai |
+| lastName | Required, max 50 | Cả hai |
+| phone | Optional, digits only, max 20 | Cả hai |
+| teacherCode | Required (TEACHER), format `HJxxxxxx`, unique | Teacher |
+| specialization | Optional, max 100 | Teacher |
+| academicRank | Optional, max 50 | Teacher |
+| officeRoom | Optional, max 50 | Teacher |
+| degreesQualification | Optional, TEXT | Teacher |
+| studentCode | Required (STUDENT), format `HExxxxxx`, unique | Student |
+| dob | Optional, must be in the past | Student |
+| gender | Optional, `MALE`/`FEMALE`/`OTHER` | Student |
+| major | Optional, max 100 | Student |
+| address | Optional, max 255 | Student |
+| year | Optional, 1-4 | Student |
+| manageClass | Optional, max 50 | Student |
+
+**Password Generation:**
+```
+Thuật toán: SecureRandom, 12 ký tự
+  - Ít nhất 1 chữ hoa (A-Z, loại O, I, L)
+  - Ít nhất 1 chữ thường (a-z, loại o, l)
+  - Ít nhất 1 chữ số (2-9, loại 0, 1)
+  - Ít nhất 1 ký tự đặc biệt (!@#$%&*)
+  - Shuffle toàn bộ để tránh pattern
+```
+
+**Welcome Email:**
+```
+Subject: [Student Management] Tài khoản của bạn đã được tạo
+
+Xin chào {firstName} {lastName},
+
+Tài khoản đã được tạo:
+  Email:    nguyen.thi.hoa@fpt.edu.vn
+  Mật khẩu: Abc@12345xyz
+
+Click link để kích hoạt (hết hạn sau 72 giờ):
+  https://domain/auth/activate?token=xxx
+```
+
+**Error Responses:**
+
+| Code | Message | HTTP Status |
+|------|---------|-------------|
+| 1200 | User already exists | 409 |
+| 1100 | Email is required | 400 |
+| 1101 | Invalid email format | 400 |
+| 1210 | Invalid role (must be TEACHER or STUDENT) | 400 |
+| 1203 | Teacher code already exists | 409 |
+| 1204 | Student code already exists | 409 |
+| 1220 | Department not found | 400 |
+| 1000 | Validation error (first/last name required, etc.) | 400 |
+
+---
+
+#### UC-11.3b: Import Users từ Excel (Planned)
+
+| Thuộc tính | Giá trị |
+|------------|---------|
+| **Endpoint** | `POST /admin/users/import` |
+| **Content-Type** | `multipart/form-data` |
+| **Actor** | Admin |
+| **Mục đích** | Import hàng loạt Teacher/Student từ file Excel |
+
+> **Template:** Hệ thống tự detect loại template dựa trên header row.
+> - `GET /admin/users/import/template?role=TEACHER` → Download Template Teacher
+> - `GET /admin/users/import/template?role=STUDENT` → Download Template Student
+
+**Logic mỗi row:**
+1. Validate fields + check unique (email, code)
+2. Lookup `departmentName` → `departmentId`
+3. Generate random password
+4. Create `users` + profile record (`PENDING_VERIFICATION`)
+5. Gửi welcome email
+6. Row lỗi → skip, ghi vào `failures`
+
+**Business Rules:** File max **10 MB**, max **500 rows**, partial import (row lỗi bị skip).
+
+---
+
+#### UC-11.4: Cập Nhật Profile User (Admin) ✅ IMPLEMENTED
+
+| Thuộc tính | Giá trị |
+|------------|---------|
+| **Endpoint** | `PUT /admin/users/{userId}/profile` |
+| **Actor** | Admin |
+| **Mục đích** | Admin cập nhật profile teacher/student |
+| **Đặc điểm** | Partial update, KHÔNG cho sửa: email, password, status, role |
+
+**Luồng hoạt động:**
+```
+┌───────┐      ┌──────────────────┐      ┌────────────┐
+│ Admin │      │ AdminUserService │      │ PostgreSQL │
+└───┬───┘      └────────┬─────────┘      └──────┬─────┘
+    │                   │                       │
+    │ 1. PUT /admin/users/{userId}/profile      │
+    │──────────────────►│                       │
+    │                   │                       │
+    │                   │ 2. Find user          │
+    │                   │ 3. Detect role (TEACHER/STUDENT)
+    │                   │ 4. Find department if departmentId provided
+    │                   │──────────────────────►│
+    │                   │◄──────────────────────│
+    │                   │                       │
+    │                   │ 5. IF TEACHER:        │
+    │                   │    - Find teacher profile
+    │                   │    - Update fields (partial)
+    │                   │    - Check teacherCode unique if changed
+    │                   │    IF STUDENT:        │
+    │                   │    - Find student profile
+    │                   │    - Update fields (partial)
+    │                   │    - Check studentCode unique if changed
+    │                   │ 6. Save profile       │
+    │                   │──────────────────────►│
+    │                   │                       │
+    │ 7. Return updated user + profile          │
+    │◄──────────────────│                       │
+```
+
+**Request:**
+```json
+{
+  "firstName": "Hoa Updated",
+  "lastName": "Nguyen Thi",
+  "phone": "0901999999",
+  "departmentId": 2,
+  "teacherCode": "HJ170006",
+  "specialization": "DevOps",
+  "academicRank": "Senior Lecturer"
+}
+```
+
+> **Lưu ý:** Chỉ gửi các field cần update. Field null/absent sẽ bị bỏ qua (partial update).
+
+**Error Responses:**
+
+| Code | Message | HTTP Status |
+|------|---------|-------------|
+| 1201 | User not found | 404 |
+| 1210 | Invalid role | 400 |
+| 1220 | Department not found | 400 |
+| 1203 | Teacher code already exists | 409 |
+| 1204 | Student code already exists | 409 |
+| 1501 | Student profile not found | 404 |
+| 1502 | Teacher profile not found | 404 |
+
+---
+
+#### UC-11.5: Thay Đổi Trạng Thái User (Block/Unblock) ✅ IMPLEMENTED
+
+| Thuộc tính | Giá trị |
+|------------|---------|
+| **Endpoint** | `PATCH /admin/users/{userId}/status` |
+| **Actor** | Admin |
+| **Mục đích** | Thay đổi trạng thái user giữa ACTIVE / INACTIVE / BLOCKED |
+
+**Luồng hoạt động:**
+```
+┌───────┐      ┌──────────────────┐      ┌────────────┐      ┌───────┐
+│ Admin │      │ AdminUserService │      │ PostgreSQL │      │ Redis │
+└───┬───┘      └────────┬─────────┘      └──────┬─────┘      └───┬───┘
+    │                   │                       │                │
+    │ 1. PATCH /admin/users/{id}/status         │                │
+    │──────────────────►│                       │                │
+    │                   │                       │                │
+    │                   │ 2. Find user          │                │
+    │                   │──────────────────────►│                │
+    │                   │◄──────────────────────│                │
+    │                   │                       │                │
+    │                   │ 3. Validate transition│                │
+    │                   │ 4. Update status      │                │
+    │                   │──────────────────────►│                │
+    │                   │                       │                │
+    │                   │ 5. If BLOCKED/INACTIVE:│                │
+    │                   │    → Increment token version           │
+    │                   │    → Delete ALL refresh tokens         │
+    │                   │    → User bị force logout ngay         │
+    │                   │────────────────────────────────────────►│
+    │                   │                       │                │
+    │ 6. Return updated user + profile          │                │
+    │◄──────────────────│                       │                │
+```
+
+**Request (Block):**
+```json
+{
+  "status": "BLOCKED",
+  "banReason": "Vi phạm nội quy trường"
+}
+```
+
+**Request (Unblock):**
+```json
+{
   "status": "ACTIVE"
 }
 ```
 
-**Luồng hoạt động (Create User):**
+**State Machine:**
 ```
-┌───────┐      ┌──────────────────┐      ┌────────────┐
-│ Admin │      │ Admin Controller │      │ PostgreSQL │
-└───┬───┘      └────────┬─────────┘      └──────┬─────┘
-    │                   │                     │
-    │ 1. POST /admin/users                    │
-    │ [Role: ADMIN required]                  │
-    │──────────────────>│                     │
-    │                   │                     │
-    │                   │ 2. Validate request │
-    │                   │ 3. Check email unique
-    │                   │────────────────────>│
-    │                   │<────────────────────│
-    │                   │                     │
-    │                   │ 4. Hash password    │
-    │                   │ 5. Create user      │
-    │                   │────────────────────>│
-    │                   │                     │
-    │ 6. Return created user                  │
-    │<──────────────────│                     │
+┌─────────────────────┐     ┌─────────────┐
+│ PENDING_VERIFICATION│────►│   ACTIVE    │
+└─────────────────────┘     └──────┬──────┘
+         │                         │  ▲
+         │                block ▼  │ unblock
+         │                  ┌──────┴──────┐
+         └─────────────────►│   BLOCKED   │
+                            └──────┬──────┘
+                   Admin can also: │
+                            ┌──────┴──────┐
+                            │  INACTIVE   │
+                            └─────────────┘
 ```
+
+| Transition | Allowed | Side Effect |
+|------------|---------|-------------|
+| ACTIVE → BLOCKED | ✅ | Force logout (token version + xóa refresh tokens), set banReason |
+| BLOCKED → ACTIVE | ✅ | Clear `banReason` |
+| ACTIVE → INACTIVE | ✅ | Force logout |
+| INACTIVE → ACTIVE | ✅ | — |
+| PENDING → ACTIVE | ✅ | Admin override activation |
+| PENDING → BLOCKED | ✅ | Force block |
+| * → PENDING_VERIFICATION | ❌ | Error: Cannot set back to PENDING |
+
+**Validation:**
+- `status` required (`ACTIVE`, `INACTIVE`, `BLOCKED`)
+- `banReason` **required** khi `status = BLOCKED` (max 255 chars)
+- `banReason` optional khi `status = INACTIVE`
+- `banReason` cleared khi `status = ACTIVE`
+
+**Error Responses:**
+
+| Code | Message | HTTP Status |
+|------|---------|-------------|
+| 1201 | User not found | 404 |
+| 1000 | Status is required / Ban reason required / Cannot set PENDING | 400 |
+
+---
+
+#### UC-11.6: Reset Password (Admin) (Planned)
+
+| Thuộc tính | Giá trị |
+|------------|---------|
+| **Endpoint** | `POST /admin/users/{userId}/reset-password` |
+| **Actor** | Admin |
+| **Mục đích** | Admin đặt lại mật khẩu cho user |
+
+**Request:**
+```json
+{
+  "newPassword": "TempPassword123!"
+}
+```
+
+**Logic:**
+1. Hash mật khẩu mới (BCrypt)
+2. Update `password_hash` trong DB
+3. Increment token version → force logout mọi thiết bị
+4. Xóa tất cả refresh tokens
+
+---
+
+#### UC-11.7: Soft Delete User ✅ IMPLEMENTED
+
+| Thuộc tính | Giá trị |
+|------------|---------|
+| **Endpoint** | `DELETE /admin/users/{userId}` |
+| **Actor** | Admin |
+| **Mục đích** | Xóa mềm user và profile liên quan |
+
+**Luồng hoạt động:**
+```
+┌───────┐      ┌──────────────────┐      ┌────────────┐      ┌───────┐
+│ Admin │      │ AdminUserService │      │ PostgreSQL │      │ Redis │
+└───┬───┘      └────────┬─────────┘      └──────┬─────┘      └───┬───┘
+    │                   │                       │                │
+    │ 1. DELETE /admin/users/{userId}           │                │
+    │──────────────────►│                       │                │
+    │                   │                       │                │
+    │                   │ 2. Check: admin ≠ target (không tự xóa)
+    │                   │ 3. Find user (deletedAt IS NULL)      │
+    │                   │──────────────────────►│                │
+    │                   │                       │                │
+    │                   │ 4. Set user.deletedAt = NOW()          │
+    │                   │ 5. Set teacher/student.deletedAt = NOW()
+    │                   │──────────────────────►│                │
+    │                   │                       │                │
+    │                   │ 6. Force logout:      │                │
+    │                   │    → Delete ALL refresh tokens         │
+    │                   │    → Increment token version           │
+    │                   │────────────────────────────────────────►│
+    │                   │                       │                │
+    │ 7. Return success (204 or 200)            │                │
+    │◄──────────────────│                       │                │
+```
+
+**Business Rules:**
+- Admin **KHÔNG** thể xóa chính mình (`actingAdminId ≠ targetUserId`)
+- Soft delete cascade: user + teacher/student profile
+- Force logout: increment token version + xóa tất cả refresh tokens
+
+**Error Responses:**
+
+| Code | Message | HTTP Status |
+|------|---------|-------------|
+| 1201 | User not found | 404 |
+| 1000 | Admin cannot delete own account | 400 |
 
 ---
 
@@ -1761,51 +2304,78 @@ Content-Type: image/jpeg
 
 ---
 
-### UC-13: Quản Lý Khoa (Admin)
+### UC-13: Quản Lý Khoa (Admin) — Chi Tiết
 
 | Thuộc tính | Giá trị |
 |------------|---------|
-| **Endpoints** | `GET/POST/PUT/DELETE /admin/departments` |
+| **Base URL** | `/admin/departments` |
 | **Actor** | Admin |
 | **Mục đích** | CRUD khoa/bộ môn |
+| **Authorization** | `@PreAuthorize("hasRole('ADMIN')")` |
 
-**POST /admin/departments:**
+#### UC-13.1: Danh Sách Khoa
+
+**Endpoint:** `GET /admin/departments`
+
+**Query Params:** `?page=0&size=20&search=Computer`
+
+**Response:**
 ```json
 {
-  "name": "Khoa Toán học",
-  "officeLocation": "Building C, Room 301"
+  "code": 1000,
+  "result": {
+    "content": [
+      {
+        "departmentId": 1,
+        "name": "Computer Science",
+        "officeLocation": "Building A, Room 101",
+        "teacherCount": 5,
+        "studentCount": 3,
+        "createdAt": "2025-09-01T00:00:00"
+      }
+    ],
+    "page": 0, "size": 20, "totalElements": 5, "totalPages": 1
+  }
 }
 ```
 
-**Luồng hoạt động (CRUD Pattern - áp dụng cho tất cả Admin CRUD):**
-```
-┌───────┐      ┌──────────────────┐      ┌────────────┐
-│ Admin │      │ Admin Controller │      │ PostgreSQL │
-└───┬───┘      └────────┬─────────┘      └──────┬─────┘
-    │                   │                     │
-    │ [CREATE] POST /admin/{resource}         │
-    │ [READ]   GET /admin/{resource}/{id}     │
-    │ [UPDATE] PUT /admin/{resource}/{id}     │
-    │ [DELETE] DELETE /admin/{resource}/{id}  │
-    │──────────────────>│                     │
-    │                   │                     │
-    │                   │ 1. Check Admin role │
-    │                   │ 2. Validate request │
-    │                   │ 3. Execute operation│
-    │                   │────────────────────>│
-    │                   │<────────────────────│
-    │                   │                     │
-    │ 4. Return result  │                     │
-    │<──────────────────│                     │
+> **Note:** `teacherCount` và `studentCount` là **computed fields** (`COUNT` từ bảng teachers/students WHERE `department_id = ?` AND `deleted_at IS NULL`).
+
+#### UC-13.2: Tạo Khoa
+
+**Endpoint:** `POST /admin/departments`
+
+**Request:**
+```json
+{ "name": "Data Science", "officeLocation": "Building F, Room 601" }
 ```
 
-**Note:** Pattern này áp dụng cho tất cả Admin CRUD operations:
-- UC-11: /admin/users
-- UC-13: /admin/departments  
-- UC-15: /admin/teachers
-- UC-17: /admin/students
-- UC-19: /admin/courses
-- UC-21: /admin/classes
+**Validation:**
+
+| Field | Rule |
+|-------|------|
+| name | Required, max 100, unique (case-insensitive) |
+| officeLocation | Optional, max 100 |
+
+#### UC-13.3: Cập Nhật Khoa
+
+**Endpoint:** `PUT /admin/departments/{departmentId}`
+
+**Request:**
+```json
+{ "name": "Computer Science & Engineering", "officeLocation": "Building A, Room 102" }
+```
+
+#### UC-13.4: Xóa Khoa (Soft Delete)
+
+**Endpoint:** `DELETE /admin/departments/{departmentId}`
+
+**Business Rule:** Không cho xóa nếu còn teacher/student thuộc khoa này (`deleted_at IS NULL`).
+
+| Điều kiện | Kết quả |
+|-----------|---------|
+| Còn teacher/student active | Error: "Department has active members" |
+| Không còn ai | Soft delete OK |
 
 ---
 
@@ -1912,26 +2482,84 @@ Content-Type: image/jpeg
 
 ---
 
-### UC-15: Quản Lý Giảng Viên (Admin)
+### UC-15: Quản Lý Giảng Viên (Admin) — Chi Tiết
 
 | Thuộc tính | Giá trị |
 |------------|---------|
-| **Endpoints** | `GET/POST/PUT/DELETE /admin/teachers` |
+| **Base URL** | `/admin/teachers` |
 | **Actor** | Admin |
-| **Mục đích** | CRUD giảng viên |
+| **Mục đích** | Quản lý danh sách giảng viên, cập nhật, xóa |
+| **Authorization** | `@PreAuthorize("hasRole('ADMIN')")` |
 
-**POST /admin/teachers:**
+> **Lưu ý:** Tạo giảng viên mới → sử dụng `POST /admin/users` với `role: "TEACHER"` (UC-11.3a).
+> Import giảng viên hàng loạt → sử dụng `POST /admin/users/import` với Template Teacher (UC-11.3b).
+
+#### UC-15.1: Danh Sách Giảng Viên
+
+**Endpoint:** `GET /admin/teachers`
+
+**Query Params:**
+
+| Param | Mô tả |
+|-------|-------|
+| `search` | Tìm theo tên, email, teacherCode |
+| `departmentId` | Filter theo khoa |
+| `page`, `size`, `sort` | Phân trang |
+
+**Response:**
 ```json
 {
-  "userId": "uuid-of-user",
-  "departmentId": 1,
-  "firstName": "Nguyen",
-  "lastName": "Van B",
-  "email": "teacher.b@school.edu",
-  "phone": "0901234568",
-  "specialization": "Data Science"
+  "code": 1000,
+  "result": {
+    "content": [
+      {
+        "teacherId": "uuid-1001",
+        "teacherCode": "HJ170001",
+        "firstName": "An",
+        "lastName": "Nguyen Van",
+        "email": "nguyen.van.an@fpt.edu.vn",
+        "phone": "0901000001",
+        "specialization": "Artificial Intelligence",
+        "academicRank": "Associate Professor",
+        "officeRoom": "A-201",
+        "department": { "departmentId": 1, "name": "Computer Science" },
+        "user": { "userId": "uuid-101", "status": "ACTIVE" },
+        "classCount": 4
+      }
+    ],
+    "page": 0, "size": 20, "totalElements": 5, "totalPages": 1
+  }
 }
 ```
+
+#### UC-15.3: Cập Nhật Giảng Viên
+
+**Endpoint:** `PUT /admin/teachers/{teacherId}`
+
+Admin có thể update **tất cả field** (bao gồm field mà Teacher tự mình không được sửa):
+```json
+{
+  "departmentId": 2,
+  "teacherCode": "HJ170006",
+  "firstName": "Hoa",
+  "lastName": "Nguyen Thi",
+  "phone": "0901000006",
+  "specialization": "DevOps",
+  "academicRank": "Senior Lecturer",
+  "officeRoom": "B-101"
+}
+```
+
+#### UC-15.4: Xóa Giảng Viên (Soft Delete)
+
+**Endpoint:** `DELETE /admin/teachers/{teacherId}`
+
+**Business Rule:** Không xóa nếu đang dạy lớp trong kỳ hiện tại.
+
+| Điều kiện | Kết quả |
+|-----------|---------|
+| Đang dạy lớp kỳ hiện tại | Error: "Teacher has active classes" |
+| Không dạy lớp nào | Soft delete teacher + soft delete user liên kết |
 
 ---
 
@@ -2001,27 +2629,88 @@ Content-Type: image/jpeg
 
 ---
 
-### UC-17: Quản Lý Sinh Viên (Admin)
+### UC-17: Quản Lý Sinh Viên (Admin) — Chi Tiết
 
 | Thuộc tính | Giá trị |
 |------------|---------|
-| **Endpoints** | `GET/POST/PUT/DELETE /admin/students` |
+| **Base URL** | `/admin/students` |
 | **Actor** | Admin |
-| **Mục đích** | CRUD sinh viên |
+| **Mục đích** | Quản lý danh sách sinh viên, cập nhật, xóa |
+| **Authorization** | `@PreAuthorize("hasRole('ADMIN')")` |
 
-**POST /admin/students:**
+> **Lưu ý:** Tạo sinh viên mới → sử dụng `POST /admin/users` với `role: "STUDENT"` (UC-11.3a).
+> Import sinh viên hàng loạt → sử dụng `POST /admin/users/import` với Template Student (UC-11.3b).
+
+#### UC-17.1: Danh Sách Sinh Viên
+
+**Endpoint:** `GET /admin/students`
+
+**Query Params:**
+
+| Param | Mô tả |
+|-------|-------|
+| `search` | Tìm theo tên, email, studentCode |
+| `departmentId` | Filter theo khoa |
+| `major` | Filter theo chuyên ngành |
+| `gender` | Filter: MALE, FEMALE |
+| `page`, `size`, `sort` | Phân trang |
+
+**Response:**
 ```json
 {
-  "userId": "uuid-of-user",
-  "departmentId": 1,
-  "firstName": "Le",
-  "lastName": "Thi D",
-  "dob": "2001-03-20",
-  "email": "student.d@school.edu",
-  "phone": "0909876544",
-  "address": "456 XYZ Street, HCM City"
+  "code": 1000,
+  "result": {
+    "content": [
+      {
+        "studentId": "uuid-2001",
+        "studentCode": "HE170001",
+        "firstName": "Tuan",
+        "lastName": "Hoang Minh",
+        "dob": "2003-03-15",
+        "gender": "MALE",
+        "major": "Software Engineering",
+        "email": "hoang.minh.tuan@fpt.edu.vn",
+        "phone": "0912000001",
+        "address": "12 Tran Phu, Ha Noi",
+        "gpa": 3.45,
+        "year": 2,
+        "manageClass": "SE1701",
+        "department": { "departmentId": 1, "name": "Computer Science" },
+        "user": { "userId": "uuid-201", "status": "ACTIVE" },
+        "enrollmentCount": 4
+      }
+    ],
+    "page": 0, "size": 20, "totalElements": 15, "totalPages": 1
+  }
 }
 ```
+
+#### UC-17.3: Cập Nhật Sinh Viên
+
+**Endpoint:** `PUT /admin/students/{studentId}`
+
+Admin update tất cả field (trừ `gpa` — hệ thống tự tính):
+```json
+{
+  "departmentId": 2,
+  "studentCode": "HE170016",
+  "firstName": "Anh",
+  "lastName": "Tran Thi",
+  "dob": "2003-05-20",
+  "gender": "FEMALE",
+  "major": "Data Science",
+  "phone": "0912000016",
+  "address": "200 Nguyen Hue, HCM",
+  "year": 3,
+  "manageClass": "DS1801"
+}
+```
+
+#### UC-17.4: Xóa Sinh Viên (Soft Delete)
+
+**Endpoint:** `DELETE /admin/students/{studentId}`
+
+**Business Rule:** Không xóa nếu đang có enrollment trong kỳ hiện tại.
 
 ---
 
@@ -2054,22 +2743,71 @@ Content-Type: image/jpeg
 
 ---
 
-### UC-19: Quản Lý Môn Học (Admin)
+### UC-19: Quản Lý Môn Học (Admin) — Chi Tiết
 
 | Thuộc tính | Giá trị |
 |------------|---------|
-| **Endpoints** | `GET/POST/PUT/DELETE /admin/courses` |
+| **Base URL** | `/admin/courses` |
 | **Actor** | Admin |
 | **Mục đích** | CRUD môn học |
+| **Authorization** | `@PreAuthorize("hasRole('ADMIN')")` |
 
-**POST /admin/courses:**
+#### UC-19.1: Danh Sách Môn Học
+
+**Endpoint:** `GET /admin/courses`
+
+**Query Params:** `?search=Programming&page=0&size=20`
+
+**Response:**
 ```json
 {
-  "name": "Cơ sở dữ liệu",
-  "credits": 4,
-  "description": "Môn học về thiết kế và quản lý CSDL"
+  "code": 1000,
+  "result": {
+    "content": [
+      {
+        "courseId": 1,
+        "name": "Introduction to Programming",
+        "credits": 3,
+        "description": "Fundamentals of programming using Java...",
+        "classCount": 2,
+        "createdAt": "2025-09-01T00:00:00"
+      }
+    ],
+    "page": 0, "size": 20, "totalElements": 10, "totalPages": 1
+  }
 }
 ```
+
+#### UC-19.2: Tạo Môn Học
+
+**Endpoint:** `POST /admin/courses`
+
+**Request:**
+```json
+{
+  "name": "Machine Learning",
+  "credits": 4,
+  "description": "Introduction to ML algorithms, supervised and unsupervised learning."
+}
+```
+
+**Validation:**
+
+| Field | Rule |
+|-------|------|
+| name | Required, max 100, unique |
+| credits | Required, integer > 0 |
+| description | Optional, TEXT |
+
+#### UC-19.3: Cập Nhật Môn Học
+
+**Endpoint:** `PUT /admin/courses/{courseId}`
+
+#### UC-19.4: Xóa Môn Học (Soft Delete)
+
+**Endpoint:** `DELETE /admin/courses/{courseId}`
+
+**Business Rule:** Không xóa nếu có scheduled_classes đang sử dụng.
 
 ---
 
@@ -2114,25 +2852,94 @@ Content-Type: image/jpeg
 
 ---
 
-### UC-21: Quản Lý Lớp Học Phần (Admin)
+### UC-21: Quản Lý Lớp Học Phần (Admin) — Chi Tiết
 
 | Thuộc tính | Giá trị |
 |------------|---------|
-| **Endpoints** | `GET/POST/PUT/DELETE /admin/classes` |
+| **Base URL** | `/admin/classes` |
 | **Actor** | Admin |
 | **Mục đích** | CRUD lớp học phần |
+| **Authorization** | `@PreAuthorize("hasRole('ADMIN')")` |
 
-**POST /admin/classes:**
+#### UC-21.1: Danh Sách Lớp Học Phần
+
+**Endpoint:** `GET /admin/classes`
+
+**Query Params:**
+
+| Param | Mô tả |
+|-------|-------|
+| `semesterName` | Filter: SPRING/SUMMER/FALL |
+| `year` | Filter năm |
+| `courseId` | Filter theo môn |
+| `teacherId` | Filter theo giảng viên |
+| `page`, `size`, `sort` | Phân trang |
+
+**Response:**
 ```json
 {
-  "courseId": 1,
-  "teacherId": 1,
-  "semester": "2",
-  "year": 2026,
-  "roomNumber": "B202",
-  "schedule": "Wed 13:00-15:00"
+  "code": 1000,
+  "result": {
+    "content": [
+      {
+        "classId": 7,
+        "course": { "courseId": 2, "name": "Data Structures and Algorithms", "credits": 4 },
+        "teacher": {
+          "teacherId": "uuid-1001",
+          "teacherCode": "HJ170001",
+          "firstName": "An", "lastName": "Nguyen Van"
+        },
+        "semester": "SPRING",
+        "year": 2026,
+        "roomNumber": "A-102",
+        "schedule": "Mon 10:00-12:00",
+        "enrollmentCount": 3,
+        "createdAt": "2025-12-01T00:00:00"
+      }
+    ],
+    "page": 0, "size": 20, "totalElements": 15, "totalPages": 1
+  }
 }
 ```
+
+#### UC-21.2: Tạo Lớp Học Phần
+
+**Endpoint:** `POST /admin/classes`
+
+**Request:**
+```json
+{
+  "courseId": 2,
+  "teacherId": "uuid-1001",
+  "semester": "SUMMER",
+  "year": 2026,
+  "roomNumber": "A-201",
+  "schedule": "Mon 08:00-10:00, Wed 08:00-10:00"
+}
+```
+
+**Validation:**
+
+| Field | Rule |
+|-------|------|
+| courseId | Required, must exist |
+| teacherId | Optional (có thể chưa assign), must exist nếu có |
+| semester | Required, enum: SPRING/SUMMER/FALL |
+| year | Required, integer |
+| roomNumber | Optional, max 20 |
+| schedule | Optional, max 50 |
+
+**Business Rule:** Kiểm tra conflict lịch dạy của teacher (cùng semester+year+schedule).
+
+#### UC-21.3: Cập Nhật Lớp Học Phần
+
+**Endpoint:** `PUT /admin/classes/{classId}`
+
+#### UC-21.4: Xóa Lớp Học Phần (Soft Delete)
+
+**Endpoint:** `DELETE /admin/classes/{classId}`
+
+**Business Rule:** Không xóa nếu đã có enrollment + grade.
 
 ---
 
@@ -2434,6 +3241,172 @@ Content-Type: image/jpeg
 
 ---
 
+## Module: Admin - Semester, Dashboard & System Health
+
+---
+
+### UC-28: Quản Lý Học Kỳ (Admin)
+
+| Thuộc tính | Giá trị |
+|------------|---------|
+| **Base URL** | `/admin/semesters` |
+| **Actor** | Admin |
+| **Mục đích** | CRUD học kỳ, đặt kỳ hiện tại |
+| **Authorization** | `@PreAuthorize("hasRole('ADMIN')")` |
+
+> **Lưu ý:** Bảng `semesters` là cần thiết để Admin quản lý semester khi tạo lớp học phần.
+
+#### UC-28.1: Danh Sách Học Kỳ
+
+**Endpoint:** `GET /admin/semesters`
+
+**Query Params:** `?year=2026&page=0&size=20&sort=year,desc`
+
+**Response:**
+```json
+{
+  "code": 1000,
+  "result": {
+    "content": [
+      {
+        "semesterId": 1,
+        "name": "SPRING",
+        "year": 2026,
+        "displayName": "Spring 2026",
+        "startDate": "2026-01-12",
+        "endDate": "2026-05-10",
+        "isCurrent": true,
+        "classCount": 9
+      }
+    ],
+    "page": 0, "size": 20, "totalElements": 6, "totalPages": 1
+  }
+}
+```
+
+#### UC-28.2: Tạo Học Kỳ
+
+**Endpoint:** `POST /admin/semesters`
+
+**Request:**
+```json
+{
+  "name": "FALL",
+  "year": 2026,
+  "startDate": "2026-09-01",
+  "endDate": "2026-12-20"
+}
+```
+
+**Validation:**
+
+| Field | Rule |
+|-------|------|
+| name | Required, enum: SPRING/SUMMER/FALL |
+| year | Required, integer |
+| (name, year) | Unique constraint |
+| startDate | Required, DATE |
+| endDate | Required, DATE, phải sau startDate |
+
+#### UC-28.3: Đặt Kỳ Hiện Tại
+
+**Endpoint:** `PATCH /admin/semesters/{semesterId}/set-current`
+
+**Logic:**
+1. Set tất cả semester khác `is_current = FALSE`
+2. Set semester này `is_current = TRUE`
+3. Đảm bảo chỉ 1 semester `is_current` (partial unique index)
+
+---
+
+### UC-29: Dashboard Thống Kê (Admin)
+
+| Thuộc tính | Giá trị |
+|------------|---------|
+| **Endpoint** | `GET /admin/dashboard` |
+| **Actor** | Admin |
+| **Mục đích** | Tổng quan nhanh cho trang Admin Dashboard |
+| **Authorization** | `@PreAuthorize("hasRole('ADMIN')")` |
+
+**Response:**
+```json
+{
+  "code": 1000,
+  "result": {
+    "totalUsers": 22,
+    "usersByRole": {
+      "ADMIN": 1,
+      "TEACHER": 5,
+      "STUDENT": 15,
+      "PENDING_VERIFICATION": 1
+    },
+    "totalDepartments": 5,
+    "totalCourses": 10,
+    "currentSemester": {
+      "name": "SPRING",
+      "year": 2026,
+      "displayName": "Spring 2026"
+    },
+    "currentSemesterStats": {
+      "totalClasses": 9,
+      "totalEnrollments": 24,
+      "averageClassSize": 2.7
+    }
+  }
+}
+```
+
+---
+
+### UC-30: System Health Monitoring (Admin) ✅ IMPLEMENTED
+
+| Thuộc tính | Giá trị |
+|------------|---------|
+| **Base URL** | `/admin/system/health` |
+| **Actor** | Admin |
+| **Mục đích** | Kiểm tra trạng thái các thành phần hệ thống |
+| **Authorization** | `@PreAuthorize("hasRole('ADMIN')")` |
+
+#### UC-30.1: Tổng Quan Hệ Thống
+
+**Endpoint:** `GET /admin/system/health/overall`
+
+**Response:**
+```json
+{
+  "code": 1000,
+  "result": {
+    "overallStatus": "UP",
+    "timestamp": "2026-02-10T08:00:00Z",
+    "api": { "status": "UP", "message": "API is running", "latencyMs": 2 },
+    "database": { "status": "UP", "message": "PostgreSQL connected", "latencyMs": 5 },
+    "redis": { "status": "UP", "message": "Redis connected", "latencyMs": 1 },
+    "mail": { "status": "UP", "message": "SMTP connected", "latencyMs": 120 },
+    "minio": { "status": "UP", "message": "MinIO connected", "latencyMs": 8 },
+    "nginx": { "status": "UP", "message": "Nginx responding", "latencyMs": 3 },
+    "frontend": { "status": "UP", "message": "Frontend accessible", "latencyMs": 15 }
+  }
+}
+```
+
+#### Các Endpoints Health Riêng Lẻ
+
+| Endpoint | Mô tả |
+|----------|-------|
+| `GET /admin/system/health/api` | Kiểm tra API server |
+| `GET /admin/system/health/db` | Kiểm tra PostgreSQL |
+| `GET /admin/system/health/redis` | Kiểm tra Redis |
+| `GET /admin/system/health/mail` | Kiểm tra SMTP |
+| `GET /admin/system/health/minio` | Kiểm tra MinIO storage |
+| `GET /admin/system/health/nginx` | Kiểm tra Nginx reverse proxy |
+| `GET /admin/system/health/frontend` | Kiểm tra Frontend SPA |
+
+#### Legacy Endpoint (FE compatibility)
+
+**Endpoint:** `GET /admin/health` — Adapter giữ compatible với Frontend hiện tại.
+
+---
+
 ## Bảng Tổng Hợp Phân Quyền
 
 | UC | Endpoint | Guest | Student | Teacher | Admin |
@@ -2452,21 +3425,47 @@ Content-Type: image/jpeg
 | UC-09.2 | PUT /teachers/me | - | - | ✅ | - |
 | UC-09.3 | POST /profile/me/avatar | - | ✅ | ✅ | ✅ |
 | UC-10 | POST /users/me/change-password | - | ✅ | ✅ | ✅ |
-| UC-11 | /admin/users | - | - | - | ✅ |
+| **UC-11.1** | **GET /admin/users** | - | - | - | ✅ |
+| **UC-11.2** | **GET /admin/users/{id}** | - | - | - | ✅ |
+| **UC-11.3a** | **POST /admin/users** | - | - | - | ✅ |
+| **UC-11.3b** | **POST /admin/users/import** | - | - | - | ✅ |
+| **UC-11.4** | **PUT /admin/users/{id}/profile** | - | - | - | ✅ |
+| **UC-11.5** | **PATCH /admin/users/{id}/status** | - | - | - | ✅ |
+| **UC-11.6** | **POST /admin/users/{id}/reset-password** | - | - | - | ✅ |
+| **UC-11.7** | **DELETE /admin/users/{id}** | - | - | - | ✅ |
 | UC-12 | GET /departments | - | ✅ | ✅ | ✅ |
-| UC-13 | /admin/departments | - | - | - | ✅ |
+| **UC-13.1** | **GET /admin/departments** | - | - | - | ✅ |
+| **UC-13.2** | **POST /admin/departments** | - | - | - | ✅ |
+| **UC-13.3** | **PUT /admin/departments/{id}** | - | - | - | ✅ |
+| **UC-13.4** | **DELETE /admin/departments/{id}** | - | - | - | ✅ |
 | UC-14 | GET /teachers | - | ✅ | ✅ | ✅ |
 | UC-14.1 | GET /teachers/me | - | - | ✅ | - |
-| UC-15 | /admin/teachers | - | - | - | ✅ |
+| **UC-15.1** | **GET /admin/teachers** | - | - | - | ✅ |
+| **UC-15.3** | **PUT /admin/teachers/{id}** | - | - | - | ✅ |
+| **UC-15.4** | **DELETE /admin/teachers/{id}** | - | - | - | ✅ |
 | UC-16 | GET /students/me | - | ✅ | - | - |
-| UC-17 | /admin/students | - | - | - | ✅ |
+| **UC-17.1** | **GET /admin/students** | - | - | - | ✅ |
+| **UC-17.3** | **PUT /admin/students/{id}** | - | - | - | ✅ |
+| **UC-17.4** | **DELETE /admin/students/{id}** | - | - | - | ✅ |
 | UC-18 | GET /courses | - | ✅ | ✅ | ✅ |
-| UC-19 | /admin/courses | - | - | - | ✅ |
+| **UC-19.1** | **GET /admin/courses** | - | - | - | ✅ |
+| **UC-19.2** | **POST /admin/courses** | - | - | - | ✅ |
+| **UC-19.3** | **PUT /admin/courses/{id}** | - | - | - | ✅ |
+| **UC-19.4** | **DELETE /admin/courses/{id}** | - | - | - | ✅ |
 | UC-20 | GET /classes | - | ✅ | ✅ | ✅ |
-| UC-21 | /admin/classes | - | - | - | ✅ |
+| **UC-21.1** | **GET /admin/classes** | - | - | - | ✅ |
+| **UC-21.2** | **POST /admin/classes** | - | - | - | ✅ |
+| **UC-21.3** | **PUT /admin/classes/{id}** | - | - | - | ✅ |
+| **UC-21.4** | **DELETE /admin/classes/{id}** | - | - | - | ✅ |
 | UC-22 | POST /enrollments | - | ✅ | - | - |
 | UC-23 | GET /enrollments/me | - | ✅ | - | - |
 | UC-24 | DELETE /enrollments/{id} | - | ✅ | - | - |
 | UC-25 | POST /grades | - | - | ✅ | ✅ |
 | UC-26 | GET /classes/{id}/grades | - | - | ✅ | ✅ |
 | UC-27 | GET /grades/me | - | ✅ | - | - |
+| **UC-28.1** | **GET /admin/semesters** | - | - | - | ✅ |
+| **UC-28.2** | **POST /admin/semesters** | - | - | - | ✅ |
+| **UC-28.3** | **PATCH /admin/semesters/{id}/set-current** | - | - | - | ✅ |
+| **UC-29** | **GET /admin/dashboard** | - | - | - | ✅ |
+| **UC-30** | **GET /admin/system/health/*** | - | - | - | ✅ |
+

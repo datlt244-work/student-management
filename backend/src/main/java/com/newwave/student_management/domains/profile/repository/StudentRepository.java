@@ -24,4 +24,6 @@ public interface StudentRepository extends JpaRepository<Student, UUID> {
     boolean existsByStudentCode(String studentCode);
 
     boolean existsByStudentCodeAndDeletedAtIsNull(String studentCode);
+
+    long countByDepartment_DepartmentIdAndDeletedAtIsNull(Integer departmentId);
 }

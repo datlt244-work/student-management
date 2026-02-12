@@ -2,6 +2,7 @@ package com.newwave.student_management.domains.auth.service.impl;
 
 import com.newwave.student_management.common.exception.AppException;
 import com.newwave.student_management.common.exception.ErrorCode;
+import com.newwave.student_management.common.util.PaginationUtil;
 import com.newwave.student_management.domains.auth.dto.request.AdminCreateUserRequest;
 import com.newwave.student_management.domains.auth.dto.request.AdminUpdateUserProfileRequest;
 import com.newwave.student_management.domains.auth.dto.request.AdminUpdateUserStatusRequest;
@@ -59,9 +60,7 @@ public class AdminUserService implements IAdminUserService {
 
     @Override
     public AdminUserListResponse getUsers(String search, UserStatus status, Integer roleId, Pageable pageable) {
-        String normalizedSearch = (search == null || search.isBlank())
-                ? null
-                : "%" + search.trim().toLowerCase().replace("%", "\\%").replace("_", "\\_") + "%";
+        String normalizedSearch = PaginationUtil.normalizeSearch(search);
 
         Page<User> pageResult = userRepository.searchAdminUsers(
                 normalizedSearch,
@@ -112,12 +111,14 @@ public class AdminUserService implements IAdminUserService {
                 })
                 .toList();
 
+        PaginationUtil.PaginationMetadata metadata = PaginationUtil.extractMetadata(pageResult);
+
         return AdminUserListResponse.builder()
                 .content(items)
-                .page(pageResult.getNumber())
-                .size(pageResult.getSize())
-                .totalElements(pageResult.getTotalElements())
-                .totalPages(pageResult.getTotalPages())
+                .page(metadata.page)
+                .size(metadata.size)
+                .totalElements(metadata.totalElements)
+                .totalPages(metadata.totalPages)
                 .build();
     }
 

@@ -13,5 +13,7 @@ public interface IAdminDepartmentService {
     AdminDepartmentDetailResponse createDepartment(AdminCreateDepartmentRequest request);
 
     AdminDepartmentDetailResponse updateDepartment(Integer departmentId, AdminUpdateDepartmentRequest request);
+
+    void deleteDepartment(Integer departmentId);
 }
 

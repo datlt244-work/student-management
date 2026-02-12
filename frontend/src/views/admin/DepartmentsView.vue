@@ -5,6 +5,7 @@ import {
   getAdminDepartmentList,
   createAdminDepartment,
   updateAdminDepartment,
+  deleteAdminDepartment,
   type AdminDepartmentListItem,
   type AdminCreateDepartmentRequest,
   type AdminUpdateDepartmentRequest,
@@ -55,6 +56,11 @@ const editDepartment = ref({
 // Update department submit state
 const updateDepartmentLoading = ref(false)
 const updateDepartmentError = ref<string | null>(null)
+
+// Delete Department modal state
+const showDeleteConfirmModal = ref(false)
+const deletingDepartment = ref<AdminDepartmentListItem | null>(null)
+const deleteDepartmentLoading = ref(false)
 
 async function fetchDepartments() {
   try {
@@ -236,6 +242,39 @@ async function submitUpdateDepartment() {
   }
 }
 
+// Delete modal handlers
+function handleDeleteDepartment(dept: AdminDepartmentListItem) {
+  deletingDepartment.value = dept
+  showDeleteConfirmModal.value = true
+}
+
+function closeDeleteConfirmModal() {
+  showDeleteConfirmModal.value = false
+  deletingDepartment.value = null
+}
+
+async function confirmDeleteDepartment() {
+  if (!deletingDepartment.value) return
+
+  deleteDepartmentLoading.value = true
+
+  try {
+    await deleteAdminDepartment(deletingDepartment.value.departmentId)
+    closeDeleteConfirmModal()
+    await fetchDepartments()
+    createResultSuccess.value = true
+    createResultMessage.value = 'Department has been deleted successfully.'
+    showCreateResultModal.value = true
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to delete department'
+    createResultSuccess.value = false
+    createResultMessage.value = msg
+    showCreateResultModal.value = true
+  } finally {
+    deleteDepartmentLoading.value = false
+  }
+}
+
 </script>
 
 <template>
@@ -357,7 +396,7 @@ async function submitUpdateDepartment() {
                 </button>
                 <button
                   class="p-2 text-slate-400 hover:text-red-500 transition-colors"
-                  @click="() => {}"
+                  @click="handleDeleteDepartment(dept)"
                 >
                   <span class="material-symbols-outlined text-[20px]">delete</span>
                 </button>
@@ -601,6 +640,59 @@ async function submitUpdateDepartment() {
               >
                 OK
               </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Delete Confirmation Modal -->
+    <Teleport to="body">
+      <Transition name="fade">
+        <div
+          v-if="showDeleteConfirmModal"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm bg-stone-900/50"
+          role="dialog"
+          @click.self="closeDeleteConfirmModal"
+        >
+          <div class="w-full max-w-md bg-surface-light dark:bg-surface-dark rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div class="bg-red-600 px-6 py-4 flex items-center justify-between">
+              <h2 class="text-white text-lg font-bold flex items-center gap-2">
+                <span class="material-symbols-outlined">warning</span>
+                Delete Department
+              </h2>
+              <button
+                class="text-white/80 hover:text-white transition-colors rounded-lg p-1 hover:bg-white/10"
+                @click="closeDeleteConfirmModal"
+              >
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div class="p-6 flex flex-col gap-5">
+              <p class="text-sm text-slate-700 dark:text-slate-200">
+                Are you sure you want to delete <strong>{{ deletingDepartment?.name }}</strong>? This action cannot be undone.
+              </p>
+              <p class="text-xs text-slate-500 dark:text-slate-400">
+                Note: This department cannot be deleted if it has active teachers or students.
+              </p>
+              <div class="px-0 py-0 bg-stone-50 dark:bg-stone-900/30 border-t border-stone-100 dark:border-stone-800 flex items-center justify-end gap-3 mt-2 pt-4">
+                <button
+                  type="button"
+                  class="px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors"
+                  @click="closeDeleteConfirmModal"
+                  :disabled="deleteDepartmentLoading"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  :disabled="deleteDepartmentLoading"
+                  class="px-4 py-2 rounded-lg text-sm font-bold text-white bg-red-600 hover:bg-red-700 shadow-md shadow-red-500/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  @click="confirmDeleteDepartment"
+                >
+                  {{ deleteDepartmentLoading ? 'Deleting...' : 'Delete Department' }}
+                </button>
+              </div>
             </div>
           </div>
         </div>

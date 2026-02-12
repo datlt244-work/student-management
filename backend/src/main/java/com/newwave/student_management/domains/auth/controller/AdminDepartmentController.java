@@ -15,7 +15,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -76,6 +79,19 @@ public class AdminDepartmentController {
     ) {
         AdminDepartmentDetailResponse response = adminDepartmentService.updateDepartment(departmentId, request);
         return ApiResponse.success(response);
+    }
+
+    @DeleteMapping("/{departmentId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "UC-13.4 - Xóa Khoa (Soft Delete)",
+            description = "Xóa mềm khoa. Không cho phép xóa nếu còn teacher/student active thuộc khoa này."
+    )
+    public ResponseEntity<ApiResponse<Void>> deleteDepartment(
+            @PathVariable Integer departmentId
+    ) {
+        adminDepartmentService.deleteDepartment(departmentId);
+        return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.success(null));
     }
 
     @GetMapping("/simple")

@@ -41,6 +41,7 @@ public enum ErrorCode {
     DEPARTMENT_NOT_FOUND(1220, "Department not found", HttpStatus.BAD_REQUEST),
     DEPARTMENT_NAME_REQUIRED(1221, "Department name is required", HttpStatus.BAD_REQUEST),
     DEPARTMENT_NAME_EXISTED(1222, "Department name already exists", HttpStatus.CONFLICT),
+    DEPARTMENT_HAS_ACTIVE_MEMBERS(1223, "Department has active members", HttpStatus.BAD_REQUEST),
 
     // Business errors - Address (1250-1269)
     ADDRESS_NOT_FOUND(1250, "Address not found", HttpStatus.NOT_FOUND),

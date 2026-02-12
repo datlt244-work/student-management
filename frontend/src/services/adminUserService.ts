@@ -371,6 +371,24 @@ export async function updateAdminDepartment(
   return (data.result || data) as AdminDepartmentDetailResponse
 }
 
+// ========== UC-13.4: Delete Department ==========
+
+/**
+ * UC-13.4: Xóa Department (Soft Delete)
+ * Endpoint: DELETE /admin/departments/{departmentId}
+ */
+export async function deleteAdminDepartment(departmentId: number): Promise<void> {
+  const response = await apiFetch(`/admin/departments/${departmentId}`, {
+    method: 'DELETE',
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    const message = errorData?.message || `Failed to delete department (${response.status})`
+    throw new Error(message)
+  }
+}
+
 // ========== UC-11.3a Create User Request ==========
 
 export interface AdminCreateUserRequest {

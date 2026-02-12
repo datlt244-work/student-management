@@ -11,12 +11,15 @@ import com.newwave.student_management.domains.auth.dto.response.AdminDepartmentL
 import com.newwave.student_management.domains.auth.service.IAdminDepartmentService;
 import com.newwave.student_management.domains.profile.entity.Department;
 import com.newwave.student_management.domains.profile.repository.DepartmentRepository;
+import com.newwave.student_management.domains.profile.repository.StudentRepository;
+import com.newwave.student_management.domains.profile.repository.TeacherRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -25,6 +28,8 @@ import java.util.List;
 public class AdminDepartmentService implements IAdminDepartmentService {
 
     private final DepartmentRepository departmentRepository;
+    private final TeacherRepository teacherRepository;
+    private final StudentRepository studentRepository;
 
     @Override
     public AdminDepartmentListResponse getDepartments(String search, Pageable pageable) {
@@ -123,6 +128,25 @@ public class AdminDepartmentService implements IAdminDepartmentService {
                 .officeLocation(saved.getOfficeLocation())
                 .createdAt(saved.getCreatedAt())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public void deleteDepartment(Integer departmentId) {
+        Department department = departmentRepository.findByDepartmentIdAndDeletedAtIsNull(departmentId)
+                .orElseThrow(() -> new AppException(ErrorCode.DEPARTMENT_NOT_FOUND));
+
+        // Check if department has active teachers or students
+        long teacherCount = teacherRepository.countByDepartment_DepartmentIdAndDeletedAtIsNull(departmentId);
+        long studentCount = studentRepository.countByDepartment_DepartmentIdAndDeletedAtIsNull(departmentId);
+
+        if (teacherCount > 0 || studentCount > 0) {
+            throw new AppException(ErrorCode.DEPARTMENT_HAS_ACTIVE_MEMBERS);
+        }
+
+        // Soft delete department
+        department.setDeletedAt(LocalDateTime.now());
+        departmentRepository.save(department);
     }
 }
 

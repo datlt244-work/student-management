@@ -25,9 +25,11 @@ const errorMessage = ref<string | null>(null)
 
 // Server data
 const departments = ref<AdminDepartmentListItem[]>([])
+const totalCoursesCount = ref(0)
 
 // Stats (computed from data)
 const totalDepartments = computed(() => totalElements.value)
+const totalCourses = computed(() => totalCoursesCount.value)
 
 // Add Department modal state
 const showAddDepartmentModal = ref(false)
@@ -78,6 +80,7 @@ async function fetchDepartments() {
     currentPage.value = result.page + 1
     totalPages.value = result.totalPages
     totalElements.value = result.totalElements
+    totalCoursesCount.value = (result as unknown as { totalCourses?: number }).totalCourses ?? 0
   } catch (err: unknown) {
     if (err && typeof err === 'object' && 'message' in err) {
       errorMessage.value = String((err as { message?: unknown }).message) || 'Failed to load departments'
@@ -311,6 +314,17 @@ async function confirmDeleteDepartment() {
           </p>
         </div>
       </div>
+      <div class="flex items-center gap-5 rounded-xl p-6 bg-surface-light dark:bg-surface-dark border border-stone-200 dark:border-stone-800 shadow-sm">
+        <div class="p-3 rounded-lg bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
+          <span class="material-symbols-outlined text-3xl">menu_book</span>
+        </div>
+        <div>
+          <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">Total Courses</p>
+          <p class="text-slate-900 dark:text-white text-3xl font-bold mt-0.5">
+            {{ isLoading ? '...' : totalCourses }}
+          </p>
+        </div>
+      </div>
     </div>
 
     <!-- Filters & Search -->
@@ -351,18 +365,19 @@ async function confirmDeleteDepartment() {
               <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">ID</th>
               <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Name</th>
               <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Office Location</th>
+              <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Courses</th>
               <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Created At</th>
               <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-stone-200 dark:divide-stone-800">
             <tr v-if="isLoading" class="hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors">
-              <td colspan="5" class="p-8 text-center text-slate-500 dark:text-slate-400">
+              <td colspan="6" class="p-8 text-center text-slate-500 dark:text-slate-400">
                 Loading departments...
               </td>
             </tr>
             <tr v-else-if="departments.length === 0" class="hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors">
-              <td colspan="5" class="p-8 text-center text-slate-500 dark:text-slate-400">
+              <td colspan="6" class="p-8 text-center text-slate-500 dark:text-slate-400">
                 No departments found
               </td>
             </tr>
@@ -383,6 +398,9 @@ async function confirmDeleteDepartment() {
                   {{ dept.officeLocation }}
                 </div>
                 <span v-else class="text-slate-400 dark:text-slate-500 italic">—</span>
+              </td>
+              <td class="p-4 text-sm text-slate-600 dark:text-slate-300">
+                {{ dept.courseCount }}
               </td>
               <td class="p-4 text-sm text-slate-600 dark:text-slate-300">
                 {{ formatDate(dept.createdAt) }}
@@ -673,7 +691,7 @@ async function confirmDeleteDepartment() {
                 Are you sure you want to delete <strong>{{ deletingDepartment?.name }}</strong>? This action cannot be undone.
               </p>
               <p class="text-xs text-slate-500 dark:text-slate-400">
-                Note: This department cannot be deleted if it has active teachers or students.
+                Note: This department cannot be deleted if it has active teachers, students, or courses.
               </p>
               <div class="px-0 py-0 bg-stone-50 dark:bg-stone-900/30 border-t border-stone-100 dark:border-stone-800 flex items-center justify-end gap-3 mt-2 pt-4">
                 <button

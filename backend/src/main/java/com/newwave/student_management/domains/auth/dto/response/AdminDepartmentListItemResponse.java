@@ -16,6 +16,7 @@ public class AdminDepartmentListItemResponse {
     private Integer departmentId;
     private String name;
     private String officeLocation;
+    private long courseCount;
     private LocalDateTime createdAt;
 }
 

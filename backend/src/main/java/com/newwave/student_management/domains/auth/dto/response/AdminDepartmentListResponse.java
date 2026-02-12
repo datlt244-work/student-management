@@ -18,5 +18,6 @@ public class AdminDepartmentListResponse {
     private int size;
     private long totalElements;
     private int totalPages;
+    private long totalCourses;
 }
 

@@ -79,8 +79,9 @@ async function fetchCourses() {
 }
 
 function goToPage(page: number) {
-  if (page >= 1 && page <= totalPages.value) {
+  if (page >= 1 && page <= totalPages.value && page !== currentPage.value) {
     currentPage.value = page
+    fetchCourses()
   }
 }
 
@@ -93,9 +94,7 @@ watchDebounced(
   { debounce: 500, maxWait: 1000 },
 )
 
-watch(currentPage, () => {
-  fetchCourses()
-})
+
 
 onMounted(() => {
   fetchData()

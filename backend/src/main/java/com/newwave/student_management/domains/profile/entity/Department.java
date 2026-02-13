@@ -26,5 +26,9 @@ public class Department extends JpaBaseEntity {
 
     @Column(name = "office_location", length = 100)
     private String officeLocation;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private DepartmentStatus status = DepartmentStatus.ACTIVE;
 }
 

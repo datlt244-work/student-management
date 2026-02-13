@@ -34,5 +34,12 @@ public class Course extends JpaBaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "department_id")
     private Department department;
+
+    @Column(name = "code", length = 20, nullable = false, unique = true)
+    private String code;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", length = 20, nullable = false)
+    private CourseStatus status = CourseStatus.ACTIVE;
 }
 

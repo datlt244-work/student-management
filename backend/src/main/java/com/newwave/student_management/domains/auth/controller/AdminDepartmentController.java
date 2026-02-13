@@ -20,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -28,7 +29,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.newwave.student_management.domains.profile.entity.DepartmentStatus;
+
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/admin/departments")
@@ -48,9 +52,10 @@ public class AdminDepartmentController {
     )
     public ApiResponse<AdminDepartmentListResponse> getDepartments(
             @RequestParam(required = false) String search,
+            @RequestParam(required = false) DepartmentStatus status,
             @ParameterObject Pageable pageable
     ) {
-        AdminDepartmentListResponse response = adminDepartmentService.getDepartments(search, pageable);
+        AdminDepartmentListResponse response = adminDepartmentService.getDepartments(search, status, pageable);
         return ApiResponse.success(response);
     }
 
@@ -81,6 +86,28 @@ public class AdminDepartmentController {
         return ApiResponse.success(response);
     }
 
+    @PatchMapping("/{departmentId}/status")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Update Department Status (Active/Inactive)")
+    public ApiResponse<AdminDepartmentDetailResponse> updateDepartmentStatus(
+            @PathVariable Integer departmentId,
+            @RequestBody Map<String, String> request
+    ) {
+        String statusStr = request.get("status");
+        if (statusStr == null) {
+            throw new com.newwave.student_management.common.exception.AppException(com.newwave.student_management.common.exception.ErrorCode.VALIDATION_ERROR);
+        }
+        DepartmentStatus status;
+        try {
+            status = DepartmentStatus.valueOf(statusStr.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new com.newwave.student_management.common.exception.AppException(com.newwave.student_management.common.exception.ErrorCode.VALIDATION_ERROR);
+        }
+
+        AdminDepartmentDetailResponse response = adminDepartmentService.updateDepartmentStatus(departmentId, status);
+        return ApiResponse.success(response);
+    }
+
     @DeleteMapping("/{departmentId}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(
@@ -102,9 +129,7 @@ public class AdminDepartmentController {
                     "Endpoint này giữ lại để tương thích với frontend hiện tại."
     )
     public ApiResponse<List<DepartmentResponse>> getDepartmentsSimple() {
-        List<Department> all = departmentRepository.findAll().stream()
-                .filter(d -> d.getDeletedAt() == null)
-                .toList();
+        List<Department> all = departmentRepository.findAllByStatusAndDeletedAtIsNull(DepartmentStatus.ACTIVE);
         List<DepartmentResponse> result = all.stream()
                 .map(DepartmentResponse::fromEntity)
                 .toList();

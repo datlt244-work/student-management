@@ -13,7 +13,9 @@ import com.newwave.student_management.domains.curriculum.repository.CourseReposi
 import com.newwave.student_management.domains.profile.entity.Department;
 import com.newwave.student_management.domains.profile.repository.DepartmentRepository;
 import com.newwave.student_management.domains.profile.repository.StudentRepository;
+import com.newwave.student_management.domains.profile.repository.StudentRepository;
 import com.newwave.student_management.domains.profile.repository.TeacherRepository;
+import com.newwave.student_management.domains.profile.entity.DepartmentStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -36,11 +38,12 @@ public class AdminDepartmentService implements IAdminDepartmentService {
     private final CourseRepository courseRepository;
 
     @Override
-    public AdminDepartmentListResponse getDepartments(String search, Pageable pageable) {
+    public AdminDepartmentListResponse getDepartments(String search, DepartmentStatus status, Pageable pageable) {
         String normalizedSearch = PaginationUtil.normalizeSearch(search);
 
         Page<Department> pageResult = departmentRepository.searchAdminDepartments(
                 normalizedSearch,
+                status,
                 pageable
         );
 
@@ -64,6 +67,7 @@ public class AdminDepartmentService implements IAdminDepartmentService {
                         .officeLocation(department.getOfficeLocation())
                         .courseCount(courseCountByDepartmentId.getOrDefault(department.getDepartmentId(), 0L))
                         .createdAt(department.getCreatedAt())
+                        .status(department.getStatus())
                         .build())
                 .toList();
 
@@ -100,6 +104,7 @@ public class AdminDepartmentService implements IAdminDepartmentService {
         Department department = new Department();
         department.setName(name);
         department.setOfficeLocation(officeLocation);
+        department.setStatus(DepartmentStatus.ACTIVE);
 
         Department saved = departmentRepository.save(department);
 
@@ -108,6 +113,7 @@ public class AdminDepartmentService implements IAdminDepartmentService {
                 .name(saved.getName())
                 .officeLocation(saved.getOfficeLocation())
                 .createdAt(saved.getCreatedAt())
+                .status(saved.getStatus())
                 .build();
     }
 
@@ -146,6 +152,35 @@ public class AdminDepartmentService implements IAdminDepartmentService {
                 .name(saved.getName())
                 .officeLocation(saved.getOfficeLocation())
                 .createdAt(saved.getCreatedAt())
+                .status(saved.getStatus())
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public AdminDepartmentDetailResponse updateDepartmentStatus(Integer departmentId, DepartmentStatus status) {
+        Department department = departmentRepository.findByDepartmentIdAndDeletedAtIsNull(departmentId)
+                .orElseThrow(() -> new AppException(ErrorCode.DEPARTMENT_NOT_FOUND));
+
+        if (status == DepartmentStatus.INACTIVE) {
+            long courseCount = courseRepository.countByDepartment_DepartmentIdAndStatusAndDeletedAtIsNull(
+                    departmentId,
+                    com.newwave.student_management.domains.curriculum.entity.CourseStatus.ACTIVE
+            );
+            if (courseCount > 0) {
+                throw new AppException(ErrorCode.DEPARTMENT_HAS_ACTIVE_COURSES);
+            }
+        }
+
+        department.setStatus(status);
+        Department saved = departmentRepository.save(department);
+
+        return AdminDepartmentDetailResponse.builder()
+                .departmentId(saved.getDepartmentId())
+                .name(saved.getName())
+                .officeLocation(saved.getOfficeLocation())
+                .createdAt(saved.getCreatedAt())
+                .status(saved.getStatus())
                 .build();
     }
 

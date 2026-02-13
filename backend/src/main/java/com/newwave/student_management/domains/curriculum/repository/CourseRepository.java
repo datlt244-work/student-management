@@ -12,6 +12,8 @@ import java.util.List;
 public interface CourseRepository extends JpaRepository<Course, Integer> {
 
     long countByDepartment_DepartmentIdAndDeletedAtIsNull(Integer departmentId);
+    
+    long countByDepartment_DepartmentIdAndStatusAndDeletedAtIsNull(Integer departmentId, com.newwave.student_management.domains.curriculum.entity.CourseStatus status);
 
     long countByDeletedAtIsNull();
 
@@ -24,6 +26,22 @@ public interface CourseRepository extends JpaRepository<Course, Integer> {
             GROUP BY c.department.departmentId
             """)
     List<Object[]> countActiveCoursesByDepartmentIds(@Param("departmentIds") List<Integer> departmentIds);
+
+    @Query("""
+            SELECT c
+            FROM Course c
+            LEFT JOIN FETCH c.department
+            WHERE c.deletedAt IS NULL
+              AND (:search IS NULL OR LOWER(c.name) LIKE :search OR LOWER(c.code) LIKE :search)
+              AND (:status IS NULL OR c.status = :status)
+              AND (:departmentId IS NULL OR c.department.departmentId = :departmentId)
+            """)
+    org.springframework.data.domain.Page<Course> searchAdminCourses(
+            @Param("search") String search,
+            @Param("status") com.newwave.student_management.domains.curriculum.entity.CourseStatus status,
+            @Param("departmentId") Integer departmentId,
+            org.springframework.data.domain.Pageable pageable
+    );
 }
 
 

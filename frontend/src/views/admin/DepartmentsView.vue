@@ -9,10 +9,12 @@ import {
   type AdminDepartmentListItem,
   type AdminCreateDepartmentRequest,
   type AdminUpdateDepartmentRequest,
+  updateAdminDepartmentStatus,
 } from '@/services/adminUserService'
 
 // Filters & pagination
 const searchQuery = ref('')
+const statusFilter = ref('')
 const sortBy = ref<'createdAt,desc' | 'createdAt,asc' | ''>('createdAt,desc')
 const pageSize = ref(10)
 const currentPage = ref(1) // UI 1-based
@@ -26,6 +28,21 @@ const errorMessage = ref<string | null>(null)
 // Server data
 const departments = ref<AdminDepartmentListItem[]>([])
 const totalCoursesCount = ref(0)
+
+// Status toggle handler
+async function toggleDepartmentStatus(dept: AdminDepartmentListItem) {
+  // Prevent spamming if needed, but simple await is fine
+  try {
+    const newStatus = dept.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'
+    await updateAdminDepartmentStatus(dept.departmentId, newStatus)
+    dept.status = newStatus // Update UI
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to update status'
+    createResultSuccess.value = false
+    createResultMessage.value = msg
+    showCreateResultModal.value = true
+  }
+}
 
 // Stats (computed from data)
 const totalDepartments = computed(() => totalElements.value)
@@ -63,6 +80,12 @@ const updateDepartmentError = ref<string | null>(null)
 const showDeleteConfirmModal = ref(false)
 const deletingDepartment = ref<AdminDepartmentListItem | null>(null)
 const deleteDepartmentLoading = ref(false)
+ 
+function clearFilters() {
+  searchQuery.value = ''
+  statusFilter.value = ''
+  sortBy.value = 'createdAt,desc'
+}
 
 async function fetchDepartments() {
   try {
@@ -74,6 +97,7 @@ async function fetchDepartments() {
       size: pageSize.value,
       sort: sortBy.value || 'createdAt,desc',
       search: searchQuery.value || undefined,
+      status: statusFilter.value || undefined,
     })
 
     departments.value = result.content
@@ -98,7 +122,7 @@ onMounted(() => {
 
 // Debounce tất cả filter/search để tránh gọi API trùng lặp (đặc biệt khi clearFilters)
 watchDebounced(
-  [searchQuery, sortBy, pageSize],
+  [searchQuery, sortBy, pageSize, statusFilter],
   () => {
     currentPage.value = 1
     fetchDepartments()
@@ -340,6 +364,14 @@ async function confirmDeleteDepartment() {
       </div>
       <div class="flex items-center gap-4 w-full md:w-auto">
         <select
+          v-model="statusFilter"
+          class="w-full md:w-48 py-2 bg-stone-50 dark:bg-stone-800/50 border-stone-200 dark:border-stone-700 rounded-lg text-sm focus:ring-primary focus:border-primary"
+        >
+          <option value="">All Statuses</option>
+          <option value="ACTIVE">Active</option>
+          <option value="INACTIVE">Inactive</option>
+        </select>
+        <select
           v-model="sortBy"
           class="w-full md:w-48 py-2 bg-stone-50 dark:bg-stone-800/50 border-stone-200 dark:border-stone-700 rounded-lg text-sm focus:ring-primary focus:border-primary"
         >
@@ -348,6 +380,14 @@ async function confirmDeleteDepartment() {
           <option value="name,asc">Name A-Z</option>
           <option value="name,desc">Name Z-A</option>
         </select>
+        <button
+          class="flex items-center justify-center gap-1 h-[38px] px-4 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-slate-700 dark:text-slate-300 rounded-lg font-semibold transition-all text-sm"
+          @click="clearFilters"
+          title="Clear Filters"
+        >
+          <span class="material-symbols-outlined text-[18px]">filter_list</span>
+          <span class="hidden md:inline">Clear</span>
+        </button>
       </div>
     </div>
 
@@ -367,17 +407,18 @@ async function confirmDeleteDepartment() {
               <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Office Location</th>
               <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Courses</th>
               <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Created At</th>
+              <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Status</th>
               <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-stone-200 dark:divide-stone-800">
             <tr v-if="isLoading" class="hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors">
-              <td colspan="6" class="p-8 text-center text-slate-500 dark:text-slate-400">
+              <td colspan="7" class="p-8 text-center text-slate-500 dark:text-slate-400">
                 Loading departments...
               </td>
             </tr>
             <tr v-else-if="departments.length === 0" class="hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors">
-              <td colspan="6" class="p-8 text-center text-slate-500 dark:text-slate-400">
+              <td colspan="7" class="p-8 text-center text-slate-500 dark:text-slate-400">
                 No departments found
               </td>
             </tr>
@@ -404,6 +445,38 @@ async function confirmDeleteDepartment() {
               </td>
               <td class="p-4 text-sm text-slate-600 dark:text-slate-300">
                 {{ formatDate(dept.createdAt) }}
+              </td>
+              <td class="p-4">
+                <div class="flex items-center gap-2">
+                  <span
+                    v-if="dept.status === 'ACTIVE'"
+                    class="inline-flex items-center justify-center gap-1 w-[70px] rounded-full bg-green-50 dark:bg-green-900/30 px-2 py-1 text-xs font-medium text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-600/20 dark:ring-green-500/20"
+                  >
+                    <span class="w-1.5 h-1.5 rounded-full bg-green-600 dark:bg-green-400"></span>
+                    Active
+                  </span>
+                  <span
+                    v-else
+                    class="inline-flex items-center justify-center gap-1 w-[70px] rounded-full bg-stone-100 dark:bg-stone-800 px-2 py-1 text-xs font-medium text-stone-600 dark:text-stone-400 ring-1 ring-inset ring-stone-500/20 dark:ring-stone-400/20"
+                  >
+                    <span class="w-1.5 h-1.5 rounded-full bg-stone-500 dark:bg-stone-400"></span>
+                    Inactive
+                  </span>
+                  <button
+                    :class="[
+                      'p-1 rounded-md transition-colors',
+                      dept.status === 'ACTIVE'
+                        ? 'text-green-500 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20'
+                        : 'text-slate-400 hover:text-slate-600 hover:bg-stone-100 dark:hover:bg-stone-800',
+                    ]"
+                    :title="dept.status === 'ACTIVE' ? 'Deactivate department' : 'Activate department'"
+                    @click="toggleDepartmentStatus(dept)"
+                  >
+                    <span class="material-symbols-outlined text-[20px]">
+                      {{ dept.status === 'ACTIVE' ? 'toggle_on' : 'toggle_off' }}
+                    </span>
+                  </button>
+                </div>
               </td>
               <td class="p-4 text-right space-x-2">
                 <button

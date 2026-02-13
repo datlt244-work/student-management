@@ -8,11 +8,13 @@ import org.springframework.data.domain.Pageable;
 
 public interface IAdminDepartmentService {
 
-    AdminDepartmentListResponse getDepartments(String search, Pageable pageable);
+    AdminDepartmentListResponse getDepartments(String search, com.newwave.student_management.domains.profile.entity.DepartmentStatus status, Pageable pageable);
 
     AdminDepartmentDetailResponse createDepartment(AdminCreateDepartmentRequest request);
 
     AdminDepartmentDetailResponse updateDepartment(Integer departmentId, AdminUpdateDepartmentRequest request);
+
+    AdminDepartmentDetailResponse updateDepartmentStatus(Integer departmentId, com.newwave.student_management.domains.profile.entity.DepartmentStatus status);
 
     void deleteDepartment(Integer departmentId);
 }

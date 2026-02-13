@@ -12,6 +12,8 @@ import java.util.List;
 public interface CourseRepository extends JpaRepository<Course, Integer> {
 
     long countByDepartment_DepartmentIdAndDeletedAtIsNull(Integer departmentId);
+    
+    long countByDepartment_DepartmentIdAndStatusAndDeletedAtIsNull(Integer departmentId, com.newwave.student_management.domains.curriculum.entity.CourseStatus status);
 
     long countByDeletedAtIsNull();
 

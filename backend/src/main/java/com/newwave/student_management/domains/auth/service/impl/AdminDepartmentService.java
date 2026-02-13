@@ -164,7 +164,10 @@ public class AdminDepartmentService implements IAdminDepartmentService {
                 .orElseThrow(() -> new AppException(ErrorCode.DEPARTMENT_NOT_FOUND));
 
         if (status == DepartmentStatus.INACTIVE) {
-            long courseCount = courseRepository.countByDepartment_DepartmentIdAndDeletedAtIsNull(departmentId);
+            long courseCount = courseRepository.countByDepartment_DepartmentIdAndStatusAndDeletedAtIsNull(
+                    departmentId,
+                    com.newwave.student_management.domains.curriculum.entity.CourseStatus.ACTIVE
+            );
             if (courseCount > 0) {
                 throw new AppException(ErrorCode.DEPARTMENT_HAS_ACTIVE_COURSES);
             }

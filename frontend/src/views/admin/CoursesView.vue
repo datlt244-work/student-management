@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { watchDebounced } from '@vueuse/core'
 import {
   getAdminCourses,
@@ -70,8 +70,12 @@ async function fetchCourses() {
     courses.value = result.content
     totalElements.value = result.totalElements
     totalPages.value = result.totalPages
-  } catch (e: any) {
-    error.value = e.message
+  } catch (e: unknown) {
+    if (e && typeof e === 'object' && 'message' in e) {
+       error.value = String((e as { message?: unknown }).message) || 'Failed to load courses'
+    } else {
+       error.value = 'Failed to load courses'
+    }
     courses.value = []
   } finally {
     isLoading.value = false

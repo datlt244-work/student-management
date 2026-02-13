@@ -18,9 +18,11 @@ public interface DepartmentRepository extends JpaRepository<Department, Integer>
             FROM Department d
             WHERE d.deletedAt IS NULL
               AND (:search IS NULL OR LOWER(d.name) LIKE :search)
+              AND (:status IS NULL OR d.status = :status)
             """)
     Page<Department> searchAdminDepartments(
             @Param("search") String search,
+            @Param("status") com.newwave.student_management.domains.profile.entity.DepartmentStatus status,
             Pageable pageable
     );
 

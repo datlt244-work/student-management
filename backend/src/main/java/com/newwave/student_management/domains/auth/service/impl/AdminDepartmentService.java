@@ -38,11 +38,12 @@ public class AdminDepartmentService implements IAdminDepartmentService {
     private final CourseRepository courseRepository;
 
     @Override
-    public AdminDepartmentListResponse getDepartments(String search, Pageable pageable) {
+    public AdminDepartmentListResponse getDepartments(String search, DepartmentStatus status, Pageable pageable) {
         String normalizedSearch = PaginationUtil.normalizeSearch(search);
 
         Page<Department> pageResult = departmentRepository.searchAdminDepartments(
                 normalizedSearch,
+                status,
                 pageable
         );
 

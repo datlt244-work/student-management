@@ -277,6 +277,7 @@ export async function getAdminDepartmentList(params: {
   size?: number
   sort?: string
   search?: string
+  status?: string
 }): Promise<AdminDepartmentListResult> {
   const searchParams = new URLSearchParams()
 
@@ -292,6 +293,9 @@ export async function getAdminDepartmentList(params: {
   }
   if (params.search) {
     searchParams.set('search', params.search.trim())
+  }
+  if (params.status) {
+    searchParams.set('status', params.status)
   }
 
   const queryString = searchParams.toString()
@@ -536,6 +540,7 @@ export async function getAdminCourses(params: {
   search?: string
   status?: string | ''
   departmentId?: number | ''
+  sort?: string
 }): Promise<AdminCourseListResult> {
   const searchParams = new URLSearchParams()
 
@@ -554,6 +559,9 @@ export async function getAdminCourses(params: {
   }
   if (params.departmentId) {
     searchParams.set('departmentId', String(params.departmentId))
+  }
+  if (params.sort) {
+    searchParams.set('sort', params.sort)
   }
 
   const queryString = searchParams.toString()

@@ -52,9 +52,10 @@ public class AdminDepartmentController {
     )
     public ApiResponse<AdminDepartmentListResponse> getDepartments(
             @RequestParam(required = false) String search,
+            @RequestParam(required = false) DepartmentStatus status,
             @ParameterObject Pageable pageable
     ) {
-        AdminDepartmentListResponse response = adminDepartmentService.getDepartments(search, pageable);
+        AdminDepartmentListResponse response = adminDepartmentService.getDepartments(search, status, pageable);
         return ApiResponse.success(response);
     }
 

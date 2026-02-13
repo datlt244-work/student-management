@@ -14,6 +14,7 @@ import {
 
 // Filters & pagination
 const searchQuery = ref('')
+const statusFilter = ref('')
 const sortBy = ref<'createdAt,desc' | 'createdAt,asc' | ''>('createdAt,desc')
 const pageSize = ref(10)
 const currentPage = ref(1) // UI 1-based
@@ -79,6 +80,12 @@ const updateDepartmentError = ref<string | null>(null)
 const showDeleteConfirmModal = ref(false)
 const deletingDepartment = ref<AdminDepartmentListItem | null>(null)
 const deleteDepartmentLoading = ref(false)
+ 
+function clearFilters() {
+  searchQuery.value = ''
+  statusFilter.value = ''
+  sortBy.value = 'createdAt,desc'
+}
 
 async function fetchDepartments() {
   try {
@@ -90,6 +97,7 @@ async function fetchDepartments() {
       size: pageSize.value,
       sort: sortBy.value || 'createdAt,desc',
       search: searchQuery.value || undefined,
+      status: statusFilter.value || undefined,
     })
 
     departments.value = result.content
@@ -114,7 +122,7 @@ onMounted(() => {
 
 // Debounce tất cả filter/search để tránh gọi API trùng lặp (đặc biệt khi clearFilters)
 watchDebounced(
-  [searchQuery, sortBy, pageSize],
+  [searchQuery, sortBy, pageSize, statusFilter],
   () => {
     currentPage.value = 1
     fetchDepartments()
@@ -356,6 +364,14 @@ async function confirmDeleteDepartment() {
       </div>
       <div class="flex items-center gap-4 w-full md:w-auto">
         <select
+          v-model="statusFilter"
+          class="w-full md:w-48 py-2 bg-stone-50 dark:bg-stone-800/50 border-stone-200 dark:border-stone-700 rounded-lg text-sm focus:ring-primary focus:border-primary"
+        >
+          <option value="">All Statuses</option>
+          <option value="ACTIVE">Active</option>
+          <option value="INACTIVE">Inactive</option>
+        </select>
+        <select
           v-model="sortBy"
           class="w-full md:w-48 py-2 bg-stone-50 dark:bg-stone-800/50 border-stone-200 dark:border-stone-700 rounded-lg text-sm focus:ring-primary focus:border-primary"
         >
@@ -364,6 +380,14 @@ async function confirmDeleteDepartment() {
           <option value="name,asc">Name A-Z</option>
           <option value="name,desc">Name Z-A</option>
         </select>
+        <button
+          class="flex items-center justify-center gap-1 h-[38px] px-4 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-slate-700 dark:text-slate-300 rounded-lg font-semibold transition-all text-sm"
+          @click="clearFilters"
+          title="Clear Filters"
+        >
+          <span class="material-symbols-outlined text-[18px]">filter_list</span>
+          <span class="hidden md:inline">Clear</span>
+        </button>
       </div>
     </div>
 

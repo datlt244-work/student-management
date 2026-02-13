@@ -48,6 +48,12 @@ public class AdminCourseService implements IAdminCourseService {
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
 
+        if (status == CourseStatus.ACTIVE 
+            && course.getDepartment() != null 
+            && course.getDepartment().getStatus() == com.newwave.student_management.domains.profile.entity.DepartmentStatus.INACTIVE) {
+            throw new AppException(ErrorCode.DEPARTMENT_NOT_ACTIVE);
+        }
+
         course.setStatus(status);
         Course saved = courseRepository.save(course);
         return toListItem(saved);

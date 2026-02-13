@@ -18,6 +18,15 @@ const departments = ref<AdminDepartmentItem[]>([])
 const isLoading = ref(false)
 const error = ref<string | null>(null)
 
+// Modal state
+const showResultModal = ref(false)
+const resultSuccess = ref(false)
+const resultMessage = ref('')
+
+function closeResultModal() {
+  showResultModal.value = false
+}
+
 // Pagination
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -116,10 +125,12 @@ async function toggleCourseStatus(course: AdminCourseListItem) {
     course.status = originalStatus // Revert on failure
     console.error('Failed to update status', e)
     if (e && typeof e === 'object' && 'message' in e) {
-      alert(String((e as { message?: unknown }).message))
+      resultMessage.value = String((e as { message?: unknown }).message)
     } else {
-      alert('Failed to update status')
+      resultMessage.value = 'Failed to update status'
     }
+    resultSuccess.value = false
+    showResultModal.value = true
   }
 }
 
@@ -428,7 +439,65 @@ function clearFilters() {
         </div>
       </div>
     </div>
+    <!-- Result Modal -->
+    <Teleport to="body">
+      <Transition name="fade">
+        <div
+          v-if="showResultModal"
+          class="fixed inset-0 z-[120] flex items-center justify-center p-4 backdrop-blur-md bg-stone-900/40"
+        >
+          <div
+            class="bg-surface-light dark:bg-surface-dark w-full max-w-md rounded-xl shadow-2xl overflow-hidden border border-stone-200 dark:border-stone-800 max-h-[80vh] flex flex-col"
+          >
+            <div
+              :class="[
+                'px-6 py-4 flex items-center justify-between shrink-0',
+                resultSuccess ? 'bg-emerald-600' : 'bg-red-600',
+              ]"
+            >
+              <h2 class="text-white text-lg font-bold flex items-center gap-2">
+                <span class="material-symbols-outlined">
+                  {{ resultSuccess ? 'check_circle' : 'error' }}
+                </span>
+                {{ resultSuccess ? 'Success' : 'Error' }}
+              </h2>
+              <button class="text-white/80 hover:text-white transition-colors" type="button" @click="closeResultModal">
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div class="p-6 flex-1 flex items-center">
+              <p class="text-sm text-slate-700 dark:text-slate-200">
+                {{ resultMessage }}
+              </p>
+            </div>
+
+            <div class="px-6 py-4 border-t border-stone-200 dark:border-stone-800 bg-stone-50/60 dark:bg-stone-900/40 shrink-0 flex justify-end">
+              <button
+                type="button"
+                class="px-5 py-2 rounded-lg bg-primary hover:bg-primary-dark text-white text-sm font-bold shadow-md shadow-primary/30 transition-all active:scale-95"
+                @click="closeResultModal"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>
 
 

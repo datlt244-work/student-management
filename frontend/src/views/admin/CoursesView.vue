@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted } from 'vue'
+import { watchDebounced } from '@vueuse/core'
 import {
   getAdminCourses,
   getAdminDepartments,
@@ -83,10 +84,14 @@ function goToPage(page: number) {
   }
 }
 
-watch([searchQuery, selectedDepartment, statusFilter, pageSize], () => {
-  currentPage.value = 1
-  fetchCourses()
-})
+watchDebounced(
+  [searchQuery, selectedDepartment, statusFilter, pageSize],
+  () => {
+    currentPage.value = 1
+    fetchCourses()
+  },
+  { debounce: 500, maxWait: 1000 },
+)
 
 watch(currentPage, () => {
   fetchCourses()

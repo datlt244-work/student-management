@@ -9,6 +9,7 @@ import {
   type AdminDepartmentListItem,
   type AdminCreateDepartmentRequest,
   type AdminUpdateDepartmentRequest,
+  updateAdminDepartmentStatus,
 } from '@/services/adminUserService'
 
 // Filters & pagination
@@ -26,6 +27,21 @@ const errorMessage = ref<string | null>(null)
 // Server data
 const departments = ref<AdminDepartmentListItem[]>([])
 const totalCoursesCount = ref(0)
+
+// Status toggle handler
+async function toggleDepartmentStatus(dept: AdminDepartmentListItem) {
+  // Prevent spamming if needed, but simple await is fine
+  try {
+    const newStatus = dept.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'
+    await updateAdminDepartmentStatus(dept.departmentId, newStatus)
+    dept.status = newStatus // Update UI
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to update status'
+    createResultSuccess.value = false
+    createResultMessage.value = msg
+    showCreateResultModal.value = true
+  }
+}
 
 // Stats (computed from data)
 const totalDepartments = computed(() => totalElements.value)
@@ -367,17 +383,18 @@ async function confirmDeleteDepartment() {
               <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Office Location</th>
               <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Courses</th>
               <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Created At</th>
+              <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Status</th>
               <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-stone-200 dark:divide-stone-800">
             <tr v-if="isLoading" class="hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors">
-              <td colspan="6" class="p-8 text-center text-slate-500 dark:text-slate-400">
+              <td colspan="7" class="p-8 text-center text-slate-500 dark:text-slate-400">
                 Loading departments...
               </td>
             </tr>
             <tr v-else-if="departments.length === 0" class="hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors">
-              <td colspan="6" class="p-8 text-center text-slate-500 dark:text-slate-400">
+              <td colspan="7" class="p-8 text-center text-slate-500 dark:text-slate-400">
                 No departments found
               </td>
             </tr>
@@ -404,6 +421,38 @@ async function confirmDeleteDepartment() {
               </td>
               <td class="p-4 text-sm text-slate-600 dark:text-slate-300">
                 {{ formatDate(dept.createdAt) }}
+              </td>
+              <td class="p-4">
+                <div class="flex items-center gap-2">
+                  <span
+                    v-if="dept.status === 'ACTIVE'"
+                    class="inline-flex items-center justify-center gap-1 w-[70px] rounded-full bg-green-50 dark:bg-green-900/30 px-2 py-1 text-xs font-medium text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-600/20 dark:ring-green-500/20"
+                  >
+                    <span class="w-1.5 h-1.5 rounded-full bg-green-600 dark:bg-green-400"></span>
+                    Active
+                  </span>
+                  <span
+                    v-else
+                    class="inline-flex items-center justify-center gap-1 w-[70px] rounded-full bg-stone-100 dark:bg-stone-800 px-2 py-1 text-xs font-medium text-stone-600 dark:text-stone-400 ring-1 ring-inset ring-stone-500/20 dark:ring-stone-400/20"
+                  >
+                    <span class="w-1.5 h-1.5 rounded-full bg-stone-500 dark:bg-stone-400"></span>
+                    Inactive
+                  </span>
+                  <button
+                    :class="[
+                      'p-1 rounded-md transition-colors',
+                      dept.status === 'ACTIVE'
+                        ? 'text-green-500 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20'
+                        : 'text-slate-400 hover:text-slate-600 hover:bg-stone-100 dark:hover:bg-stone-800',
+                    ]"
+                    :title="dept.status === 'ACTIVE' ? 'Deactivate department' : 'Activate department'"
+                    @click="toggleDepartmentStatus(dept)"
+                  >
+                    <span class="material-symbols-outlined text-[20px]">
+                      {{ dept.status === 'ACTIVE' ? 'toggle_on' : 'toggle_off' }}
+                    </span>
+                  </button>
+                </div>
               </td>
               <td class="p-4 text-right space-x-2">
                 <button

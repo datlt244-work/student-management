@@ -14,6 +14,8 @@ public interface IAdminDepartmentService {
 
     AdminDepartmentDetailResponse updateDepartment(Integer departmentId, AdminUpdateDepartmentRequest request);
 
+    AdminDepartmentDetailResponse updateDepartmentStatus(Integer departmentId, com.newwave.student_management.domains.profile.entity.DepartmentStatus status);
+
     void deleteDepartment(Integer departmentId);
 }
 

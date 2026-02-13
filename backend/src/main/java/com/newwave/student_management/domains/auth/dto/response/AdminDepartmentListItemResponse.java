@@ -1,5 +1,6 @@
 package com.newwave.student_management.domains.auth.dto.response;
 
+import com.newwave.student_management.domains.profile.entity.DepartmentStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,5 +19,6 @@ public class AdminDepartmentListItemResponse {
     private String officeLocation;
     private long courseCount;
     private LocalDateTime createdAt;
+    private DepartmentStatus status;
 }
 

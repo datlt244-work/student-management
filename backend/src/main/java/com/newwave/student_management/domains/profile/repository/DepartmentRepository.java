@@ -27,4 +27,6 @@ public interface DepartmentRepository extends JpaRepository<Department, Integer>
     boolean existsByNameIgnoreCaseAndDeletedAtIsNull(String name);
 
     Optional<Department> findByDepartmentIdAndDeletedAtIsNull(Integer departmentId);
+
+    java.util.List<Department> findAllByStatusAndDeletedAtIsNull(com.newwave.student_management.domains.profile.entity.DepartmentStatus status);
 }

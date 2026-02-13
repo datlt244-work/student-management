@@ -255,6 +255,7 @@ export interface AdminDepartmentListItem {
   officeLocation: string | null
   courseCount: number
   createdAt: string
+  status: 'ACTIVE' | 'INACTIVE'
 }
 
 export interface AdminDepartmentListResult {
@@ -319,6 +320,7 @@ export interface AdminDepartmentDetailResponse {
   name: string
   officeLocation: string | null
   createdAt: string
+  status: 'ACTIVE' | 'INACTIVE'
 }
 
 /**
@@ -389,6 +391,29 @@ export async function deleteAdminDepartment(departmentId: number): Promise<void>
     const message = errorData?.message || `Failed to delete department (${response.status})`
     throw new Error(message)
   }
+}
+
+/**
+ * UC-13.5: Update Department Status (Active/Inactive)
+ * PATCH /admin/departments/{departmentId}/status
+ */
+export async function updateAdminDepartmentStatus(
+  departmentId: number,
+  status: 'ACTIVE' | 'INACTIVE',
+): Promise<AdminDepartmentDetailResponse> {
+  const response = await apiFetch(`/admin/departments/${departmentId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    const message = errorData?.message || `Failed to update department status (${response.status})`
+    throw new Error(message)
+  }
+
+  const data = await response.json()
+  return (data.result || data) as AdminDepartmentDetailResponse
 }
 
 // ========== UC-11.3a Create User Request ==========

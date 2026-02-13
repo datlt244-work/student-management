@@ -66,7 +66,6 @@ public class AdminDepartmentService implements IAdminDepartmentService {
                         .name(department.getName())
                         .officeLocation(department.getOfficeLocation())
                         .courseCount(courseCountByDepartmentId.getOrDefault(department.getDepartmentId(), 0L))
-                        .courseCount(courseCountByDepartmentId.getOrDefault(department.getDepartmentId(), 0L))
                         .createdAt(department.getCreatedAt())
                         .status(department.getStatus())
                         .build())

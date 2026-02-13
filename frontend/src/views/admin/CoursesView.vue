@@ -11,6 +11,7 @@ import {
 
 const searchQuery = ref('')
 const statusFilter = ref('')
+const sortBy = ref<string>('createdAt,desc')
 const selectedDepartment = ref<string | number>('all')
 
 const courses = ref<AdminCourseListItem[]>([])
@@ -75,6 +76,7 @@ async function fetchCourses() {
       search: searchQuery.value,
       departmentId: deptId || '',
       status: statusFilter.value,
+      sort: sortBy.value || 'createdAt,desc',
     })
 
     courses.value = result.content
@@ -100,7 +102,7 @@ function goToPage(page: number) {
 }
 
 watchDebounced(
-  [searchQuery, selectedDepartment, statusFilter, pageSize],
+  [searchQuery, selectedDepartment, statusFilter, pageSize, sortBy],
   () => {
     currentPage.value = 1
     fetchCourses()
@@ -254,6 +256,17 @@ function clearFilters() {
             <option v-for="dept in departments" :key="dept.departmentId" :value="dept.departmentId">
               {{ dept.name }}
             </option>
+          </select>
+        </div>
+        <div class="w-full md:w-48">
+          <select
+            v-model="sortBy"
+            class="w-full md:w-48 py-2 bg-stone-50 dark:bg-stone-800/50 border-stone-200 dark:border-stone-700 rounded-lg text-sm focus:ring-primary focus:border-primary"
+          >
+            <option value="createdAt,desc">Newest First</option>
+            <option value="createdAt,asc">Oldest First</option>
+            <option value="name,asc">Name A-Z</option>
+            <option value="name,desc">Name Z-A</option>
           </select>
         </div>
         <button

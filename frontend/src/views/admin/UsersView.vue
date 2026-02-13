@@ -19,7 +19,7 @@ const router = useRouter()
 const searchQuery = ref('')
 const statusFilter = ref<UserStatus | ''>('')
 const roleFilter = ref('')
-const sortBy = ref<'createdAt,desc' | 'createdAt,asc' | ''>('createdAt,desc')
+const sortBy = ref<string>('createdAt,desc')
 const pageSize = ref(10)
 const currentPage = ref(1) // UI 1-based
 const totalPages = ref(0)
@@ -557,9 +557,8 @@ function processImport() {
         </select>
         <select
           v-model="sortBy"
-          class="h-10 px-2 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-xs md:text-sm focus:ring-primary focus:border-primary w-[120px]"
+          class="w-full md:w-48 py-2 bg-stone-50 dark:bg-stone-800/50 border-stone-200 dark:border-stone-700 rounded-lg text-sm focus:ring-primary focus:border-primary"
         >
-          <option value="">Sort</option>
           <option value="createdAt,desc">Newest First</option>
           <option value="createdAt,asc">Oldest First</option>
         </select>

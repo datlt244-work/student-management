@@ -572,4 +572,20 @@ export async function getAdminCourses(params: {
   return (data.result || data) as AdminCourseListResult
 }
 
+export async function updateAdminCourseStatus(courseId: number, status: 'ACTIVE' | 'INACTIVE'): Promise<AdminCourseListItem> {
+  const response = await apiFetch(`/admin/courses/${courseId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+    headers: { 'Content-Type': 'application/json' },
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    throw new Error(errorData?.message || `Failed to update status (${response.status})`)
+  }
+
+  const data = await response.json()
+  return (data.result || data) as AdminCourseListItem
+}
+
 

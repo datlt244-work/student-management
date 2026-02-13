@@ -4,6 +4,7 @@ import { watchDebounced } from '@vueuse/core'
 import {
   getAdminCourses,
   getAdminDepartments,
+  updateAdminCourseStatus,
   type AdminCourseListItem,
   type AdminDepartmentItem,
 } from '@/services/adminUserService'
@@ -104,9 +105,22 @@ onMounted(() => {
   fetchData()
 })
 
-function toggleCourseStatus(course: AdminCourseListItem) {
-  // TODO: Implement toggle API
-  console.log('Toggle status not implemented', course)
+async function toggleCourseStatus(course: AdminCourseListItem) {
+  const originalStatus = course.status
+  const newStatus = course.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'
+
+  try {
+    course.status = newStatus // Optimistic update
+    await updateAdminCourseStatus(course.courseId, newStatus)
+  } catch (e: unknown) {
+    course.status = originalStatus // Revert on failure
+    console.error('Failed to update status', e)
+    if (e && typeof e === 'object' && 'message' in e) {
+      alert(String((e as { message?: unknown }).message))
+    } else {
+      alert('Failed to update status')
+    }
+  }
 }
 
 function clearFilters() {

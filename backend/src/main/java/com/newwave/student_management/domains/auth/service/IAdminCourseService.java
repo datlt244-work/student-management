@@ -6,4 +6,6 @@ import org.springframework.data.domain.Pageable;
 
 public interface IAdminCourseService {
     AdminCourseListResponse getCourses(String search, CourseStatus status, Integer departmentId, Pageable pageable);
+    
+    com.newwave.student_management.domains.auth.dto.response.AdminCourseListItemResponse updateCourseStatus(Integer courseId, CourseStatus status);
 }

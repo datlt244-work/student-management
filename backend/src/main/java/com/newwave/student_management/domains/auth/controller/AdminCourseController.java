@@ -2,8 +2,12 @@ package com.newwave.student_management.domains.auth.controller;
 
 import com.newwave.student_management.common.dto.ApiResponse;
 import com.newwave.student_management.domains.auth.dto.response.AdminCourseListResponse;
+import com.newwave.student_management.domains.auth.dto.response.AdminCourseListItemResponse;
 import com.newwave.student_management.domains.auth.service.IAdminCourseService;
 import com.newwave.student_management.domains.curriculum.entity.CourseStatus;
+import com.newwave.student_management.common.exception.AppException;
+import com.newwave.student_management.common.exception.ErrorCode;
+import java.util.Map;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -31,5 +35,26 @@ public class AdminCourseController {
             @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         return ApiResponse.success(adminCourseService.getCourses(search, status, departmentId, pageable));
+    }
+
+    @PatchMapping("/{courseId}/status")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Update course status")
+    public ApiResponse<AdminCourseListItemResponse> updateCourseStatus(
+            @PathVariable Integer courseId,
+            @RequestBody Map<String, String> request
+    ) {
+        String statusStr = request.get("status");
+        if (statusStr == null) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR);
+        }
+        CourseStatus status;
+        try {
+            status = CourseStatus.valueOf(statusStr.toUpperCase());
+        } catch (IllegalArgumentException e) {
+             throw new AppException(ErrorCode.VALIDATION_ERROR);
+        }
+
+        return ApiResponse.success(adminCourseService.updateCourseStatus(courseId, status));
     }
 }

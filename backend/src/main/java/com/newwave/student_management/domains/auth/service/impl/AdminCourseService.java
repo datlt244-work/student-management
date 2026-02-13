@@ -1,5 +1,7 @@
 package com.newwave.student_management.domains.auth.service.impl;
 
+import com.newwave.student_management.common.exception.AppException;
+import com.newwave.student_management.common.exception.ErrorCode;
 import com.newwave.student_management.common.util.PaginationUtil;
 import com.newwave.student_management.domains.auth.dto.response.AdminCourseListItemResponse;
 import com.newwave.student_management.domains.auth.dto.response.AdminCourseListResponse;
@@ -39,6 +41,16 @@ public class AdminCourseService implements IAdminCourseService {
                 .totalElements(meta.totalElements)
                 .totalPages(meta.totalPages)
                 .build();
+    }
+
+    @Override
+    public AdminCourseListItemResponse updateCourseStatus(Integer courseId, CourseStatus status) {
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
+
+        course.setStatus(status);
+        Course saved = courseRepository.save(course);
+        return toListItem(saved);
     }
 
     private AdminCourseListItemResponse toListItem(Course c) {

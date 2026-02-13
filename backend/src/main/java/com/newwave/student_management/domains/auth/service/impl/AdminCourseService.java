@@ -49,7 +49,7 @@ public class AdminCourseService implements IAdminCourseService {
                 .credits(c.getCredits())
                 .departmentId(c.getDepartment() != null ? c.getDepartment().getDepartmentId() : null)
                 .departmentName(c.getDepartment() != null ? c.getDepartment().getName() : null)
-                .status(c.getStatus().name())
+                .status(c.getStatus() != null ? c.getStatus().name() : null)
                 .createdAt(c.getCreatedAt())
                 .build();
     }

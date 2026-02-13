@@ -509,4 +509,63 @@ export async function createAdminUser(body: AdminCreateUserRequest): Promise<Adm
   return (data.result || data) as AdminUserDetailResult
 }
 
+// ========== Courses (Admin) ==========
+
+export interface AdminCourseListItem {
+  courseId: number
+  code: string
+  name: string
+  credits: number
+  departmentId?: number
+  departmentName?: string
+  status: 'ACTIVE' | 'INACTIVE'
+  createdAt: string
+}
+
+export interface AdminCourseListResult {
+  content: AdminCourseListItem[]
+  page: number
+  size: number
+  totalElements: number
+  totalPages: number
+}
+
+export async function getAdminCourses(params: {
+  page?: number
+  size?: number
+  search?: string
+  status?: string | ''
+  departmentId?: number | ''
+}): Promise<AdminCourseListResult> {
+  const searchParams = new URLSearchParams()
+
+  if (params.page !== undefined) {
+    // BE uses 0-based index
+    searchParams.set('page', String(Math.max(0, params.page - 1)))
+  }
+  if (params.size !== undefined) {
+    searchParams.set('size', String(params.size))
+  }
+  if (params.search) {
+    searchParams.set('search', params.search.trim())
+  }
+  if (params.status) {
+    searchParams.set('status', params.status)
+  }
+  if (params.departmentId) {
+    searchParams.set('departmentId', String(params.departmentId))
+  }
+
+  const queryString = searchParams.toString()
+  const endpoint = queryString ? `/admin/courses?${queryString}` : '/admin/courses'
+
+  const response = await apiFetch(endpoint)
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    throw new Error(errorData?.message || `Failed to fetch courses (${response.status})`)
+  }
+  const data = await response.json()
+  return (data.result || data) as AdminCourseListResult
+}
+
 

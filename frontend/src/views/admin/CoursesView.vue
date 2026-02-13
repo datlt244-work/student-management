@@ -1,64 +1,104 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch, onMounted } from 'vue'
+import {
+  getAdminCourses,
+  getAdminDepartments,
+  type AdminCourseListItem,
+  type AdminDepartmentItem,
+} from '@/services/adminUserService'
 
 const searchQuery = ref('')
-const selectedDepartment = ref('all')
+const statusFilter = ref('')
+const selectedDepartment = ref<string | number>('all')
 
-const courses = ref([
-  {
-    code: 'CS101',
-    name: 'Intro to Computer Science',
-    department: 'Computer Science',
-    credits: 4,
-    status: 'ACTIVE',
-  },
-  {
-    code: 'MAT202',
-    name: 'Linear Algebra',
-    department: 'Mathematics',
-    credits: 3,
-    status: 'ACTIVE',
-  },
-  {
-    code: 'PHY105',
-    name: 'Physics I',
-    department: 'Science',
-    credits: 4,
-    status: 'INACTIVE',
-  },
-  {
-    code: 'ENG301',
-    name: 'Thermodynamics',
-    department: 'Engineering',
-    credits: 3,
-    status: 'ACTIVE',
-  },
-  {
-    code: 'ART100',
-    name: 'History of Modern Art',
-    department: 'Arts',
-    credits: 3,
-    status: 'INACTIVE',
-  },
-])
+const courses = ref<AdminCourseListItem[]>([])
+const departments = ref<AdminDepartmentItem[]>([])
+const isLoading = ref(false)
+const error = ref<string | null>(null)
 
-const filteredCourses = computed(() => {
-  return courses.value.filter((course) => {
-    const matchesSearch =
-      !searchQuery.value ||
-      course.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      course.code.toLowerCase().includes(searchQuery.value.toLowerCase())
-    const matchesDept = selectedDepartment.value === 'all' || course.department === selectedDepartment.value
-    return matchesSearch && matchesDept
-  })
+// Pagination
+const currentPage = ref(1)
+const pageSize = ref(10)
+const totalElements = ref(0)
+const totalPages = ref(1)
+
+// Stats (Partial)
+const totalCourses = computed(() => totalElements.value)
+const totalCredits = computed(() => 0) // API doesn't provide sum
+const activeDepartments = computed(() => 0) // API doesn't provide active count
+
+const paginationPages = computed(() => {
+  const total = totalPages.value
+  const current = currentPage.value
+  const pages: number[] = []
+  const start = Math.max(1, current - 1)
+  const end = Math.min(total, current + 1)
+  if (total <= 1) return [1]
+  for (let i = start; i <= end; i++) {
+    pages.push(i)
+  }
+  return pages
 })
 
-const totalCourses = computed(() => courses.value.length)
-const totalCredits = computed(() => courses.value.reduce((sum, c) => sum + c.credits, 0))
-const activeDepartments = computed(() => new Set(courses.value.map((c) => c.department)).size)
+async function fetchData() {
+  await Promise.all([fetchCourses(), fetchDepartments()])
+}
 
-function toggleCourseStatus(course: (typeof courses.value)[number]) {
-  course.status = course.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'
+async function fetchDepartments() {
+  try {
+    departments.value = await getAdminDepartments()
+  } catch (e) {
+    console.error('Failed to fetch departments', e)
+  }
+}
+
+async function fetchCourses() {
+  isLoading.value = true
+  error.value = null
+  try {
+    const deptId = selectedDepartment.value === 'all' ? '' : Number(selectedDepartment.value)
+
+    const result = await getAdminCourses({
+      page: currentPage.value,
+      size: pageSize.value,
+      search: searchQuery.value,
+      departmentId: deptId || '',
+      status: statusFilter.value,
+    })
+
+    courses.value = result.content
+    totalElements.value = result.totalElements
+    totalPages.value = result.totalPages
+  } catch (e: any) {
+    error.value = e.message
+    courses.value = []
+  } finally {
+    isLoading.value = false
+  }
+}
+
+function goToPage(page: number) {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page
+  }
+}
+
+watch([searchQuery, selectedDepartment, statusFilter, pageSize], () => {
+  currentPage.value = 1
+  fetchCourses()
+})
+
+watch(currentPage, () => {
+  fetchCourses()
+})
+
+onMounted(() => {
+  fetchData()
+})
+
+function toggleCourseStatus(course: AdminCourseListItem) {
+  // TODO: Implement toggle API
+  console.log('Toggle status not implemented', course)
 }
 </script>
 
@@ -153,19 +193,30 @@ function toggleCourseStatus(course: (typeof courses.value)[number]) {
           type="text"
         />
       </div>
-      <div class="w-full md:w-64">
-        <select
-          v-model="selectedDepartment"
-          class="w-full px-4 py-2 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm cursor-pointer"
-        >
-          <option disabled value="">Filter by Department</option>
-          <option value="all">All Departments</option>
-          <option value="Computer Science">Computer Science</option>
-          <option value="Engineering">Engineering</option>
-          <option value="Mathematics">Mathematics</option>
-          <option value="Science">Science</option>
-          <option value="Arts">Arts</option>
-        </select>
+
+      <div class="flex flex-col md:flex-row gap-4 w-full md:w-auto">
+        <div class="w-full md:w-48">
+          <select
+            v-model="statusFilter"
+            class="w-full px-4 py-2 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm cursor-pointer"
+          >
+            <option value="">All Statuses</option>
+            <option value="ACTIVE">Active</option>
+            <option value="INACTIVE">Inactive</option>
+          </select>
+        </div>
+        <div class="w-full md:w-64">
+          <select
+            v-model="selectedDepartment"
+            class="w-full px-4 py-2 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm cursor-pointer"
+          >
+            <option disabled value="">Filter by Department</option>
+            <option value="all">All Departments</option>
+            <option v-for="dept in departments" :key="dept.departmentId" :value="dept.departmentId">
+              {{ dept.name }}
+            </option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -211,8 +262,8 @@ function toggleCourseStatus(course: (typeof courses.value)[number]) {
           </thead>
           <tbody class="divide-y divide-stone-200 dark:divide-stone-800">
             <tr
-              v-for="course in filteredCourses"
-              :key="course.code"
+              v-for="course in courses"
+              :key="course.courseId"
               class="hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors"
             >
               <td class="p-4 text-sm font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">
@@ -222,7 +273,7 @@ function toggleCourseStatus(course: (typeof courses.value)[number]) {
                 {{ course.name }}
               </td>
               <td class="p-4 text-sm text-slate-600 dark:text-slate-400">
-                {{ course.department }}
+                {{ course.departmentName }}
               </td>
               <td class="p-4 text-sm font-medium text-slate-900 dark:text-white">
                 {{ course.credits.toFixed(1) }}
@@ -279,7 +330,7 @@ function toggleCourseStatus(course: (typeof courses.value)[number]) {
                 </div>
               </td>
             </tr>
-            <tr v-if="filteredCourses.length === 0">
+            <tr v-if="courses.length === 0 && !isLoading">
               <td colspan="6" class="p-6 text-center text-sm text-slate-500 dark:text-slate-400">
                 No courses found
               </td>
@@ -289,27 +340,55 @@ function toggleCourseStatus(course: (typeof courses.value)[number]) {
       </div>
 
       <!-- Simple footer (static for now) -->
-      <div class="flex items-center justify-between mt-2 px-4 py-3 border-t border-stone-200 dark:border-stone-800">
-        <p class="text-sm text-slate-500 dark:text-slate-400">
-          Showing
-          <span class="font-bold text-slate-900 dark:text-white">{{ filteredCourses.length }}</span>
-          of
-          <span class="font-bold text-slate-900 dark:text-white">{{ totalCourses }}</span>
-          courses
-        </p>
-        <div class="flex gap-2">
-          <button
-            class="px-3 py-1 rounded-md border border-stone-200 dark:border-stone-700 bg-white dark:bg-surface-dark text-slate-500 dark:text-slate-400 hover:bg-stone-50 dark:hover:bg-stone-800 disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled
+      <!-- Pagination -->
+      <div
+        class="p-4 border-t border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-900/30 flex flex-col sm:flex-row items-center justify-between gap-4"
+      >
+        <div class="flex items-center gap-4">
+          <span class="text-sm text-slate-500 dark:text-slate-400">Records per page:</span>
+          <select
+            v-model="pageSize"
+            class="h-9 py-0 pr-8 pl-3 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-sm"
           >
-            Previous
-          </button>
-          <button
-            class="px-3 py-1 rounded-md border border-stone-200 dark:border-stone-700 bg-white dark:bg-surface-dark text-slate-500 dark:text-slate-400 hover:bg-stone-50 dark:hover:bg-stone-800 disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled
-          >
-            Next
-          </button>
+            <option :value="5">5</option>
+            <option :value="10">10</option>
+            <option :value="20">20</option>
+            <option :value="50">50</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-sm font-medium text-slate-700 dark:text-slate-300 mr-2">Page {{ currentPage }} of {{ totalPages }}</span>
+          <div class="flex gap-1">
+            <button
+              class="w-9 h-9 flex items-center justify-center rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-slate-400 hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              :disabled="currentPage <= 1"
+              aria-label="Previous page"
+              @click="goToPage(currentPage - 1)"
+            >
+              <span class="material-symbols-outlined text-[18px]">chevron_left</span>
+            </button>
+            <button
+              v-for="p in paginationPages"
+              :key="p"
+              :class="[
+                'w-9 h-9 flex items-center justify-center rounded-lg font-medium text-sm transition-colors',
+                currentPage === p
+                  ? 'bg-primary text-white shadow-sm shadow-primary/20'
+                  : 'border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-slate-600 dark:text-slate-400 hover:bg-stone-50 dark:hover:bg-stone-800',
+              ]"
+              @click="goToPage(p)"
+            >
+              {{ p }}
+            </button>
+            <button
+              class="w-9 h-9 flex items-center justify-center rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-slate-400 hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              :disabled="currentPage >= totalPages"
+              aria-label="Next page"
+              @click="goToPage(currentPage + 1)"
+            >
+              <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

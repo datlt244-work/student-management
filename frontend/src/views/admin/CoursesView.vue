@@ -440,9 +440,9 @@ function clearFilters() {
                   <button
                     class="p-1 rounded-md text-slate-400 hover:text-primary hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors"
                     @click="() => {}"
-                    title="Edit course"
+                    title="View course"
                   >
-                    <span class="material-symbols-outlined text-[20px]">edit</span>
+                    <span class="material-symbols-outlined text-[20px]">visibility</span>
                   </button>
 
                   <button

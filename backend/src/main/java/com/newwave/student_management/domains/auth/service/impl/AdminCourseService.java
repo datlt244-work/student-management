@@ -3,6 +3,7 @@ package com.newwave.student_management.domains.auth.service.impl;
 import com.newwave.student_management.common.exception.AppException;
 import com.newwave.student_management.common.exception.ErrorCode;
 import com.newwave.student_management.common.util.PaginationUtil;
+import com.newwave.student_management.domains.auth.dto.request.AdminUpdateCourseRequest;
 import com.newwave.student_management.domains.auth.dto.response.AdminCourseDetailResponse;
 import com.newwave.student_management.domains.auth.dto.response.AdminCourseListItemResponse;
 import com.newwave.student_management.domains.auth.dto.response.AdminCourseListResponse;
@@ -10,7 +11,9 @@ import com.newwave.student_management.domains.auth.service.IAdminCourseService;
 import com.newwave.student_management.domains.curriculum.entity.Course;
 import com.newwave.student_management.domains.curriculum.entity.CourseStatus;
 import com.newwave.student_management.domains.curriculum.repository.CourseRepository;
+import com.newwave.student_management.domains.profile.entity.Department;
 import com.newwave.student_management.domains.profile.entity.DepartmentStatus;
+import com.newwave.student_management.domains.profile.repository.DepartmentRepository;
 import com.newwave.student_management.domains.profile.repository.SemesterRepository;
 import com.newwave.student_management.domains.profile.entity.Semester;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +29,7 @@ public class AdminCourseService implements IAdminCourseService {
 
     private final CourseRepository courseRepository;
     private final SemesterRepository semesterRepository;
+    private final DepartmentRepository departmentRepository;
 
     @Override
     public AdminCourseListResponse getCourses(String search, CourseStatus status, Integer departmentId, Pageable pageable) {
@@ -86,6 +90,37 @@ public class AdminCourseService implements IAdminCourseService {
                 .createdBy(course.getCreatedBy())
                 .currentSemester(currentSemesterName)
                 .build();
+    }
+
+    @Override
+    public AdminCourseDetailResponse updateCourse(Integer courseId, AdminUpdateCourseRequest request) {
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
+
+        course.setName(request.getName());
+        course.setCredits(request.getCredits());
+        course.setDescription(request.getDescription());
+
+        // Update Code if changed
+        if (request.getCode() != null && !request.getCode().equals(course.getCode())) {
+            if (courseRepository.existsByCode(request.getCode())) {
+                throw new AppException(ErrorCode.COURSE_CODE_EXISTED);
+            }
+            course.setCode(request.getCode());
+        }
+
+        // Update Department if changed
+        if (request.getDepartmentId() != null) {
+            boolean isNewDept = course.getDepartment() == null || !course.getDepartment().getDepartmentId().equals(request.getDepartmentId());
+            if (isNewDept) {
+                Department department = departmentRepository.findById(request.getDepartmentId())
+                        .orElseThrow(() -> new AppException(ErrorCode.DEPARTMENT_NOT_FOUND));
+                course.setDepartment(department);
+            }
+        }
+
+        courseRepository.save(course);
+        return getCourseDetail(courseId);
     }
 
     private AdminCourseListItemResponse toListItem(Course course) {

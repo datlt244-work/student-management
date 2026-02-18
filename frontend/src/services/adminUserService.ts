@@ -632,4 +632,25 @@ export async function getAdminCourse(id: number | string): Promise<AdminCourseDe
   return (data.result || data) as AdminCourseDetail
 }
 
+export interface AdminUpdateCourseRequest {
+  name: string
+  code: string
+  credits: number
+  departmentId: number
+  description?: string
+}
+
+export async function updateAdminCourse(id: number | string, data: AdminUpdateCourseRequest): Promise<AdminCourseDetail> {
+  const response = await apiFetch(`/admin/courses/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    throw new Error(errorData?.message || `Failed to update course (${response.status})`)
+  }
+  const result = await response.json()
+  return (result.result || result) as AdminCourseDetail
+}
+
 

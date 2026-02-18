@@ -1,13 +1,16 @@
 package com.newwave.student_management.domains.auth.controller;
 
 import com.newwave.student_management.common.dto.ApiResponse;
+import com.newwave.student_management.domains.auth.dto.request.AdminUpdateCourseRequest;
 import com.newwave.student_management.domains.auth.dto.response.AdminCourseListResponse;
+import com.newwave.student_management.domains.auth.dto.response.AdminCourseDetailResponse;
 import com.newwave.student_management.domains.auth.dto.response.AdminCourseListItemResponse;
 import com.newwave.student_management.domains.auth.service.IAdminCourseService;
 import com.newwave.student_management.domains.curriculum.entity.CourseStatus;
 import com.newwave.student_management.common.exception.AppException;
 import com.newwave.student_management.common.exception.ErrorCode;
 import java.util.Map;
+import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -63,5 +66,15 @@ public class AdminCourseController {
     @Operation(summary = "Get course details")
     public ApiResponse<com.newwave.student_management.domains.auth.dto.response.AdminCourseDetailResponse> getCourseDetail(@PathVariable Integer courseId) {
         return ApiResponse.success(adminCourseService.getCourseDetail(courseId));
+    }
+
+    @PutMapping("/{courseId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Update course details")
+    public ApiResponse<AdminCourseDetailResponse> updateCourse(
+            @PathVariable Integer courseId,
+            @RequestBody @Valid AdminUpdateCourseRequest request
+    ) {
+        return ApiResponse.success(adminCourseService.updateCourse(courseId, request));
     }
 }

@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
-import { getAdminCourse, type AdminCourseDetail } from '@/services/adminUserService'
+import {
+  getAdminCourse,
+  type AdminCourseDetail,
+  getAdminDepartments,
+  updateAdminCourse,
+  type AdminUpdateCourseRequest,
+  type AdminDepartmentItem,
+} from '@/services/adminUserService'
 
 const route = useRoute()
 const router = useRouter()
@@ -11,6 +18,20 @@ const course = ref<AdminCourseDetail | null>(null)
 const isLoading = ref(false)
 const error = ref<string | null>(null)
 
+// Edit State
+const showEditCourseModal = ref(false)
+const editCourseLoading = ref(false)
+const editCourseSubmitting = ref(false)
+const editCourseError = ref<string | null>(null)
+const departments = ref<AdminDepartmentItem[]>([])
+const editingCourseData = ref<AdminUpdateCourseRequest>({
+  name: '',
+  code: '',
+  credits: 0,
+  departmentId: 0,
+  description: '',
+})
+
 function formatDate(dateString?: string) {
   if (!dateString) return 'N/A'
   return new Date(dateString).toLocaleDateString('en-US', {
@@ -18,6 +39,64 @@ function formatDate(dateString?: string) {
     month: 'long',
     day: 'numeric',
   })
+}
+
+async function fetchDepartments() {
+  if (departments.value.length > 0) return
+  try {
+    const res = await getAdminDepartments()
+    departments.value = res
+  } catch (e) {
+    console.error('Failed to fetch departments', e)
+  }
+}
+
+async function openEditModal() {
+  if (!course.value) return
+  
+  showEditCourseModal.value = true
+  editCourseLoading.value = true
+  editCourseError.value = null
+  
+  try {
+    await fetchDepartments()
+    
+    // Fill data
+    editingCourseData.value = {
+      name: course.value.name,
+      code: course.value.code,
+      credits: course.value.credits,
+      departmentId: course.value.departmentId || 0,
+      description: course.value.description || '',
+    }
+  } catch (e: unknown) {
+     editCourseError.value = 'Failed to prepare edit form'
+  } finally {
+    editCourseLoading.value = false
+  }
+}
+
+async function submitEditCourse() {
+  if (!course.value) return
+  
+  try {
+    editCourseSubmitting.value = true
+    editCourseError.value = null
+    
+    await updateAdminCourse(courseId, editingCourseData.value)
+    
+    showEditCourseModal.value = false
+    // Refresh detail
+    await fetchCourseDetail()
+  } catch (e: unknown) {
+    if (e && typeof e === 'object' && 'message' in e) {
+       editCourseError.value = String((e as { message?: unknown }).message)
+    } else {
+       editCourseError.value = 'Failed to update course'
+    }
+  } finally {
+    editCourseSubmitting.value = false
+  }
 }
 
 async function fetchCourseDetail() {
@@ -77,6 +156,7 @@ onMounted(() => {
             </button>
             <button
               class="flex items-center gap-2 rounded-xl h-11 px-6 bg-primary hover:bg-primary-dark text-white font-bold text-sm shadow-lg shadow-orange-500/25 transition-all active:scale-95"
+              @click="openEditModal"
             >
               <span class="material-symbols-outlined text-[20px]">edit_note</span>
               <span>Edit Course</span>
@@ -237,6 +317,141 @@ onMounted(() => {
         </div>
       </div>
     </main>
+  
+    <!-- Edit Course Modal -->
+    <Teleport to="body">
+      <div
+        v-if="showEditCourseModal"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4"
+      >
+        <div
+          class="bg-surface-light dark:bg-surface-dark w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+        >
+          <div class="bg-primary px-6 py-4 flex items-center justify-between shrink-0">
+            <h2 class="text-white text-xl font-bold flex items-center gap-2">
+              <span class="material-symbols-outlined">edit_note</span>
+              Edit Course
+            </h2>
+            <button
+              @click="showEditCourseModal = false"
+              class="text-white/80 hover:text-white transition-colors"
+            >
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+
+          <div v-if="editCourseLoading" class="p-10 flex justify-center">
+             <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+          </div>
+
+          <form v-else @submit.prevent="submitEditCourse" class="flex flex-col flex-1 overflow-hidden">
+            <div class="p-6 overflow-y-auto">
+              <div v-if="editCourseError" class="mb-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg text-sm">
+                  {{ editCourseError }}
+              </div>
+            
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="md:col-span-2">
+                  <label
+                    class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
+                    for="edit-course-name"
+                    >Course Name</label
+                  >
+                  <input
+                    v-model="editingCourseData.name"
+                    class="w-full px-4 py-2.5 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm font-body transition-all"
+                    id="edit-course-name"
+                    type="text"
+                    required
+                  />
+                </div>
+                <div>
+                  <label
+                    class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
+                    for="edit-course-code"
+                    >Course Code</label
+                  >
+                  <input
+                    v-model="editingCourseData.code"
+                    class="w-full px-4 py-2.5 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm font-body transition-all"
+                    id="edit-course-code"
+                    type="text"
+                    required
+                  />
+                </div>
+                <div>
+                  <label
+                    class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
+                    for="edit-credits"
+                    >Credits</label
+                  >
+                  <input
+                    v-model.number="editingCourseData.credits"
+                    class="w-full px-4 py-2.5 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm font-body transition-all"
+                    id="edit-credits"
+                    step="1"
+                    type="number"
+                    required
+                  />
+                </div>
+                <div class="md:col-span-2">
+                  <label
+                    class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
+                    for="edit-department"
+                    >Department</label
+                  >
+                  <select
+                    v-model.number="editingCourseData.departmentId"
+                    class="w-full px-4 py-2.5 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm font-body transition-all appearance-none cursor-pointer"
+                    id="edit-department"
+                    required
+                  >
+                    <option
+                      v-for="dept in departments"
+                      :key="dept.departmentId"
+                      :value="dept.departmentId"
+                    >
+                      {{ dept.name }}
+                    </option>
+                  </select>
+                </div>
+                <div class="md:col-span-2">
+                  <label
+                    class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
+                    for="edit-description"
+                    >Description</label
+                  >
+                  <textarea
+                    v-model="editingCourseData.description"
+                    class="w-full px-4 py-2.5 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm font-body transition-all resize-none"
+                    id="edit-description"
+                    rows="4"
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+            <div
+              class="border-t border-stone-100 dark:border-stone-800 p-6 flex items-center justify-end gap-3 bg-stone-50/50 dark:bg-stone-900/20 shrink-0"
+            >
+              <button
+                type="button"
+                @click="showEditCourseModal = false"
+                class="px-6 h-10 rounded-lg border border-stone-300 dark:border-stone-600 text-slate-600 dark:text-slate-400 text-sm font-bold hover:bg-stone-100 dark:hover:bg-stone-800 transition-all active:scale-95"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                :disabled="editCourseSubmitting"
+                class="px-6 h-10 rounded-lg bg-primary hover:bg-primary-dark text-white text-sm font-bold shadow-md shadow-orange-500/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {{ editCourseSubmitting ? 'Saving...' : 'Save Changes' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 

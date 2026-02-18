@@ -45,6 +45,7 @@ public enum ErrorCode {
     DEPARTMENT_HAS_ACTIVE_COURSES(1224, "Department has active courses", HttpStatus.BAD_REQUEST),
     DEPARTMENT_NOT_ACTIVE(1225, "Department is not active", HttpStatus.BAD_REQUEST),
     COURSE_NOT_FOUND(1230, "Course not found", HttpStatus.NOT_FOUND),
+    COURSE_CODE_EXISTED(1231, "Course code already exists", HttpStatus.CONFLICT),
 
     // Business errors - Address (1250-1269)
     ADDRESS_NOT_FOUND(1250, "Address not found", HttpStatus.NOT_FOUND),

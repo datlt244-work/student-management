@@ -592,4 +592,28 @@ export async function updateAdminCourseStatus(courseId: number, status: 'ACTIVE'
   return (data.result || data) as AdminCourseListItem
 }
 
+export interface AdminCreateCourseRequest {
+  code: string
+  name: string
+  credits: number
+  departmentId: number
+  description?: string
+}
+
+export async function createAdminCourse(body: AdminCreateCourseRequest): Promise<AdminCourseListItem> {
+  const response = await apiFetch('/admin/courses', {
+    method: 'POST',
+    body: JSON.stringify(body),
+    headers: { 'Content-Type': 'application/json' },
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    throw new Error(errorData?.message || `Failed to create course (${response.status})`)
+  }
+
+  const data = await response.json()
+  return (data.result || data) as AdminCourseListItem
+}
+
 

@@ -5,6 +5,7 @@ import {
   getAdminCourses,
   getAdminDepartments,
   updateAdminCourseStatus,
+  createAdminCourse,
   type AdminCourseListItem,
   type AdminDepartmentItem,
 } from '@/services/adminUserService'
@@ -18,6 +19,18 @@ const courses = ref<AdminCourseListItem[]>([])
 const departments = ref<AdminDepartmentItem[]>([])
 const isLoading = ref(false)
 const error = ref<string | null>(null)
+
+// Add Course Modal State
+const showAddCourseModal = ref(false)
+const createCourseLoading = ref(false)
+const createCourseError = ref<string | null>(null)
+const newCourse = ref({
+  name: '',
+  code: '',
+  credits: 3.0,
+  departmentId: '' as string | number,
+  description: '',
+})
 
 // Modal state
 const showResultModal = ref(false)
@@ -136,6 +149,58 @@ async function toggleCourseStatus(course: AdminCourseListItem) {
   }
 }
 
+function handleAddCourse() {
+  showAddCourseModal.value = true
+  createCourseError.value = null
+  newCourse.value = {
+    name: '',
+    code: '',
+    credits: 3.0,
+    departmentId: '',
+    description: '',
+  }
+}
+
+function closeAddCourseModal() {
+  showAddCourseModal.value = false
+  createCourseError.value = null
+}
+
+async function submitNewCourse() {
+  createCourseLoading.value = true
+  createCourseError.value = null
+
+  try {
+    if (!newCourse.value.name || !newCourse.value.code || !newCourse.value.departmentId) {
+      createCourseError.value = 'Please fill in all required fields'
+      createCourseLoading.value = false
+      return
+    }
+
+    await createAdminCourse({
+      name: newCourse.value.name,
+      code: newCourse.value.code,
+      credits: Number(newCourse.value.credits),
+      departmentId: Number(newCourse.value.departmentId),
+      description: newCourse.value.description,
+    })
+
+    closeAddCourseModal()
+    fetchCourses()
+    resultMessage.value = 'Course created successfully'
+    resultSuccess.value = true
+    showResultModal.value = true
+  } catch (e: unknown) {
+    if (e && typeof e === 'object' && 'message' in e) {
+      createCourseError.value = String((e as { message?: unknown }).message)
+    } else {
+      createCourseError.value = 'Failed to create course'
+    }
+  } finally {
+    createCourseLoading.value = false
+  }
+}
+
 function clearFilters() {
   searchQuery.value = ''
   statusFilter.value = ''
@@ -160,7 +225,7 @@ function clearFilters() {
       <div class="flex items-center gap-3">
         <button
           class="flex items-center gap-2 rounded-lg h-10 px-4 bg-primary hover:bg-primary-dark text-white text-sm font-bold shadow-md shadow-orange-500/20 transition-all active:scale-95"
-          @click="() => {}"
+          @click="handleAddCourse"
         >
           <span class="material-symbols-outlined text-[20px]">add</span>
           <span>Add New Course</span>
@@ -452,6 +517,66 @@ function clearFilters() {
         </div>
       </div>
     </div>
+
+    <!-- Add Course Modal -->
+    <Teleport to="body">
+      <Transition name="fade">
+        <div v-if="showAddCourseModal" class="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div class="bg-surface-light dark:bg-surface-dark w-full max-w-xl rounded-xl shadow-2xl border border-stone-200 dark:border-stone-800 flex flex-col max-h-[90vh]">
+            <div class="p-6 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between">
+              <h2 class="text-xl font-bold text-slate-900 dark:text-white">Add New Course</h2>
+              <button class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors" @click="closeAddCourseModal">
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div class="p-6 overflow-y-auto">
+              <form class="grid grid-cols-1 md:grid-cols-2 gap-6" @submit.prevent="submitNewCourse">
+                
+                <div v-if="createCourseError" class="md:col-span-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm">
+                  {{ createCourseError }}
+                </div>
+
+                <div class="md:col-span-2">
+                  <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5" for="course-name">Course Name <span class="text-red-500">*</span></label>
+                  <input v-model="newCourse.name" required class="w-full px-4 py-2.5 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-sm transition-all shadow-sm" id="course-name" placeholder="e.g. Advanced Data Structures" type="text"/>
+                </div>
+                <div>
+                  <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5" for="course-code">Course Code <span class="text-red-500">*</span></label>
+                  <input v-model="newCourse.code" required class="w-full px-4 py-2.5 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-sm transition-all shadow-sm" id="course-code" placeholder="e.g. CS302" type="text"/>
+                </div>
+                <div>
+                  <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5" for="credits">Credits</label>
+                  <input v-model="newCourse.credits" required class="w-full px-4 py-2.5 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-sm transition-all shadow-sm" id="credits" placeholder="3.0" step="0.5" type="number"/>
+                </div>
+                <div class="md:col-span-2">
+                  <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5" for="department">Department <span class="text-red-500">*</span></label>
+                  <div class="relative">
+                    <select v-model="newCourse.departmentId" required class="w-full px-4 py-2.5 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-sm transition-all shadow-sm appearance-none cursor-pointer" id="department">
+                      <option disabled value="">Select Department</option>
+                      <option v-for="dept in departments" :key="dept.departmentId" :value="dept.departmentId">{{ dept.name }}</option>
+                    </select>
+                    <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">expand_more</span>
+                  </div>
+                </div>
+                <div class="md:col-span-2">
+                  <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5" for="description">Description</label>
+                  <textarea v-model="newCourse.description" class="w-full px-4 py-2.5 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-sm transition-all shadow-sm resize-none" id="description" placeholder="Enter course description and learning objectives..." rows="4"></textarea>
+                </div>
+              </form>
+            </div>
+            <div class="p-6 border-t border-stone-100 dark:border-stone-800 flex items-center justify-end gap-3 bg-stone-50/50 dark:bg-stone-900/20 rounded-b-xl">
+              <button @click="closeAddCourseModal" class="px-5 py-2.5 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors">
+                  Cancel
+              </button>
+              <button @click="submitNewCourse" :disabled="createCourseLoading" class="px-5 py-2.5 rounded-lg bg-primary hover:bg-primary-dark text-white text-sm font-bold shadow-md shadow-orange-500/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+                  {{ createCourseLoading ? 'Creating...' : 'Create Course' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
     <!-- Result Modal -->
     <Teleport to="body">
       <Transition name="fade">
@@ -512,5 +637,7 @@ function clearFilters() {
   opacity: 0;
 }
 </style>
+
+
 
 

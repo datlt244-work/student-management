@@ -616,4 +616,20 @@ export async function createAdminCourse(body: AdminCreateCourseRequest): Promise
   return (data.result || data) as AdminCourseListItem
 }
 
+export interface AdminCourseDetail extends AdminCourseListItem {
+  description?: string
+  createdBy?: string
+  currentSemester?: string
+}
+
+export async function getAdminCourse(id: number | string): Promise<AdminCourseDetail> {
+  const response = await apiFetch(`/admin/courses/${id}`)
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    throw new Error(errorData?.message || `Failed to fetch course detail (${response.status})`)
+  }
+  const data = await response.json()
+  return (data.result || data) as AdminCourseDetail
+}
+
 

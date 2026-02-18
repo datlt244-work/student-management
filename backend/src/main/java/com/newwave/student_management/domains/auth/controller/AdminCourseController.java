@@ -57,4 +57,11 @@ public class AdminCourseController {
 
         return ApiResponse.success(adminCourseService.updateCourseStatus(courseId, status));
     }
+
+    @GetMapping("/{courseId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Get course details")
+    public ApiResponse<com.newwave.student_management.domains.auth.dto.response.AdminCourseDetailResponse> getCourseDetail(@PathVariable Integer courseId) {
+        return ApiResponse.success(adminCourseService.getCourseDetail(courseId));
+    }
 }

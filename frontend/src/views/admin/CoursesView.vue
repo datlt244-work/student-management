@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { watchDebounced } from '@vueuse/core'
 import {
   getAdminCourses,
@@ -9,6 +10,8 @@ import {
   type AdminCourseListItem,
   type AdminDepartmentItem,
 } from '@/services/adminUserService'
+
+const router = useRouter()
 
 const searchQuery = ref('')
 const statusFilter = ref('')
@@ -439,7 +442,7 @@ function clearFilters() {
                 <div class="flex items-center justify-end gap-2">
                   <button
                     class="p-1 rounded-md text-slate-400 hover:text-primary hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors"
-                    @click="() => {}"
+                    @click="router.push({ name: 'admin-course-detail', params: { courseId: course.courseId } })"
                     title="View course"
                   >
                     <span class="material-symbols-outlined text-[20px]">visibility</span>

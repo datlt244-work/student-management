@@ -653,4 +653,14 @@ export async function updateAdminCourse(id: number | string, data: AdminUpdateCo
   return (result.result || result) as AdminCourseDetail
 }
 
+export async function deleteAdminCourse(id: number | string): Promise<void> {
+  const response = await apiFetch(`/admin/courses/${id}`, {
+    method: 'DELETE',
+  })
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    throw new Error(errorData?.message || `Failed to delete course (${response.status})`)
+  }
+}
+
 

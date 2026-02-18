@@ -1,21 +1,25 @@
 package com.newwave.student_management.domains.curriculum.repository;
 
 import com.newwave.student_management.domains.curriculum.entity.Course;
+import com.newwave.student_management.domains.curriculum.entity.CourseStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface CourseRepository extends JpaRepository<Course, Integer> {
 
     boolean existsByCode(String code);
 
+    Optional<Course> findByCourseIdAndDeletedAtIsNull(Integer courseId);
+
     long countByDepartment_DepartmentIdAndDeletedAtIsNull(Integer departmentId);
     
-    long countByDepartment_DepartmentIdAndStatusAndDeletedAtIsNull(Integer departmentId, com.newwave.student_management.domains.curriculum.entity.CourseStatus status);
+    long countByDepartment_DepartmentIdAndStatusAndDeletedAtIsNull(Integer departmentId, CourseStatus status);
 
     long countByDeletedAtIsNull();
 
@@ -40,7 +44,7 @@ public interface CourseRepository extends JpaRepository<Course, Integer> {
             """)
     org.springframework.data.domain.Page<Course> searchAdminCourses(
             @Param("search") String search,
-            @Param("status") com.newwave.student_management.domains.curriculum.entity.CourseStatus status,
+            @Param("status") CourseStatus status,
             @Param("departmentId") Integer departmentId,
             org.springframework.data.domain.Pageable pageable
     );

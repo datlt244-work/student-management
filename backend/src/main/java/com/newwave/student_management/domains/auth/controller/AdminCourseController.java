@@ -77,4 +77,11 @@ public class AdminCourseController {
     ) {
         return ApiResponse.success(adminCourseService.updateCourse(courseId, request));
     }
+    @DeleteMapping("/{courseId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Delete course (soft delete)")
+    public ApiResponse<Void> deleteCourse(@PathVariable Integer courseId) {
+        adminCourseService.deleteCourse(courseId);
+        return ApiResponse.success(null);
+    }
 }

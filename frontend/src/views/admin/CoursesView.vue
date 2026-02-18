@@ -9,6 +9,7 @@ import {
   createAdminCourse,
   getAdminCourse,
   updateAdminCourse,
+  deleteAdminCourse,
   type AdminCourseListItem,
   type AdminDepartmentItem,
   type AdminUpdateCourseRequest,
@@ -95,6 +96,8 @@ async function submitEditCourse() {
     editCourseSubmitting.value = false
   }
 }
+
+
 const newCourse = ref({
   name: '',
   code: '',
@@ -102,6 +105,41 @@ const newCourse = ref({
   departmentId: '' as string | number,
   description: '',
 })
+
+// Delete Course Modal State
+const showDeleteConfirmModal = ref(false)
+const deletingCourse = ref<AdminCourseListItem | null>(null)
+const deleteCourseLoading = ref(false)
+
+function handleDeleteCourse(course: AdminCourseListItem) {
+  deletingCourse.value = course
+  showDeleteConfirmModal.value = true
+}
+
+function closeDeleteConfirmModal() {
+  showDeleteConfirmModal.value = false
+  deletingCourse.value = null
+}
+
+async function confirmDeleteCourse() {
+  if (!deletingCourse.value) return
+
+  deleteCourseLoading.value = true
+  try {
+    await deleteAdminCourse(deletingCourse.value.courseId)
+    closeDeleteConfirmModal()
+    fetchCourses()
+    resultMessage.value = 'Course deleted successfully'
+    resultSuccess.value = true
+    showResultModal.value = true
+  } catch (e: unknown) {
+    resultMessage.value = 'Failed to delete course'
+    resultSuccess.value = false
+    showResultModal.value = true
+  } finally {
+    deleteCourseLoading.value = false
+  }
+}
 
 // Modal state
 const showResultModal = ref(false)
@@ -525,7 +563,7 @@ function clearFilters() {
 
                   <button
                     class="p-1 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                    @click="() => {}"
+                    @click="handleDeleteCourse(course)"
                     title="Delete course"
                   >
                     <span class="material-symbols-outlined text-[20px]">delete</span>
@@ -834,6 +872,56 @@ function clearFilters() {
           </form>
         </div>
       </div>
+    </Teleport>
+    
+    <!-- Delete Confirmation Modal -->
+    <Teleport to="body">
+      <Transition name="fade">
+        <div
+          v-if="showDeleteConfirmModal"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm bg-stone-900/50"
+          role="dialog"
+          @click.self="closeDeleteConfirmModal"
+        >
+          <div class="w-full max-w-md bg-surface-light dark:bg-surface-dark rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div class="bg-red-600 px-6 py-4 flex items-center justify-between">
+              <h2 class="text-white text-lg font-bold flex items-center gap-2">
+                <span class="material-symbols-outlined">warning</span>
+                Delete Course
+              </h2>
+              <button
+                class="text-white/80 hover:text-white transition-colors rounded-lg p-1 hover:bg-white/10"
+                @click="closeDeleteConfirmModal"
+              >
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div class="p-6 flex flex-col gap-5">
+              <p class="text-sm text-slate-700 dark:text-slate-200">
+                Are you sure you want to delete <strong>{{ deletingCourse?.name }}</strong>? This action cannot be undone.
+              </p>
+              <div class="px-0 py-0 bg-stone-50 dark:bg-stone-900/30 border-t border-stone-100 dark:border-stone-800 flex items-center justify-end gap-3 mt-2 pt-4">
+                <button
+                  type="button"
+                  class="px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors"
+                  @click="closeDeleteConfirmModal"
+                  :disabled="deleteCourseLoading"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  :disabled="deleteCourseLoading"
+                  class="px-4 py-2 rounded-lg text-sm font-bold text-white bg-red-600 hover:bg-red-700 shadow-md shadow-red-500/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  @click="confirmDeleteCourse"
+                >
+                  {{ deleteCourseLoading ? 'Deleting...' : 'Delete Course' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
     </Teleport>
   </div>
 </template>

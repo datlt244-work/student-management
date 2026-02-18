@@ -21,6 +21,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -54,7 +55,7 @@ public class AdminCourseService implements IAdminCourseService {
 
     @Override
     public AdminCourseListItemResponse updateCourseStatus(Integer courseId, CourseStatus status) {
-        Course course = courseRepository.findById(courseId)
+        Course course = courseRepository.findByCourseIdAndDeletedAtIsNull(courseId)
                 .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
 
         if (status == CourseStatus.ACTIVE 
@@ -70,7 +71,7 @@ public class AdminCourseService implements IAdminCourseService {
 
     @Override
     public AdminCourseDetailResponse getCourseDetail(Integer courseId) {
-        Course course = courseRepository.findById(courseId)
+        Course course = courseRepository.findByCourseIdAndDeletedAtIsNull(courseId)
                 .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
 
         Semester currentSemester = semesterRepository.findByIsCurrentTrue().orElse(null);
@@ -94,7 +95,7 @@ public class AdminCourseService implements IAdminCourseService {
 
     @Override
     public AdminCourseDetailResponse updateCourse(Integer courseId, AdminUpdateCourseRequest request) {
-        Course course = courseRepository.findById(courseId)
+        Course course = courseRepository.findByCourseIdAndDeletedAtIsNull(courseId)
                 .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
 
         course.setName(request.getName());
@@ -121,6 +122,14 @@ public class AdminCourseService implements IAdminCourseService {
 
         courseRepository.save(course);
         return getCourseDetail(courseId);
+    }
+
+    @Override
+    public void deleteCourse(Integer courseId) {
+        Course course = courseRepository.findByCourseIdAndDeletedAtIsNull(courseId)
+                .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
+        course.setDeletedAt(LocalDateTime.now());
+        courseRepository.save(course);
     }
 
     private AdminCourseListItemResponse toListItem(Course course) {

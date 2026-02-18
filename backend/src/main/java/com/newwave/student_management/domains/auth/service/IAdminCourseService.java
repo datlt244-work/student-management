@@ -15,4 +15,6 @@ public interface IAdminCourseService {
    AdminCourseDetailResponse getCourseDetail(Integer courseId);
 
    AdminCourseDetailResponse updateCourse(Integer courseId, AdminUpdateCourseRequest request);
+
+   void deleteCourse(Integer courseId);
 }

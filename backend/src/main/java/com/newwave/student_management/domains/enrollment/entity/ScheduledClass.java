@@ -51,8 +51,8 @@ public class ScheduledClass extends JpaBaseEntity {
      * Lấy tên kỳ, năm, ngày bắt đầu/kết thúc qua JOIN.
      * FK: ON DELETE RESTRICT — không xóa semester nếu còn lớp.
      */
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "semester_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "semester_id")
     private Semester semester;
 
     /**

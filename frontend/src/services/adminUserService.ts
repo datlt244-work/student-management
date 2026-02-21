@@ -540,6 +540,7 @@ export async function getAdminCourses(params: {
   search?: string
   status?: string | ''
   departmentId?: number | ''
+  sort?: string
 }): Promise<AdminCourseListResult> {
   const searchParams = new URLSearchParams()
 
@@ -559,6 +560,9 @@ export async function getAdminCourses(params: {
   if (params.departmentId) {
     searchParams.set('departmentId', String(params.departmentId))
   }
+  if (params.sort) {
+    searchParams.set('sort', params.sort)
+  }
 
   const queryString = searchParams.toString()
   const endpoint = queryString ? `/admin/courses?${queryString}` : '/admin/courses'
@@ -570,6 +574,93 @@ export async function getAdminCourses(params: {
   }
   const data = await response.json()
   return (data.result || data) as AdminCourseListResult
+}
+
+export async function updateAdminCourseStatus(courseId: number, status: 'ACTIVE' | 'INACTIVE'): Promise<AdminCourseListItem> {
+  const response = await apiFetch(`/admin/courses/${courseId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+    headers: { 'Content-Type': 'application/json' },
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    throw new Error(errorData?.message || `Failed to update status (${response.status})`)
+  }
+
+  const data = await response.json()
+  return (data.result || data) as AdminCourseListItem
+}
+
+export interface AdminCreateCourseRequest {
+  code: string
+  name: string
+  credits: number
+  departmentId: number
+  description?: string
+}
+
+export async function createAdminCourse(body: AdminCreateCourseRequest): Promise<AdminCourseListItem> {
+  const response = await apiFetch('/admin/courses', {
+    method: 'POST',
+    body: JSON.stringify(body),
+    headers: { 'Content-Type': 'application/json' },
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    throw new Error(errorData?.message || `Failed to create course (${response.status})`)
+  }
+
+  const data = await response.json()
+  return (data.result || data) as AdminCourseListItem
+}
+
+export interface AdminCourseDetail extends AdminCourseListItem {
+  description?: string
+  createdBy?: string
+  currentSemester?: string
+}
+
+export async function getAdminCourse(id: number | string): Promise<AdminCourseDetail> {
+  const response = await apiFetch(`/admin/courses/${id}`)
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    throw new Error(errorData?.message || `Failed to fetch course detail (${response.status})`)
+  }
+  const data = await response.json()
+  return (data.result || data) as AdminCourseDetail
+}
+
+export interface AdminUpdateCourseRequest {
+  name: string
+  code: string
+  credits: number
+  departmentId: number
+  description?: string
+}
+
+export async function updateAdminCourse(id: number | string, data: AdminUpdateCourseRequest): Promise<AdminCourseDetail> {
+  const response = await apiFetch(`/admin/courses/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    throw new Error(errorData?.message || `Failed to update course (${response.status})`)
+  }
+  const result = await response.json()
+  return (result.result || result) as AdminCourseDetail
+}
+
+export async function deleteAdminCourse(id: number | string): Promise<void> {
+  const response = await apiFetch(`/admin/courses/${id}`, {
+    method: 'DELETE',
+  })
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    throw new Error(errorData?.message || `Failed to delete course (${response.status})`)
+  }
 }
 
 

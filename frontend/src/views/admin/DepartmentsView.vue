@@ -710,7 +710,7 @@ async function confirmDeleteDepartment() {
                 <span class="material-symbols-outlined">
                   {{ createResultSuccess ? 'check_circle' : 'error' }}
                 </span>
-                {{ createResultSuccess ? 'Department Created' : 'Create Failed' }}
+                {{ createResultSuccess ? 'Success' : 'Error' }}
               </h2>
               <button class="text-white/80 hover:text-white transition-colors" type="button" @click="closeCreateResultModal">
                 <span class="material-symbols-outlined">close</span>

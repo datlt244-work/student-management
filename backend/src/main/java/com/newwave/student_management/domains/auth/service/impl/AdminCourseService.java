@@ -105,7 +105,7 @@ public class AdminCourseService implements IAdminCourseService {
 
         // Update Code if changed
         if (request.getCode() != null && !request.getCode().equals(course.getCode())) {
-            if (courseRepository.existsByCode(request.getCode())) {
+            if (courseRepository.existsByCodeAndDeletedAtIsNull(request.getCode())) {
                 throw new AppException(ErrorCode.COURSE_CODE_EXISTED);
             }
             course.setCode(request.getCode());
@@ -128,7 +128,7 @@ public class AdminCourseService implements IAdminCourseService {
     @Override
     public AdminCourseDetailResponse createCourse(AdminCreateCourseRequest request) {
         // Validate course code uniqueness
-        if (courseRepository.existsByCode(request.getCode())) {
+        if (courseRepository.existsByCodeAndDeletedAtIsNull(request.getCode())) {
             throw new AppException(ErrorCode.COURSE_CODE_EXISTED);
         }
 

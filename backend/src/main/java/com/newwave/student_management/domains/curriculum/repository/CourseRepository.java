@@ -13,7 +13,7 @@ import java.util.Optional;
 @Repository
 public interface CourseRepository extends JpaRepository<Course, Integer> {
 
-    boolean existsByCode(String code);
+    boolean existsByCodeAndDeletedAtIsNull(String code);
 
     Optional<Course> findByCourseIdAndDeletedAtIsNull(Integer courseId);
 

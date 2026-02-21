@@ -63,7 +63,7 @@ public class AdminSemesterServiceImpl implements AdminSemesterService {
     @Override
     @Transactional
     public AdminSemesterResponse createSemester(AdminCreateSemesterRequest request) {
-        if (semesterRepository.existsByNameAndYear(request.getName(), request.getYear())) {
+        if (semesterRepository.existsByNameAndYear(request.getName().toUpperCase(), request.getYear())) {
             throw new AppException(ErrorCode.SEMESTER_EXISTED);
         }
 

@@ -72,6 +72,11 @@ const router = createRouter({
           component: () => import('@/views/admin/CourseDetailView.vue'),
         },
         {
+          path: 'semesters',
+          name: 'admin-semesters',
+          component: () => import('@/views/admin/SemestersView.vue'),
+        },
+        {
           path: 'classes',
           name: 'admin-classes',
           component: () => import('@/views/admin/DashboardView.vue'), // TODO: create ClassManagement page

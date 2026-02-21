@@ -29,6 +29,15 @@ const errorMessage = ref<string | null>(null)
 const departments = ref<AdminDepartmentListItem[]>([])
 const totalCoursesCount = ref(0)
 
+// Toast
+const toast = ref<{ message: string; type: 'success' | 'error' } | null>(null)
+let toastTimer: ReturnType<typeof setTimeout> | null = null
+function showToast(message: string, type: 'success' | 'error' = 'success') {
+  if (toastTimer) clearTimeout(toastTimer)
+  toast.value = { message, type }
+  toastTimer = setTimeout(() => (toast.value = null), 3500)
+}
+
 // Status toggle handler
 async function toggleDepartmentStatus(dept: AdminDepartmentListItem) {
   // Prevent spamming if needed, but simple await is fine
@@ -38,9 +47,7 @@ async function toggleDepartmentStatus(dept: AdminDepartmentListItem) {
     dept.status = newStatus // Update UI
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Failed to update status'
-    createResultSuccess.value = false
-    createResultMessage.value = msg
-    showCreateResultModal.value = true
+    showToast(msg, 'error')
   }
 }
 
@@ -59,10 +66,7 @@ const newDepartment = ref({
 const createDepartmentLoading = ref(false)
 const createDepartmentError = ref<string | null>(null)
 
-// Create department result modal state
-const showCreateResultModal = ref(false)
-const createResultSuccess = ref(false)
-const createResultMessage = ref('')
+
 
 // Edit Department modal state
 const showEditDepartmentModal = ref(false)
@@ -194,23 +198,16 @@ async function submitNewDepartment() {
     await createAdminDepartment(payload)
     closeAddDepartmentModal()
     await fetchDepartments()
-    createResultSuccess.value = true
-    createResultMessage.value = 'Department has been created successfully.'
-    showCreateResultModal.value = true
+    showToast('Department has been created successfully.')
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Failed to create department'
     createDepartmentError.value = msg
-    createResultSuccess.value = false
-    createResultMessage.value = msg
-    showCreateResultModal.value = true
   } finally {
     createDepartmentLoading.value = false
   }
 }
 
-function closeCreateResultModal() {
-  showCreateResultModal.value = false
-}
+
 
 // Edit modal handlers
 function handleEditDepartment(dept: AdminDepartmentListItem) {
@@ -255,15 +252,10 @@ async function submitUpdateDepartment() {
     await updateAdminDepartment(editingDepartment.value.departmentId, payload)
     closeEditDepartmentModal()
     await fetchDepartments()
-    createResultSuccess.value = true
-    createResultMessage.value = 'Department has been updated successfully.'
-    showCreateResultModal.value = true
+    showToast('Department has been updated successfully.')
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Failed to update department'
     updateDepartmentError.value = msg
-    createResultSuccess.value = false
-    createResultMessage.value = msg
-    showCreateResultModal.value = true
   } finally {
     updateDepartmentLoading.value = false
   }
@@ -289,14 +281,11 @@ async function confirmDeleteDepartment() {
     await deleteAdminDepartment(deletingDepartment.value.departmentId)
     closeDeleteConfirmModal()
     await fetchDepartments()
-    createResultSuccess.value = true
-    createResultMessage.value = 'Department has been deleted successfully.'
-    showCreateResultModal.value = true
+    showToast('Department has been deleted successfully.')
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Failed to delete department'
-    createResultSuccess.value = false
-    createResultMessage.value = msg
-    showCreateResultModal.value = true
+    showToast(msg, 'error')
+    closeDeleteConfirmModal()
   } finally {
     deleteDepartmentLoading.value = false
   }
@@ -305,6 +294,24 @@ async function confirmDeleteDepartment() {
 </script>
 
 <template>
+  <!-- Toast -->
+  <Transition name="toast">
+    <div
+      v-if="toast"
+      :class="[
+        'fixed top-6 right-6 z-[100] flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-2xl text-sm font-medium border backdrop-blur-sm',
+        toast.type === 'success'
+          ? 'bg-green-50 dark:bg-green-900/40 border-green-200 dark:border-green-700 text-green-800 dark:text-green-300'
+          : 'bg-red-50 dark:bg-red-900/40 border-red-200 dark:border-red-700 text-red-800 dark:text-red-300',
+      ]"
+    >
+      <span class="material-symbols-outlined text-[20px]">
+        {{ toast.type === 'success' ? 'check_circle' : 'error' }}
+      </span>
+      {{ toast.message }}
+    </div>
+  </Transition>
+
   <div class="max-w-[1400px] w-full mx-auto p-6 md:p-10 flex flex-col gap-8">
     <!-- Header -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-4 border-b border-stone-200 dark:border-stone-800">
@@ -707,44 +714,7 @@ async function confirmDeleteDepartment() {
       </Transition>
     </Teleport>
 
-    <!-- Create Department Result Modal -->
-    <Teleport to="body">
-      <Transition name="fade">
-        <div
-          v-if="showCreateResultModal"
-          class="fixed inset-0 z-[120] flex items-center justify-center p-4"
-        >
-          <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closeCreateResultModal"></div>
-          <div class="relative bg-white dark:bg-surface-dark w-full max-w-sm rounded-2xl shadow-2xl p-6 flex flex-col items-center text-center gap-5">
-            <div :class="[
-              'p-4 rounded-full',
-              createResultSuccess ? 'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600' : 'bg-red-100 dark:bg-red-900/20 text-red-600'
-            ]">
-              <span class="material-symbols-outlined text-4xl">
-                {{ createResultSuccess ? 'check_circle' : 'error' }}
-              </span>
-            </div>
-            
-            <div>
-              <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-2">
-                {{ createResultSuccess ? 'Operation Successful' : 'Operation Failed' }}
-              </h2>
-              <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                {{ createResultMessage }}
-              </p>
-            </div>
 
-            <button
-              type="button"
-              class="w-full py-3 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold shadow-lg shadow-primary/20 transition-all active:scale-95"
-              @click="closeCreateResultModal"
-            >
-              Understand
-            </button>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
 
     <!-- Delete Confirmation Modal -->
     <Teleport to="body">
@@ -810,6 +780,20 @@ async function confirmDeleteDepartment() {
 .fade-leave-to {
   opacity: 0;
 }
+.toast-enter-active {
+  transition: all 0.3s ease;
+}
+.toast-leave-active {
+  transition: all 0.25s ease;
+}
+.toast-enter-from {
+  opacity: 0;
+  transform: translateY(-12px) scale(0.95);
+}
+.toast-leave-to {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.97);
+}
 
 @keyframes fade-in {
   from {
@@ -833,4 +817,3 @@ async function confirmDeleteDepartment() {
   animation: fade-in 0.2s ease, zoom-in 0.2s ease;
 }
 </style>
-

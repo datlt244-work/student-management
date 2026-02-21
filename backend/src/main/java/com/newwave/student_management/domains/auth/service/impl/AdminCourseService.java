@@ -133,7 +133,7 @@ public class AdminCourseService implements IAdminCourseService {
         }
 
         // Validate department
-        Department department = departmentRepository.findById(request.getDepartmentId())
+        Department department = departmentRepository.findByDepartmentIdAndDeletedAtIsNull(request.getDepartmentId())
                 .orElseThrow(() -> new AppException(ErrorCode.DEPARTMENT_NOT_FOUND));
 
         if (department.getStatus() == DepartmentStatus.INACTIVE) {

@@ -2,15 +2,25 @@ package com.newwave.student_management.domains.enrollment.entity;
 
 import com.newwave.student_management.common.entity.JpaBaseEntity;
 import com.newwave.student_management.domains.curriculum.entity.Course;
+import com.newwave.student_management.domains.profile.entity.Semester;
 import com.newwave.student_management.domains.profile.entity.Teacher;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "scheduled_classes")
+@Table(
+        name = "scheduled_classes",
+        indexes = {
+                @Index(name = "idx_scheduled_classes_course_id", columnList = "course_id"),
+                @Index(name = "idx_scheduled_classes_teacher_id", columnList = "teacher_id"),
+                @Index(name = "idx_scheduled_classes_semester_id", columnList = "semester_id")
+        }
+)
 @Data
+@EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 @AllArgsConstructor
 public class ScheduledClass extends JpaBaseEntity {
@@ -20,27 +30,53 @@ public class ScheduledClass extends JpaBaseEntity {
     @Column(name = "class_id")
     private Integer classId;
 
+    /**
+     * Môn học của lớp này. Required.
+     * FK: ON DELETE RESTRICT — không thể xóa course nếu còn lớp.
+     */
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "course_id", nullable = false)
     private Course course;
 
+    /**
+     * Giảng viên phụ trách. Optional — lớp có thể chưa assign teacher.
+     * FK: ON DELETE SET NULL.
+     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "teacher_id")
     private Teacher teacher;
 
-    @Column(name = "semester", length = 20, nullable = false)
-    private String semester;
+    /**
+     * Học kỳ. FK đến bảng semesters.
+     * Lấy tên kỳ, năm, ngày bắt đầu/kết thúc qua JOIN.
+     * FK: ON DELETE RESTRICT — không xóa semester nếu còn lớp.
+     */
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "semester_id", nullable = false)
+    private Semester semester;
 
-    @Column(name = "year", nullable = false)
-    private Integer year;
-
+    /**
+     * Phòng học, ví dụ: "A-101".
+     */
     @Column(name = "room_number", length = 20)
     private String roomNumber;
 
     /**
-     * Ví dụ: "Mon 8:00-10:00"
+     * Lịch học, ví dụ: "Mon 8:00-10:00, Wed 8:00-10:00".
      */
     @Column(name = "schedule", length = 50)
     private String schedule;
-}
 
+    /**
+     * Trạng thái lớp: OPEN | CLOSED | CANCELLED.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", length = 20, nullable = false)
+    private ScheduledClassStatus status = ScheduledClassStatus.OPEN;
+
+    /**
+     * Sĩ số tối đa. Mặc định 40.
+     */
+    @Column(name = "max_students")
+    private Integer maxStudents = 40;
+}

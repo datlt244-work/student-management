@@ -83,9 +83,7 @@ async function submitEditCourse() {
     await updateAdminCourse(editingCourseId.value, editingCourseData.value)
     showEditCourseModal.value = false
     fetchCourses()
-    resultMessage.value = 'Course updated successfully'
-    resultSuccess.value = true
-    showResultModal.value = true
+    showToast('Course updated successfully.')
   } catch (e: unknown) {
     if (e && typeof e === 'object' && 'message' in e) {
        editCourseError.value = String((e as { message?: unknown }).message)
@@ -129,25 +127,23 @@ async function confirmDeleteCourse() {
     await deleteAdminCourse(deletingCourse.value.courseId)
     closeDeleteConfirmModal()
     fetchCourses()
-    resultMessage.value = 'Course deleted successfully'
-    resultSuccess.value = true
-    showResultModal.value = true
+    showToast('Course deleted successfully.')
   } catch (e: unknown) {
-    resultMessage.value = 'Failed to delete course'
-    resultSuccess.value = false
-    showResultModal.value = true
+    const msg = e instanceof Error ? e.message : 'Failed to delete course'
+    showToast(msg, 'error')
+    closeDeleteConfirmModal()
   } finally {
     deleteCourseLoading.value = false
   }
 }
 
-// Modal state
-const showResultModal = ref(false)
-const resultSuccess = ref(false)
-const resultMessage = ref('')
-
-function closeResultModal() {
-  showResultModal.value = false
+// Toast
+const toast = ref<{ message: string; type: 'success' | 'error' } | null>(null)
+let toastTimer: ReturnType<typeof setTimeout> | null = null
+function showToast(message: string, type: 'success' | 'error' = 'success') {
+  if (toastTimer) clearTimeout(toastTimer)
+  toast.value = { message, type }
+  toastTimer = setTimeout(() => (toast.value = null), 3500)
 }
 
 // Pagination
@@ -248,13 +244,10 @@ async function toggleCourseStatus(course: AdminCourseListItem) {
   } catch (e: unknown) {
     course.status = originalStatus // Revert on failure
     console.error('Failed to update status', e)
-    if (e && typeof e === 'object' && 'message' in e) {
-      resultMessage.value = String((e as { message?: unknown }).message)
-    } else {
-      resultMessage.value = 'Failed to update status'
-    }
-    resultSuccess.value = false
-    showResultModal.value = true
+    const msg = e && typeof e === 'object' && 'message' in e
+      ? String((e as { message?: unknown }).message)
+      : 'Failed to update status'
+    showToast(msg, 'error')
   }
 }
 
@@ -296,9 +289,7 @@ async function submitNewCourse() {
 
     closeAddCourseModal()
     fetchCourses()
-    resultMessage.value = 'Course created successfully'
-    resultSuccess.value = true
-    showResultModal.value = true
+    showToast('Course created successfully.')
   } catch (e: unknown) {
     if (e && typeof e === 'object' && 'message' in e) {
       createCourseError.value = String((e as { message?: unknown }).message)
@@ -318,6 +309,24 @@ function clearFilters() {
 </script>
 
 <template>
+  <!-- Toast -->
+  <Transition name="toast">
+    <div
+      v-if="toast"
+      :class="[
+        'fixed top-6 right-6 z-[100] flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-2xl text-sm font-medium border backdrop-blur-sm',
+        toast.type === 'success'
+          ? 'bg-green-50 dark:bg-green-900/40 border-green-200 dark:border-green-700 text-green-800 dark:text-green-300'
+          : 'bg-red-50 dark:bg-red-900/40 border-red-200 dark:border-red-700 text-red-800 dark:text-red-300',
+      ]"
+    >
+      <span class="material-symbols-outlined text-[20px]">
+        {{ toast.type === 'success' ? 'check_circle' : 'error' }}
+      </span>
+      {{ toast.message }}
+    </div>
+  </Transition>
+
   <div class="max-w-[1200px] w-full mx-auto p-6 md:p-10 flex flex-col gap-8">
     <!-- Header -->
     <div
@@ -700,44 +709,8 @@ function clearFilters() {
       </Transition>
     </Teleport>
 
-    <!-- Result Modal -->
-    <Teleport to="body">
-      <Transition name="fade">
-        <div
-          v-if="showResultModal"
-          class="fixed inset-0 z-[120] flex items-center justify-center p-4"
-        >
-          <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closeResultModal"></div>
-          <div class="relative bg-white dark:bg-surface-dark w-full max-w-sm rounded-2xl shadow-2xl p-6 flex flex-col items-center text-center gap-5">
-            <div :class="[
-              'p-4 rounded-full',
-              resultSuccess ? 'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600' : 'bg-red-100 dark:bg-red-900/20 text-red-600'
-            ]">
-              <span class="material-symbols-outlined text-4xl">
-                {{ resultSuccess ? 'check_circle' : 'error' }}
-              </span>
-            </div>
-            
-            <div>
-              <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-2">
-                {{ resultSuccess ? 'Perfect' : 'Something went wrong' }}
-              </h2>
-              <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                {{ resultMessage }}
-              </p>
-            </div>
 
-            <button
-              type="button"
-              class="w-full py-3 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold shadow-lg shadow-primary/20 transition-all active:scale-95"
-              @click="closeResultModal"
-            >
-              Understand
-            </button>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
+
     <!-- Edit Course Modal -->
     <Teleport to="body">
       <div
@@ -918,9 +891,18 @@ function clearFilters() {
 .fade-leave-to {
   opacity: 0;
 }
+.toast-enter-active {
+  transition: all 0.3s ease;
+}
+.toast-leave-active {
+  transition: all 0.25s ease;
+}
+.toast-enter-from {
+  opacity: 0;
+  transform: translateY(-12px) scale(0.95);
+}
+.toast-leave-to {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.97);
+}
 </style>
-
-
-
-
-

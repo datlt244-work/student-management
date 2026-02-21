@@ -13,8 +13,9 @@ import {
 } from '@/services/adminUserService'
 
 // ─── Filters & Pagination ─────────────────────────────────
-const searchQuery = ref('')
+const yearFilter = ref<number | ''>('')
 const nameFilter = ref<SemesterName | ''>('')
+const isCurrentFilter = ref<boolean | ''>('')
 const pageSize = ref(10)
 const currentPage = ref(1)
 const totalPages = ref(0)
@@ -185,16 +186,18 @@ async function fetchSemesters() {
   isLoading.value = true
   errorMessage.value = null
   try {
+    const yearVal = yearFilter.value
     const result = await getAdminSemesterList({
       page: currentPage.value - 1,
       size: pageSize.value,
-      sort: 'year,desc',
       name: nameFilter.value || undefined,
+      year: typeof yearVal === 'number' && !Number.isNaN(yearVal) ? yearVal : undefined,
+      isCurrent: isCurrentFilter.value === '' ? undefined : (isCurrentFilter.value === true)
     })
-    semesters.value = result.content
-    currentPage.value = result.page + 1
-    totalPages.value = result.totalPages
-    totalElements.value = result.totalElements
+    semesters.value = result.content ?? []
+    currentPage.value = (result.page ?? 0) + 1
+    totalPages.value = result.totalPages ?? 0
+    totalElements.value = result.totalElements ?? 0
   } catch (err: unknown) {
     errorMessage.value = err instanceof Error ? err.message : 'Failed to load semesters.'
   } finally {
@@ -205,7 +208,7 @@ async function fetchSemesters() {
 onMounted(() => fetchSemesters())
 
 watchDebounced(
-  [searchQuery, nameFilter, pageSize],
+  [yearFilter, nameFilter, isCurrentFilter, pageSize],
   () => {
     currentPage.value = 1
     fetchSemesters()
@@ -325,31 +328,41 @@ function getSemesterStatus(sem: AdminSemesterListItem): 'current' | 'upcoming' |
 
       <!-- Filter Bar -->
       <div class="flex flex-col md:flex-row items-center gap-3 bg-white dark:bg-surface-dark p-4 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm">
-        <div class="relative flex-1 w-full">
-          <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">search</span>
+        <div class="relative w-full md:w-32">
           <input
-            v-model="searchQuery"
-            class="w-full pl-10 pr-4 py-2.5 bg-stone-50 dark:bg-stone-800/50 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary transition-all"
-            placeholder="Search semester..."
-            type="text"
+            v-model.number="yearFilter"
+            class="w-full px-3 py-2.5 bg-stone-50 dark:bg-stone-800/50 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary transition-all"
+            placeholder="Year..."
+            type="number"
           />
         </div>
         <select
           v-model="nameFilter"
-          class="w-full md:w-48 py-2.5 bg-stone-50 dark:bg-stone-800/50 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary"
+          class="w-full md:w-36 py-2.5 bg-stone-50 dark:bg-stone-800/50 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary"
         >
           <option value="">All Terms</option>
           <option value="SPRING">Spring</option>
           <option value="SUMMER">Summer</option>
           <option value="FALL">Fall</option>
         </select>
+        <select
+          v-model="isCurrentFilter"
+          class="w-full md:w-40 py-2.5 bg-stone-50 dark:bg-stone-800/50 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary"
+        >
+          <option value="">All Status</option>
+          <option :value="true">Active Only</option>
+          <option :value="false">Inactive Only</option>
+        </select>
+
+        <div class="flex-1"></div>
+
         <button
-          v-if="searchQuery || nameFilter"
+          v-if="yearFilter !== '' || nameFilter !== '' || isCurrentFilter !== ''"
           class="flex items-center gap-1.5 px-3 py-2 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 bg-stone-100 dark:bg-stone-800 rounded-xl transition-colors whitespace-nowrap"
-          @click="searchQuery = ''; nameFilter = ''"
+          @click="yearFilter = ''; nameFilter = ''; isCurrentFilter = ''"
         >
           <span class="material-symbols-outlined text-[18px]">filter_list_off</span>
-          Clear
+          Clear Filters
         </button>
       </div>
 
@@ -361,8 +374,8 @@ function getSemesterStatus(sem: AdminSemesterListItem): 'current' | 'upcoming' |
               <tr class="bg-stone-50 dark:bg-stone-900/50 border-b border-stone-200 dark:border-stone-800">
                 <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Semester</th>
                 <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Period</th>
-                <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-center">Classes</th>
-                <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Status</th>
+
+                <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Created At</th>
                 <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">Actions</th>
               </tr>
             </thead>
@@ -373,7 +386,7 @@ function getSemesterStatus(sem: AdminSemesterListItem): 'current' | 'upcoming' |
                 <tr v-for="i in 5" :key="i" class="animate-pulse">
                   <td class="p-4"><div class="h-4 bg-stone-200 dark:bg-stone-700 rounded w-32"></div></td>
                   <td class="p-4"><div class="h-4 bg-stone-200 dark:bg-stone-700 rounded w-40"></div></td>
-                  <td class="p-4 text-center"><div class="h-4 bg-stone-200 dark:bg-stone-700 rounded w-8 mx-auto"></div></td>
+
                   <td class="p-4"><div class="h-6 bg-stone-200 dark:bg-stone-700 rounded-full w-20"></div></td>
                   <td class="p-4 text-right"><div class="h-4 bg-stone-200 dark:bg-stone-700 rounded w-20 ml-auto"></div></td>
                 </tr>
@@ -381,7 +394,7 @@ function getSemesterStatus(sem: AdminSemesterListItem): 'current' | 'upcoming' |
 
               <!-- Error -->
               <tr v-else-if="errorMessage">
-                <td colspan="5" class="p-10 text-center">
+                <td colspan="4" class="p-10 text-center">
                   <div class="flex flex-col items-center gap-3 text-red-500">
                     <span class="material-symbols-outlined text-4xl">error_outline</span>
                     <p class="text-sm font-medium">{{ errorMessage }}</p>
@@ -395,7 +408,7 @@ function getSemesterStatus(sem: AdminSemesterListItem): 'current' | 'upcoming' |
 
               <!-- Empty -->
               <tr v-else-if="semesters.length === 0">
-                <td colspan="5" class="p-12 text-center">
+                <td colspan="4" class="p-12 text-center">
                   <div class="flex flex-col items-center gap-3 text-slate-400">
                     <span class="material-symbols-outlined text-5xl">calendar_month</span>
                     <p class="text-sm font-medium">No semesters found</p>
@@ -436,32 +449,11 @@ function getSemesterStatus(sem: AdminSemesterListItem): 'current' | 'upcoming' |
                   </p>
                 </td>
 
-                <!-- Classes count -->
-                <td class="p-4 text-center">
-                  <span class="text-sm font-semibold text-slate-700 dark:text-slate-300">{{ sem.classCount }}</span>
-                </td>
 
-                <!-- Status badge -->
+
+                <!-- Created At -->
                 <td class="p-4">
-                  <span
-                    v-if="getSemesterStatus(sem) === 'current'"
-                    class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                  >
-                    <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                    Active
-                  </span>
-                  <span
-                    v-else-if="getSemesterStatus(sem) === 'upcoming'"
-                    class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
-                  >
-                    Upcoming
-                  </span>
-                  <span
-                    v-else
-                    class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-400"
-                  >
-                    Completed
-                  </span>
+                  <p class="text-sm text-slate-500 dark:text-slate-400">{{ formatDate(sem.createdAt) }}</p>
                 </td>
 
                 <!-- Actions -->
@@ -756,12 +748,7 @@ function getSemesterStatus(sem: AdminSemesterListItem): 'current' | 'upcoming' |
               This action cannot be undone.
             </p>
           </div>
-          <div v-if="deletingSemester.classCount > 0" class="w-full flex items-center gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3">
-            <span class="material-symbols-outlined text-amber-500 text-[18px]">warning</span>
-            <p class="text-xs text-amber-700 dark:text-amber-300 text-left">
-              This semester has {{ deletingSemester.classCount }} class{{ deletingSemester.classCount !== 1 ? 'es' : '' }}. Deletion will be blocked by the system.
-            </p>
-          </div>
+
         </div>
         <div class="flex gap-3">
           <button

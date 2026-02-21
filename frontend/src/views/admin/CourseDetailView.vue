@@ -322,87 +322,76 @@ onMounted(() => {
     <Teleport to="body">
       <div
         v-if="showEditCourseModal"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4"
+        class="fixed inset-0 z-50 flex items-center justify-center px-4"
       >
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="showEditCourseModal = false"></div>
         <div
-          class="bg-surface-light dark:bg-surface-dark w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+          class="relative bg-white dark:bg-surface-dark w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] p-6"
         >
-          <div class="bg-primary px-6 py-4 flex items-center justify-between shrink-0">
-            <h2 class="text-white text-xl font-bold flex items-center gap-2">
-              <span class="material-symbols-outlined">edit_note</span>
-              Edit Course
-            </h2>
+          <!-- Header -->
+          <div class="flex items-center justify-between mb-5">
+            <div class="flex items-center gap-3">
+              <div class="p-2 rounded-xl bg-orange-100 dark:bg-orange-900/20 text-primary">
+                <span class="material-symbols-outlined">edit_note</span>
+              </div>
+              <h2 class="text-xl font-bold text-slate-900 dark:text-white">Edit Course</h2>
+            </div>
             <button
               @click="showEditCourseModal = false"
-              class="text-white/80 hover:text-white transition-colors"
+              class="p-1.5 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 text-slate-400 transition-colors"
             >
               <span class="material-symbols-outlined">close</span>
             </button>
           </div>
 
-          <div v-if="editCourseLoading" class="p-10 flex justify-center">
+          <div v-if="editCourseLoading" class="py-12 flex justify-center">
              <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
           </div>
 
-          <form v-else @submit.prevent="submitEditCourse" class="flex flex-col flex-1 overflow-hidden">
-            <div class="p-6 overflow-y-auto">
-              <div v-if="editCourseError" class="mb-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg text-sm">
-                  {{ editCourseError }}
-              </div>
+          <form v-else @submit.prevent="submitEditCourse" class="flex flex-col flex-1 overflow-hidden gap-5">
+            <div class="overflow-y-auto flex-1">
+              <p v-if="editCourseError" class="mb-4 text-sm text-red-500 flex items-center gap-1.5 px-3 py-2 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                <span class="material-symbols-outlined text-[16px]">error</span>
+                {{ editCourseError }}
+              </p>
             
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="md:col-span-2">
-                  <label
-                    class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
-                    for="edit-course-name"
-                    >Course Name</label
-                  >
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div class="md:col-span-2 flex flex-col gap-1.5">
+                  <label class="text-xs font-semibold text-slate-600 dark:text-slate-300" for="edit-course-name">Course Name</label>
                   <input
                     v-model="editingCourseData.name"
-                    class="w-full px-4 py-2.5 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm font-body transition-all"
+                    class="py-2.5 px-3 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary transition-all"
                     id="edit-course-name"
                     type="text"
                     required
                   />
                 </div>
-                <div>
-                  <label
-                    class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
-                    for="edit-course-code"
-                    >Course Code</label
-                  >
+                <div class="flex flex-col gap-1.5">
+                  <label class="text-xs font-semibold text-slate-600 dark:text-slate-300" for="edit-course-code">Course Code</label>
                   <input
                     v-model="editingCourseData.code"
-                    class="w-full px-4 py-2.5 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm font-body transition-all"
+                    class="py-2.5 px-3 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary transition-all"
                     id="edit-course-code"
                     type="text"
                     required
                   />
                 </div>
-                <div>
-                  <label
-                    class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
-                    for="edit-credits"
-                    >Credits</label
-                  >
+                <div class="flex flex-col gap-1.5">
+                  <label class="text-xs font-semibold text-slate-600 dark:text-slate-300" for="edit-credits">Credits</label>
                   <input
                     v-model.number="editingCourseData.credits"
-                    class="w-full px-4 py-2.5 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm font-body transition-all"
+                    class="py-2.5 px-3 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary transition-all"
                     id="edit-credits"
                     step="1"
                     type="number"
                     required
                   />
                 </div>
-                <div class="md:col-span-2">
-                  <label
-                    class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
-                    for="edit-department"
-                    >Department</label
-                  >
+                <div class="md:col-span-2 flex flex-col gap-1.5">
+                  <label class="text-xs font-semibold text-slate-600 dark:text-slate-300" for="edit-department">Department</label>
                   <select
                     v-model.number="editingCourseData.departmentId"
-                    class="w-full px-4 py-2.5 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm font-body transition-all appearance-none cursor-pointer"
+                    class="py-2.5 px-3 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary transition-all appearance-none cursor-pointer"
                     id="edit-department"
                     required
                   >
@@ -415,37 +404,32 @@ onMounted(() => {
                     </option>
                   </select>
                 </div>
-                <div class="md:col-span-2">
-                  <label
-                    class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
-                    for="edit-description"
-                    >Description</label
-                  >
+                <div class="md:col-span-2 flex flex-col gap-1.5">
+                  <label class="text-xs font-semibold text-slate-600 dark:text-slate-300" for="edit-description">Description</label>
                   <textarea
                     v-model="editingCourseData.description"
-                    class="w-full px-4 py-2.5 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm font-body transition-all resize-none"
+                    class="py-2.5 px-3 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary transition-all resize-none"
                     id="edit-description"
                     rows="4"
                   ></textarea>
                 </div>
               </div>
             </div>
-            <div
-              class="border-t border-stone-100 dark:border-stone-800 p-6 flex items-center justify-end gap-3 bg-stone-50/50 dark:bg-stone-900/20 shrink-0"
-            >
+            <div class="border-t border-stone-100 dark:border-stone-800 pt-5 flex items-center justify-end gap-3">
               <button
                 type="button"
                 @click="showEditCourseModal = false"
-                class="px-6 h-10 rounded-lg border border-stone-300 dark:border-stone-600 text-slate-600 dark:text-slate-400 text-sm font-bold hover:bg-stone-100 dark:hover:bg-stone-800 transition-all active:scale-95"
+                class="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 :disabled="editCourseSubmitting"
-                class="px-6 h-10 rounded-lg bg-primary hover:bg-primary-dark text-white text-sm font-bold shadow-md shadow-orange-500/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                class="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary-dark disabled:opacity-60 text-white text-sm font-bold rounded-xl transition-all active:scale-95 shadow-lg shadow-orange-500/20"
               >
-                {{ editCourseSubmitting ? 'Saving...' : 'Save Changes' }}
+                <span v-if="editCourseSubmitting" class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+                Save Changes
               </button>
             </div>
           </form>

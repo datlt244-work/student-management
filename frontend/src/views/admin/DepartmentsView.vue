@@ -555,53 +555,59 @@ async function confirmDeleteDepartment() {
       <Transition name="fade">
         <div
           v-if="showAddDepartmentModal"
-          class="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm bg-stone-900/50"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4"
           role="dialog"
-          @click.self="closeAddDepartmentModal"
         >
-          <div class="w-full max-w-md bg-surface-light dark:bg-surface-dark rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div class="bg-primary px-6 py-4 flex items-center justify-between">
-              <h2 class="text-white text-lg font-bold">Add New Department</h2>
-              <button
-                class="text-white/80 hover:text-white transition-colors rounded-lg p-1 hover:bg-white/10"
-                @click="closeAddDepartmentModal"
-              >
+          <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closeAddDepartmentModal"></div>
+          <div class="relative w-full max-w-md bg-white dark:bg-surface-dark rounded-2xl shadow-2xl p-6 flex flex-col gap-5">
+            <!-- Header -->
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="p-2 rounded-xl bg-orange-100 dark:bg-orange-900/20 text-primary">
+                  <span class="material-symbols-outlined">add_business</span>
+                </div>
+                <h2 class="text-lg font-bold text-slate-900 dark:text-white">Add New Department</h2>
+              </div>
+              <button class="p-1.5 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 text-slate-400 transition-colors" @click="closeAddDepartmentModal">
                 <span class="material-symbols-outlined">close</span>
               </button>
             </div>
-            <form class="p-6 flex flex-col gap-5" @submit.prevent="submitNewDepartment">
-              <div v-if="createDepartmentError" class="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm">
+            <!-- Form -->
+            <form class="flex flex-col gap-4" @submit.prevent="submitNewDepartment">
+              <p v-if="createDepartmentError" class="text-sm text-red-500 flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-[16px]">error</span>
                 {{ createDepartmentError }}
-              </div>
+              </p>
               <div class="flex flex-col gap-1.5">
-                <label class="text-sm font-semibold text-slate-700 dark:text-slate-300" for="name">
+                <label class="text-xs font-semibold text-slate-600 dark:text-slate-300" for="dept-add-name">
                   Department Name <span class="text-red-500">*</span>
                 </label>
                 <input
-                  id="name"
+                  id="dept-add-name"
                   v-model="newDepartment.name"
                   required
-                  class="w-full px-4 py-2.5 bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all placeholder:text-slate-400"
+                  class="py-2.5 px-3 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary transition-all"
                   placeholder="e.g. Computer Science"
                   type="text"
                 />
               </div>
               <div class="flex flex-col gap-1.5">
-                <label class="text-sm font-semibold text-slate-700 dark:text-slate-300" for="officeLocation">
+                <label class="text-xs font-semibold text-slate-600 dark:text-slate-300" for="dept-add-office">
                   Office Location
                 </label>
                 <input
-                  id="officeLocation"
+                  id="dept-add-office"
                   v-model="newDepartment.officeLocation"
-                  class="w-full px-4 py-2.5 bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all placeholder:text-slate-400"
+                  class="py-2.5 px-3 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary transition-all"
                   placeholder="e.g. Building A, Floor 3"
                   type="text"
                 />
               </div>
-              <div class="px-0 py-0 bg-stone-50 dark:bg-stone-900/30 border-t border-stone-100 dark:border-stone-800 flex items-center justify-end gap-3 mt-2 pt-4">
+              <!-- Footer -->
+              <div class="flex justify-end gap-3 pt-1">
                 <button
                   type="button"
-                  class="px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors"
+                  class="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition-colors"
                   @click="closeAddDepartmentModal"
                 >
                   Cancel
@@ -609,9 +615,10 @@ async function confirmDeleteDepartment() {
                 <button
                   type="submit"
                   :disabled="createDepartmentLoading"
-                  class="px-4 py-2 rounded-lg text-sm font-bold text-white bg-primary hover:bg-primary-dark shadow-md shadow-orange-500/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary-dark disabled:opacity-60 text-white text-sm font-bold rounded-xl transition-all active:scale-95"
                 >
-                  {{ createDepartmentLoading ? 'Creating...' : 'Create Department' }}
+                  <span v-if="createDepartmentLoading" class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+                  Create Department
                 </button>
               </div>
             </form>
@@ -625,53 +632,62 @@ async function confirmDeleteDepartment() {
       <Transition name="fade">
         <div
           v-if="showEditDepartmentModal"
-          class="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm bg-stone-900/50"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4"
           role="dialog"
-          @click.self="closeEditDepartmentModal"
         >
-          <div class="w-full max-w-md bg-surface-light dark:bg-surface-dark rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div class="bg-primary px-6 py-4 flex items-center justify-between">
-              <h2 class="text-white text-lg font-bold">Edit Department</h2>
-              <button
-                class="text-white/80 hover:text-white transition-colors rounded-lg p-1 hover:bg-white/10"
-                @click="closeEditDepartmentModal"
-              >
+          <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closeEditDepartmentModal"></div>
+          <div class="relative w-full max-w-md bg-white dark:bg-surface-dark rounded-2xl shadow-2xl p-6 flex flex-col gap-5">
+            <!-- Header -->
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="p-2 rounded-xl bg-orange-100 dark:bg-orange-900/20 text-primary">
+                  <span class="material-symbols-outlined">edit</span>
+                </div>
+                <div>
+                  <h2 class="text-lg font-bold text-slate-900 dark:text-white">Edit Department</h2>
+                  <p class="text-xs text-slate-400">{{ editingDepartment?.name }}</p>
+                </div>
+              </div>
+              <button class="p-1.5 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 text-slate-400 transition-colors" @click="closeEditDepartmentModal">
                 <span class="material-symbols-outlined">close</span>
               </button>
             </div>
-            <form class="p-6 flex flex-col gap-5" @submit.prevent="submitUpdateDepartment">
-              <div v-if="updateDepartmentError" class="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm">
+            <!-- Form -->
+            <form class="flex flex-col gap-4" @submit.prevent="submitUpdateDepartment">
+              <p v-if="updateDepartmentError" class="text-sm text-red-500 flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-[16px]">error</span>
                 {{ updateDepartmentError }}
-              </div>
+              </p>
               <div class="flex flex-col gap-1.5">
-                <label class="text-sm font-semibold text-slate-700 dark:text-slate-300" for="edit-name">
+                <label class="text-xs font-semibold text-slate-600 dark:text-slate-300" for="dept-edit-name">
                   Department Name <span class="text-red-500">*</span>
                 </label>
                 <input
-                  id="edit-name"
+                  id="dept-edit-name"
                   v-model="editDepartment.name"
                   required
-                  class="w-full px-4 py-2.5 bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all placeholder:text-slate-400"
+                  class="py-2.5 px-3 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary transition-all"
                   placeholder="e.g. Computer Science"
                   type="text"
                 />
               </div>
               <div class="flex flex-col gap-1.5">
-                <label class="text-sm font-semibold text-slate-700 dark:text-slate-300" for="edit-officeLocation">
+                <label class="text-xs font-semibold text-slate-600 dark:text-slate-300" for="dept-edit-office">
                   Office Location
                 </label>
                 <input
-                  id="edit-officeLocation"
+                  id="dept-edit-office"
                   v-model="editDepartment.officeLocation"
-                  class="w-full px-4 py-2.5 bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all placeholder:text-slate-400"
+                  class="py-2.5 px-3 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary transition-all"
                   placeholder="e.g. Building A, Floor 3"
                   type="text"
                 />
               </div>
-              <div class="px-0 py-0 bg-stone-50 dark:bg-stone-900/30 border-t border-stone-100 dark:border-stone-800 flex items-center justify-end gap-3 mt-2 pt-4">
+              <!-- Footer -->
+              <div class="flex justify-end gap-3 pt-1">
                 <button
                   type="button"
-                  class="px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors"
+                  class="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition-colors"
                   @click="closeEditDepartmentModal"
                 >
                   Cancel
@@ -679,9 +695,10 @@ async function confirmDeleteDepartment() {
                 <button
                   type="submit"
                   :disabled="updateDepartmentLoading"
-                  class="px-4 py-2 rounded-lg text-sm font-bold text-white bg-primary hover:bg-primary-dark shadow-md shadow-orange-500/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary-dark disabled:opacity-60 text-white text-sm font-bold rounded-xl transition-all active:scale-95"
                 >
-                  {{ updateDepartmentLoading ? 'Updating...' : 'Update Department' }}
+                  <span v-if="updateDepartmentLoading" class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+                  Save Changes
                 </button>
               </div>
             </form>
@@ -695,43 +712,35 @@ async function confirmDeleteDepartment() {
       <Transition name="fade">
         <div
           v-if="showCreateResultModal"
-          class="fixed inset-0 z-120 flex items-center justify-center p-4 backdrop-blur-md bg-stone-900/40"
+          class="fixed inset-0 z-[120] flex items-center justify-center p-4"
         >
-          <div
-            class="bg-surface-light dark:bg-surface-dark w-full max-w-md rounded-xl shadow-2xl overflow-hidden border border-stone-200 dark:border-stone-800 max-h-[80vh] flex flex-col"
-          >
-            <div
-              :class="[
-                'px-6 py-4 flex items-center justify-between shrink-0',
-                createResultSuccess ? 'bg-emerald-600' : 'bg-red-600',
-              ]"
-            >
-              <h2 class="text-white text-lg font-bold flex items-center gap-2">
-                <span class="material-symbols-outlined">
-                  {{ createResultSuccess ? 'check_circle' : 'error' }}
-                </span>
-                {{ createResultSuccess ? 'Success' : 'Error' }}
-              </h2>
-              <button class="text-white/80 hover:text-white transition-colors" type="button" @click="closeCreateResultModal">
-                <span class="material-symbols-outlined">close</span>
-              </button>
+          <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closeCreateResultModal"></div>
+          <div class="relative bg-white dark:bg-surface-dark w-full max-w-sm rounded-2xl shadow-2xl p-6 flex flex-col items-center text-center gap-5">
+            <div :class="[
+              'p-4 rounded-full',
+              createResultSuccess ? 'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600' : 'bg-red-100 dark:bg-red-900/20 text-red-600'
+            ]">
+              <span class="material-symbols-outlined text-4xl">
+                {{ createResultSuccess ? 'check_circle' : 'error' }}
+              </span>
             </div>
-
-            <div class="p-6 flex-1 flex items-center">
-              <p class="text-sm text-slate-700 dark:text-slate-200">
+            
+            <div>
+              <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-2">
+                {{ createResultSuccess ? 'Operation Successful' : 'Operation Failed' }}
+              </h2>
+              <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                 {{ createResultMessage }}
               </p>
             </div>
 
-            <div class="px-6 py-4 border-t border-stone-200 dark:border-stone-800 bg-stone-50/60 dark:bg-stone-900/40 shrink-0 flex justify-end">
-              <button
-                type="button"
-                class="px-5 py-2 rounded-lg bg-primary hover:bg-primary-dark text-white text-sm font-bold shadow-md shadow-primary/30 transition-all active:scale-95"
-                @click="closeCreateResultModal"
-              >
-                OK
-              </button>
-            </div>
+            <button
+              type="button"
+              class="w-full py-3 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold shadow-lg shadow-primary/20 transition-all active:scale-95"
+              @click="closeCreateResultModal"
+            >
+              Understand
+            </button>
           </div>
         </div>
       </Transition>
@@ -742,48 +751,48 @@ async function confirmDeleteDepartment() {
       <Transition name="fade">
         <div
           v-if="showDeleteConfirmModal"
-          class="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm bg-stone-900/50"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4"
           role="dialog"
-          @click.self="closeDeleteConfirmModal"
         >
-          <div class="w-full max-w-md bg-surface-light dark:bg-surface-dark rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div class="bg-red-600 px-6 py-4 flex items-center justify-between">
-              <h2 class="text-white text-lg font-bold flex items-center gap-2">
-                <span class="material-symbols-outlined">warning</span>
-                Delete Department
-              </h2>
+          <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closeDeleteConfirmModal"></div>
+          <div class="relative w-full max-w-sm bg-white dark:bg-surface-dark rounded-2xl shadow-2xl p-6 flex flex-col gap-5">
+            <div class="flex flex-col items-center text-center gap-3">
+              <div class="p-3 rounded-full bg-red-100 dark:bg-red-900/20">
+                <span class="material-symbols-outlined text-3xl text-red-500">delete_forever</span>
+              </div>
+              <div>
+                <h2 class="text-lg font-bold text-slate-900 dark:text-white">Delete Department</h2>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  Are you sure you want to delete
+                  <span class="font-semibold text-slate-700 dark:text-slate-200">{{ deletingDepartment?.name }}</span>?
+                  This action cannot be undone.
+                </p>
+              </div>
+              <div class="w-full flex items-start gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3">
+                <span class="material-symbols-outlined text-amber-500 text-[18px] mt-0.5">warning</span>
+                <p class="text-xs text-amber-700 dark:text-amber-300 text-left">
+                  Cannot be deleted if it has active teachers, students, or courses.
+                </p>
+              </div>
+            </div>
+            <div class="flex gap-3">
               <button
-                class="text-white/80 hover:text-white transition-colors rounded-lg p-1 hover:bg-white/10"
+                type="button"
+                class="flex-1 px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-stone-100 dark:hover:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl transition-colors"
+                :disabled="deleteDepartmentLoading"
                 @click="closeDeleteConfirmModal"
               >
-                <span class="material-symbols-outlined">close</span>
+                Cancel
               </button>
-            </div>
-            <div class="p-6 flex flex-col gap-5">
-              <p class="text-sm text-slate-700 dark:text-slate-200">
-                Are you sure you want to delete <strong>{{ deletingDepartment?.name }}</strong>? This action cannot be undone.
-              </p>
-              <p class="text-xs text-slate-500 dark:text-slate-400">
-                Note: This department cannot be deleted if it has active teachers, students, or courses.
-              </p>
-              <div class="px-0 py-0 bg-stone-50 dark:bg-stone-900/30 border-t border-stone-100 dark:border-stone-800 flex items-center justify-end gap-3 mt-2 pt-4">
-                <button
-                  type="button"
-                  class="px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors"
-                  @click="closeDeleteConfirmModal"
-                  :disabled="deleteDepartmentLoading"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  :disabled="deleteDepartmentLoading"
-                  class="px-4 py-2 rounded-lg text-sm font-bold text-white bg-red-600 hover:bg-red-700 shadow-md shadow-red-500/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                  @click="confirmDeleteDepartment"
-                >
-                  {{ deleteDepartmentLoading ? 'Deleting...' : 'Delete Department' }}
-                </button>
-              </div>
+              <button
+                type="button"
+                :disabled="deleteDepartmentLoading"
+                class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 disabled:opacity-60 text-white text-sm font-bold rounded-xl transition-all active:scale-95"
+                @click="confirmDeleteDepartment"
+              >
+                <span v-if="deleteDepartmentLoading" class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+                Delete
+              </button>
             </div>
           </div>
         </div>

@@ -723,17 +723,21 @@ function processImport() {
     <Transition name="fade">
       <div
         v-if="showAddUserModal"
-        class="fixed inset-0 z-100 flex items-center justify-center p-4 backdrop-blur-md bg-stone-900/40"
+        class="fixed inset-0 z-100 flex items-center justify-center p-4"
       >
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-md" @click="closeAddUserModal"></div>
         <div
-          class="bg-surface-light dark:bg-surface-dark w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden border border-stone-200 dark:border-stone-800 max-h-[90vh] flex flex-col"
+          class="relative bg-white dark:bg-surface-dark w-full max-w-2xl rounded-2xl shadow-2xl max-h-[90vh] flex flex-col"
         >
-          <div class="bg-primary px-6 py-4 flex items-center justify-between shrink-0">
-            <h2 class="text-white text-xl font-bold flex items-center gap-2">
-              <span class="material-symbols-outlined">person_add</span>
-              Add New User
-            </h2>
-            <button class="text-white/80 hover:text-white transition-colors" @click="closeAddUserModal">
+          <!-- Header -->
+          <div class="flex items-center justify-between px-6 py-5 border-b border-stone-100 dark:border-stone-800 shrink-0">
+            <div class="flex items-center gap-3">
+              <div class="p-2 rounded-xl bg-orange-100 dark:bg-orange-900/20 text-primary">
+                <span class="material-symbols-outlined">person_add</span>
+              </div>
+              <h2 class="text-xl font-bold text-slate-900 dark:text-white">Add New User</h2>
+            </div>
+            <button class="p-1.5 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 text-slate-400 transition-colors" @click="closeAddUserModal">
               <span class="material-symbols-outlined">close</span>
             </button>
           </div>
@@ -1074,7 +1078,7 @@ function processImport() {
             <div class="flex items-center justify-end gap-3 pt-6 border-t border-stone-200 dark:border-stone-800 shrink-0">
               <button
                 type="button"
-                class="px-5 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 font-bold transition-all"
+                class="px-5 py-2.5 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-stone-100 dark:hover:bg-stone-800 font-bold transition-all"
                 @click="closeAddUserModal"
               >
                 Cancel
@@ -1082,9 +1086,10 @@ function processImport() {
               <button
                 type="submit"
                 :disabled="createUserLoading"
-                class="px-5 py-2.5 rounded-lg bg-primary hover:bg-primary-dark text-white font-bold shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {{ createUserLoading ? 'Creating…' : 'Create User' }}
+                <span v-if="createUserLoading" class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+                Create User
               </button>
             </div>
           </form>
@@ -1098,23 +1103,25 @@ function processImport() {
     <Transition name="fade">
       <div
         v-if="showImportExcelModal"
-        class="fixed inset-0 z-100 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4"
+        class="fixed inset-0 z-100 flex items-center justify-center p-4"
       >
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-md" @click="closeImportExcelModal"></div>
         <div
-          class="bg-surface-light dark:bg-surface-dark w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-stone-200 dark:border-stone-800"
+          class="relative bg-white dark:bg-surface-dark w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-stone-200 dark:border-stone-800"
         >
+          <!-- Header -->
           <div class="px-8 py-6 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                <span class="material-symbols-outlined">upload_file</span>
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 rounded-2xl bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center text-primary">
+                <span class="material-symbols-outlined text-3xl">upload_file</span>
               </div>
               <div>
                 <h2 class="text-xl font-bold text-slate-900 dark:text-white">Bulk Import Users</h2>
                 <p class="text-sm text-slate-500 dark:text-slate-400">Import multiple accounts using Excel templates</p>
               </div>
             </div>
-            <button class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors" @click="closeImportExcelModal">
-              <span class="material-symbols-outlined">close</span>
+            <button class="p-2 rounded-xl hover:bg-stone-100 dark:hover:bg-stone-800 text-slate-400 transition-colors" @click="closeImportExcelModal">
+              <span class="material-symbols-outlined text-2xl">close</span>
             </button>
           </div>
 
@@ -1217,59 +1224,62 @@ function processImport() {
     <Transition name="fade">
       <div
         v-if="showDeleteConfirmModal"
-        class="fixed inset-0 z-120 flex items-center justify-center p-4 backdrop-blur-md bg-stone-900/40"
+        class="fixed inset-0 z-120 flex items-center justify-center p-4"
       >
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="showDeleteConfirmModal = false"></div>
         <div
-          class="bg-surface-light dark:bg-surface-dark w-full max-w-md rounded-xl shadow-2xl overflow-hidden border border-stone-200 dark:border-stone-800 max-h-[90vh] flex flex-col"
+          class="relative bg-white dark:bg-surface-dark w-full max-w-sm rounded-2xl shadow-2xl p-6 flex flex-col gap-5"
         >
-          <div class="bg-red-600 px-6 py-4 flex items-center justify-between shrink-0">
-            <h2 class="text-white text-lg font-bold flex items-center gap-2">
-              <span class="material-symbols-outlined">delete</span>
-              Delete User
-            </h2>
-            <button class="text-white/80 hover:text-white transition-colors" type="button" @click="showDeleteConfirmModal = false">
-              <span class="material-symbols-outlined">close</span>
-            </button>
+          <!-- Center Content -->
+          <div class="flex flex-col items-center text-center gap-3">
+            <div class="p-3 rounded-full bg-red-100 dark:bg-red-900/20">
+              <span class="material-symbols-outlined text-3xl text-red-500">delete_forever</span>
+            </div>
+            <div>
+              <h2 class="text-lg font-bold text-slate-900 dark:text-white">Delete User</h2>
+              <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                Are you sure you want to delete this user? This action cannot be undone.
+              </p>
+            </div>
           </div>
 
-          <div class="p-6 space-y-4 flex-1">
-            <p class="text-sm text-slate-700 dark:text-slate-200">
-              Are you sure you want to delete this user? This action will
-              <span class="font-bold">soft delete</span>
-              the account and log the user out from all devices.
+          <!-- User Info Card -->
+          <div class="rounded-xl bg-stone-50 dark:bg-stone-900/40 border border-stone-200 dark:border-stone-800 p-3 text-sm">
+            <p class="font-semibold text-slate-900 dark:text-white text-center">
+              {{ deleteTargetUser?.fullName || deleteTargetUser?.email }}
             </p>
-            <div class="rounded-lg bg-stone-50 dark:bg-stone-900/40 border border-stone-200 dark:border-stone-800 p-3 text-sm">
-              <p class="font-semibold text-slate-900 dark:text-white">
-                {{ deleteTargetUser?.fullName || deleteTargetUser?.email }}
-              </p>
-              <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                {{ deleteTargetUser?.email }} • {{ deleteTargetUser?.role.roleName }}
-              </p>
-            </div>
-            <div
-              v-if="deleteError"
-              class="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm"
-            >
-              {{ deleteError }}
-            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 text-center italic">
+              {{ deleteTargetUser?.email }} • {{ deleteTargetUser?.role.roleName }}
+            </p>
+          </div>
 
-            <div class="flex items-center justify-end gap-3 pt-4 border-t border-stone-200 dark:border-stone-800 shrink-0">
-              <button
-                type="button"
-                class="px-4 py-2 rounded-lg text-slate-600 dark:text-slate-400 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-sm font-bold transition-all"
-                @click="showDeleteConfirmModal = false"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                :disabled="deleteLoading"
-                class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-bold shadow-lg shadow-red-600/30 transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
-                @click="confirmDeleteUser"
-              >
-                {{ deleteLoading ? 'Deleting…' : 'Delete User' }}
-              </button>
-            </div>
+          <!-- Error Message -->
+          <div
+            v-if="deleteError"
+            class="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm flex items-center gap-2"
+          >
+            <span class="material-symbols-outlined text-[18px]">error</span>
+            {{ deleteError }}
+          </div>
+
+          <!-- Actions -->
+          <div class="flex gap-3">
+            <button
+              type="button"
+              class="flex-1 px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-stone-100 dark:hover:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl transition-all"
+              @click="showDeleteConfirmModal = false"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              :disabled="deleteLoading"
+              class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-red-500/20 transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+              @click="confirmDeleteUser"
+            >
+              <span v-if="deleteLoading" class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+              Delete
+            </button>
           </div>
         </div>
       </div>
@@ -1281,43 +1291,35 @@ function processImport() {
     <Transition name="fade">
       <div
         v-if="showDeleteResultModal"
-        class="fixed inset-0 z-120 flex items-center justify-center p-4 backdrop-blur-md bg-stone-900/40"
+        class="fixed inset-0 z-120 flex items-center justify-center p-4"
       >
-        <div
-          class="bg-surface-light dark:bg-surface-dark w-full max-w-md rounded-xl shadow-2xl overflow-hidden border border-stone-200 dark:border-stone-800 max-h-[80vh] flex flex-col"
-        >
-          <div
-            :class="[
-              'px-6 py-4 flex items-center justify-between shrink-0',
-              deleteResultSuccess ? 'bg-emerald-600' : 'bg-red-600',
-            ]"
-          >
-            <h2 class="text-white text-lg font-bold flex items-center gap-2">
-              <span class="material-symbols-outlined">
-                {{ deleteResultSuccess ? 'check_circle' : 'error' }}
-              </span>
-              {{ deleteResultSuccess ? 'Deleted Successfully' : 'Delete Failed' }}
-            </h2>
-            <button class="text-white/80 hover:text-white transition-colors" type="button" @click="closeDeleteModals">
-              <span class="material-symbols-outlined">close</span>
-            </button>
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closeDeleteModals"></div>
+        <div class="relative bg-white dark:bg-surface-dark w-full max-w-sm rounded-2xl shadow-2xl p-6 flex flex-col items-center text-center gap-5">
+          <div :class="[
+            'p-4 rounded-full',
+            deleteResultSuccess ? 'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600' : 'bg-red-100 dark:bg-red-900/20 text-red-600'
+          ]">
+            <span class="material-symbols-outlined text-4xl">
+              {{ deleteResultSuccess ? 'check_circle' : 'error' }}
+            </span>
           </div>
-
-          <div class="p-6 flex-1 flex items-center">
-            <p class="text-sm text-slate-700 dark:text-slate-200">
+          
+          <div>
+            <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-2">
+              {{ deleteResultSuccess ? 'Account Deleted' : 'Deletion Failed' }}
+            </h2>
+            <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
               {{ deleteResultMessage }}
             </p>
           </div>
 
-          <div class="px-6 py-4 border-t border-stone-200 dark:border-stone-800 bg-stone-50/60 dark:bg-stone-900/40 shrink-0 flex justify-end">
-            <button
-              type="button"
-              class="px-5 py-2 rounded-lg bg-primary hover:bg-primary-dark text-white text-sm font-bold shadow-md shadow-primary/30 transition-all active:scale-95"
-              @click="closeDeleteModals"
-            >
-              OK
-            </button>
-          </div>
+          <button
+            type="button"
+            class="w-full py-3 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold shadow-lg shadow-primary/20 transition-all active:scale-95"
+            @click="closeDeleteModals"
+          >
+            Understand
+          </button>
         </div>
       </div>
     </Transition>
@@ -1328,43 +1330,35 @@ function processImport() {
     <Transition name="fade">
       <div
         v-if="showCreateResultModal"
-        class="fixed inset-0 z-120 flex items-center justify-center p-4 backdrop-blur-md bg-stone-900/40"
+        class="fixed inset-0 z-120 flex items-center justify-center p-4"
       >
-        <div
-          class="bg-surface-light dark:bg-surface-dark w-full max-w-md rounded-xl shadow-2xl overflow-hidden border border-stone-200 dark:border-stone-800 max-h-[80vh] flex flex-col"
-        >
-          <div
-            :class="[
-              'px-6 py-4 flex items-center justify-between shrink-0',
-              createResultSuccess ? 'bg-emerald-600' : 'bg-red-600',
-            ]"
-          >
-            <h2 class="text-white text-lg font-bold flex items-center gap-2">
-              <span class="material-symbols-outlined">
-                {{ createResultSuccess ? 'check_circle' : 'error' }}
-              </span>
-              {{ createResultSuccess ? 'User Created' : 'Create Failed' }}
-            </h2>
-            <button class="text-white/80 hover:text-white transition-colors" type="button" @click="closeCreateResultModal">
-              <span class="material-symbols-outlined">close</span>
-            </button>
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closeCreateResultModal"></div>
+        <div class="relative bg-white dark:bg-surface-dark w-full max-w-sm rounded-2xl shadow-2xl p-6 flex flex-col items-center text-center gap-5">
+          <div :class="[
+            'p-4 rounded-full',
+            createResultSuccess ? 'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600' : 'bg-red-100 dark:bg-red-900/20 text-red-600'
+          ]">
+            <span class="material-symbols-outlined text-4xl">
+              {{ createResultSuccess ? 'check_circle' : 'error' }}
+            </span>
           </div>
-
-          <div class="p-6 flex-1 flex items-center">
-            <p class="text-sm text-slate-700 dark:text-slate-200">
+          
+          <div>
+            <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-2">
+              {{ createResultSuccess ? 'Success!' : 'Create Failed' }}
+            </h2>
+            <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
               {{ createResultMessage }}
             </p>
           </div>
 
-          <div class="px-6 py-4 border-t border-stone-200 dark:border-stone-800 bg-stone-50/60 dark:bg-stone-900/40 shrink-0 flex justify-end">
-            <button
-              type="button"
-              class="px-5 py-2 rounded-lg bg-primary hover:bg-primary-dark text-white text-sm font-bold shadow-md shadow-primary/30 transition-all active:scale-95"
-              @click="closeCreateResultModal"
-            >
-              OK
-            </button>
-          </div>
+          <button
+            type="button"
+            class="w-full py-3 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold shadow-lg shadow-primary/20 transition-all active:scale-95"
+            @click="closeCreateResultModal"
+          >
+            Understand
+          </button>
         </div>
       </div>
     </Transition>

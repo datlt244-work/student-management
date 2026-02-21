@@ -676,7 +676,6 @@ export interface AdminSemesterListItem {
   startDate: string | null
   endDate: string | null
   isCurrent: boolean
-  classCount: number
   createdAt: string
 }
 
@@ -722,7 +721,15 @@ export async function getAdminSemesterList(params: {
     throw new Error(errorData?.message || `Failed to fetch semesters (${response.status})`)
   }
   const data = await response.json()
-  return (data.result || data) as AdminSemesterListResult
+  const raw = data.result || data
+
+  return {
+    content: raw.content ?? [],
+    page: typeof raw.page === 'number' ? raw.page : (typeof raw.number === 'number' ? raw.number : 0),
+    size: raw.size ?? 10,
+    totalElements: raw.totalElements ?? 0,
+    totalPages: raw.totalPages ?? 0,
+  } as AdminSemesterListResult
 }
 
 export async function createAdminSemester(body: AdminCreateSemesterRequest): Promise<AdminSemesterListItem> {

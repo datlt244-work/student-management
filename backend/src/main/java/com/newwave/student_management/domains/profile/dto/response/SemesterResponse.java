@@ -1,5 +1,6 @@
 package com.newwave.student_management.domains.profile.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.newwave.student_management.domains.profile.entity.Semester;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,6 +21,8 @@ public class SemesterResponse {
     private String displayName;
     private LocalDate startDate;
     private LocalDate endDate;
+    @JsonProperty("isCurrent")
+    private boolean isCurrent;
 
     public static SemesterResponse fromEntity(Semester semester) {
         if (semester == null) return null;
@@ -30,6 +33,7 @@ public class SemesterResponse {
                 .displayName(semester.getDisplayName())
                 .startDate(semester.getStartDate())
                 .endDate(semester.getEndDate())
+                .isCurrent(semester.isCurrent())
                 .build();
     }
 }

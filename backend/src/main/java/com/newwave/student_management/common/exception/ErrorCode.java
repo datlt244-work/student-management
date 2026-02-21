@@ -53,6 +53,7 @@ public enum ErrorCode {
     SEMESTER_IS_CURRENT(1242, "Cannot delete the current semester", HttpStatus.BAD_REQUEST),
     SEMESTER_HAS_CLASSES(1243, "Cannot delete semester that has classes", HttpStatus.BAD_REQUEST),
     NO_CURRENT_SEMESTER(1244, "No current semester configured", HttpStatus.NOT_FOUND),
+    SEMESTER_DATE_OVERLAP(1245, "Semester dates overlap with another semester", HttpStatus.BAD_REQUEST),
 
     // Business errors - Address (1250-1269)
     ADDRESS_NOT_FOUND(1250, "Address not found", HttpStatus.NOT_FOUND),

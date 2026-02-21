@@ -115,7 +115,7 @@ public class AdminCourseService implements IAdminCourseService {
         if (request.getDepartmentId() != null) {
             boolean isNewDept = course.getDepartment() == null || !course.getDepartment().getDepartmentId().equals(request.getDepartmentId());
             if (isNewDept) {
-                Department department = departmentRepository.findById(request.getDepartmentId())
+                Department department = departmentRepository.findByDepartmentIdAndDeletedAtIsNull(request.getDepartmentId())
                         .orElseThrow(() -> new AppException(ErrorCode.DEPARTMENT_NOT_FOUND));
                 course.setDepartment(department);
             }

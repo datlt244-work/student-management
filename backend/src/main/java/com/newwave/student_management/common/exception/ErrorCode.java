@@ -47,6 +47,13 @@ public enum ErrorCode {
     COURSE_NOT_FOUND(1230, "Course not found", HttpStatus.NOT_FOUND),
     COURSE_CODE_EXISTED(1231, "Course code already exists", HttpStatus.CONFLICT),
 
+    // Business errors - Semester (1240-1249)
+    SEMESTER_EXISTED(1240, "Semester already exists for this name and year", HttpStatus.CONFLICT),
+    SEMESTER_NOT_FOUND(1241, "Semester not found", HttpStatus.NOT_FOUND),
+    SEMESTER_IS_CURRENT(1242, "Cannot delete the current semester", HttpStatus.BAD_REQUEST),
+    SEMESTER_HAS_CLASSES(1243, "Cannot delete semester that has classes", HttpStatus.BAD_REQUEST),
+    NO_CURRENT_SEMESTER(1244, "No current semester configured", HttpStatus.NOT_FOUND),
+
     // Business errors - Address (1250-1269)
     ADDRESS_NOT_FOUND(1250, "Address not found", HttpStatus.NOT_FOUND),
     ADDRESS_LIMIT_EXCEEDED(1251, "Maximum number of addresses reached", HttpStatus.BAD_REQUEST),

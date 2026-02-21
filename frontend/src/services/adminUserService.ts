@@ -664,3 +664,116 @@ export async function deleteAdminCourse(id: number | string): Promise<void> {
 }
 
 
+// ========== Semester ==========
+
+export type SemesterName = 'SPRING' | 'SUMMER' | 'FALL'
+
+export interface AdminSemesterListItem {
+  semesterId: number
+  name: SemesterName
+  year: number
+  displayName: string
+  startDate: string | null
+  endDate: string | null
+  isCurrent: boolean
+  classCount: number
+  createdAt: string
+}
+
+export interface AdminSemesterListResult {
+  content: AdminSemesterListItem[]
+  page: number
+  size: number
+  totalElements: number
+  totalPages: number
+}
+
+export interface AdminCreateSemesterRequest {
+  name: SemesterName
+  year: number
+  startDate?: string | null
+  endDate?: string | null
+}
+
+export interface AdminUpdateSemesterRequest {
+  startDate?: string | null
+  endDate?: string | null
+}
+
+export async function getAdminSemesterList(params: {
+  page?: number
+  size?: number
+  sort?: string
+  year?: number
+  name?: string
+  isCurrent?: boolean
+}): Promise<AdminSemesterListResult> {
+  const query = new URLSearchParams()
+  if (params.page !== undefined) query.set('page', String(params.page))
+  if (params.size !== undefined) query.set('size', String(params.size))
+  if (params.sort) query.set('sort', params.sort)
+  if (params.year !== undefined) query.set('year', String(params.year))
+  if (params.name) query.set('name', params.name)
+  if (params.isCurrent !== undefined) query.set('isCurrent', String(params.isCurrent))
+
+  const response = await apiFetch(`/admin/semesters?${query.toString()}`)
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    throw new Error(errorData?.message || `Failed to fetch semesters (${response.status})`)
+  }
+  const data = await response.json()
+  return (data.result || data) as AdminSemesterListResult
+}
+
+export async function createAdminSemester(body: AdminCreateSemesterRequest): Promise<AdminSemesterListItem> {
+  const response = await apiFetch('/admin/semesters', {
+    method: 'POST',
+    body: JSON.stringify(body),
+    headers: { 'Content-Type': 'application/json' },
+  })
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    throw new Error(errorData?.message || `Failed to create semester (${response.status})`)
+  }
+  const data = await response.json()
+  return (data.result || data) as AdminSemesterListItem
+}
+
+export async function updateAdminSemester(
+  id: number,
+  body: AdminUpdateSemesterRequest,
+): Promise<AdminSemesterListItem> {
+  const response = await apiFetch(`/admin/semesters/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+    headers: { 'Content-Type': 'application/json' },
+  })
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    throw new Error(errorData?.message || `Failed to update semester (${response.status})`)
+  }
+  const data = await response.json()
+  return (data.result || data) as AdminSemesterListItem
+}
+
+export async function setCurrentAdminSemester(id: number): Promise<AdminSemesterListItem> {
+  const response = await apiFetch(`/admin/semesters/${id}/set-current`, {
+    method: 'PATCH',
+  })
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    throw new Error(errorData?.message || `Failed to set current semester (${response.status})`)
+  }
+  const data = await response.json()
+  return (data.result || data) as AdminSemesterListItem
+}
+
+export async function deleteAdminSemester(id: number): Promise<void> {
+  const response = await apiFetch(`/admin/semesters/${id}`, {
+    method: 'DELETE',
+  })
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    throw new Error(errorData?.message || `Failed to delete semester (${response.status})`)
+  }
+}

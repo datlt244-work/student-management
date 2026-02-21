@@ -254,13 +254,13 @@ onMounted(() => {
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div class="lg:col-span-2 flex flex-col gap-6">
             <div
-              class="bg-white dark:bg-surface-dark rounded-[1.5rem] p-10 border border-stone-100 dark:border-stone-800 shadow-sm"
+              class="bg-white dark:bg-surface-dark rounded-[1.5rem] p-10 border border-stone-100 dark:border-stone-800 shadow-sm overflow-hidden"
             >
               <div class="flex items-center gap-3 mb-6">
                 <span class="material-symbols-outlined text-primary">description</span>
                 <h3 class="text-xl font-bold text-slate-900 dark:text-white">Course Overview</h3>
               </div>
-              <p class="text-slate-600 dark:text-slate-300 text-lg leading-relaxed font-body">
+              <p class="text-slate-600 dark:text-slate-300 text-lg leading-relaxed font-body break-words whitespace-pre-wrap">
                 {{ course.description || 'No description provided.' }}
               </p>
             </div>

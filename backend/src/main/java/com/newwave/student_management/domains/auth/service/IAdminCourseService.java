@@ -1,5 +1,6 @@
 package com.newwave.student_management.domains.auth.service;
 
+import com.newwave.student_management.domains.auth.dto.request.AdminCreateCourseRequest;
 import com.newwave.student_management.domains.auth.dto.request.AdminUpdateCourseRequest;
 import com.newwave.student_management.domains.auth.dto.response.AdminCourseDetailResponse;
 import com.newwave.student_management.domains.auth.dto.response.AdminCourseListItemResponse;
@@ -15,6 +16,8 @@ public interface IAdminCourseService {
    AdminCourseDetailResponse getCourseDetail(Integer courseId);
 
    AdminCourseDetailResponse updateCourse(Integer courseId, AdminUpdateCourseRequest request);
+
+   AdminCourseDetailResponse createCourse(AdminCreateCourseRequest request);
 
    void deleteCourse(Integer courseId);
 }

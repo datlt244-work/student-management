@@ -1,6 +1,7 @@
 package com.newwave.student_management.domains.auth.controller;
 
 import com.newwave.student_management.common.dto.ApiResponse;
+import com.newwave.student_management.domains.auth.dto.request.AdminCreateCourseRequest;
 import com.newwave.student_management.domains.auth.dto.request.AdminUpdateCourseRequest;
 import com.newwave.student_management.domains.auth.dto.response.AdminCourseListResponse;
 import com.newwave.student_management.domains.auth.dto.response.AdminCourseDetailResponse;
@@ -38,6 +39,15 @@ public class AdminCourseController {
             @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         return ApiResponse.success(adminCourseService.getCourses(search, status, departmentId, pageable));
+    }
+
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Create a new course")
+    public ApiResponse<AdminCourseDetailResponse> createCourse(
+            @RequestBody @Valid AdminCreateCourseRequest request
+    ) {
+        return ApiResponse.success(adminCourseService.createCourse(request));
     }
 
     @PatchMapping("/{courseId}/status")

@@ -3,6 +3,7 @@ package com.newwave.student_management.domains.auth.service.impl;
 import com.newwave.student_management.common.exception.AppException;
 import com.newwave.student_management.common.exception.ErrorCode;
 import com.newwave.student_management.common.util.PaginationUtil;
+import com.newwave.student_management.domains.auth.dto.request.AdminCreateCourseRequest;
 import com.newwave.student_management.domains.auth.dto.request.AdminUpdateCourseRequest;
 import com.newwave.student_management.domains.auth.dto.response.AdminCourseDetailResponse;
 import com.newwave.student_management.domains.auth.dto.response.AdminCourseListItemResponse;
@@ -122,6 +123,33 @@ public class AdminCourseService implements IAdminCourseService {
 
         courseRepository.save(course);
         return getCourseDetail(courseId);
+    }
+
+    @Override
+    public AdminCourseDetailResponse createCourse(AdminCreateCourseRequest request) {
+        // Validate course code uniqueness
+        if (courseRepository.existsByCode(request.getCode())) {
+            throw new AppException(ErrorCode.COURSE_CODE_EXISTED);
+        }
+
+        // Validate department
+        Department department = departmentRepository.findById(request.getDepartmentId())
+                .orElseThrow(() -> new AppException(ErrorCode.DEPARTMENT_NOT_FOUND));
+
+        if (department.getStatus() == DepartmentStatus.INACTIVE) {
+            throw new AppException(ErrorCode.DEPARTMENT_NOT_ACTIVE);
+        }
+
+        Course course = new Course();
+        course.setName(request.getName());
+        course.setCode(request.getCode());
+        course.setCredits(request.getCredits());
+        course.setDescription(request.getDescription());
+        course.setDepartment(department);
+        course.setStatus(CourseStatus.ACTIVE);
+
+        Course saved = courseRepository.save(course);
+        return getCourseDetail(saved.getCourseId());
     }
 
     @Override

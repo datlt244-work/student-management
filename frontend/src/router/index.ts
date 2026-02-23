@@ -153,7 +153,7 @@ const router = createRouter({
         {
           path: 'grades',
           name: 'student-grades',
-          component: () => import('@/views/student/DashboardView.vue'), // TODO: create Grades page
+          component: () => import('@/views/student/GradesView.vue'),
         },
         {
           path: 'schedule',

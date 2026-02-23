@@ -3,7 +3,7 @@ import { ref } from 'vue'
 
 const searchQuery = ref('')
 
-const departments = ['Computer Science', 'Mathematics', 'Arts', 'Chemistry', 'Economics', 'Literature']
+// const departments = ['Computer Science', 'Mathematics', 'Arts', 'Chemistry', 'Economics', 'Literature']
 const selectedDepartments = ref(['Computer Science'])
 
 const courses = ref([
@@ -16,7 +16,8 @@ const courses = ref([
     location: 'Building A, Room 304',
     seatsOpen: 24,
     status: 'Open',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA6GibUlYwTHKKJNgW4ZaA0ABYlb0SRTwHGKEW42efG_sh6i1Y66Heabkpc0KQ2GsSTk6svSbW0HplCdlwtPdoAUFycjoI6jo5u2IIEasNAER1YxIJT94OIS0RL8_Qe9te7R15fb69_ykFCi9CaxdgrL5Zn4lEAVFddbWF07dkqd2x8b-Hgo7i28XLoqJA9-61ESNliwD-f97V-CTV6vLCZ751hCCTSjDtnZPuTTb2BadSYTEkj2HksPy92ESQR0j8RSWGNKS3c9UU'
+    image:
+      'https://lh3.googleusercontent.com/aida-public/AB6AXuA6GibUlYwTHKKJNgW4ZaA0ABYlb0SRTwHGKEW42efG_sh6i1Y66Heabkpc0KQ2GsSTk6svSbW0HplCdlwtPdoAUFycjoI6jo5u2IIEasNAER1YxIJT94OIS0RL8_Qe9te7R15fb69_ykFCi9CaxdgrL5Zn4lEAVFddbWF07dkqd2x8b-Hgo7i28XLoqJA9-61ESNliwD-f97V-CTV6vLCZ751hCCTSjDtnZPuTTb2BadSYTEkj2HksPy92ESQR0j8RSWGNKS3c9UU',
   },
   {
     code: 'MATH-202',
@@ -27,7 +28,8 @@ const courses = ref([
     location: 'Science Hall, Room 101',
     seatsOpen: 5,
     status: 'Limited',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAyGTtF7PHQEMijpgDbVB83G8a_yuzpWnyf0UJZtHanYN63XFD_fAr940lD-uorkKWdGsRRiibEgYDJvwqy7TuWZrPQLHpPAsbJD78Yt-k2ZOgiuXWuVsovkHEp6ioaktzpufoX_PB4ODjP-bT5tAX-87yMViSn1nLgmuDNIaNL1EGeqTvVwA6Uwrliy04Jrb3QwGhX1gpO83XMEEIpdWMUvjaB8OpjVeo18vYLHse8NUF9Z_FJL9wpDqsH724hmQtpnRu2Uo-j7Yw'
+    image:
+      'https://lh3.googleusercontent.com/aida-public/AB6AXuAyGTtF7PHQEMijpgDbVB83G8a_yuzpWnyf0UJZtHanYN63XFD_fAr940lD-uorkKWdGsRRiibEgYDJvwqy7TuWZrPQLHpPAsbJD78Yt-k2ZOgiuXWuVsovkHEp6ioaktzpufoX_PB4ODjP-bT5tAX-87yMViSn1nLgmuDNIaNL1EGeqTvVwA6Uwrliy04Jrb3QwGhX1gpO83XMEEIpdWMUvjaB8OpjVeo18vYLHse8NUF9Z_FJL9wpDqsH724hmQtpnRu2Uo-j7Yw',
   },
   {
     code: 'ARTS-105',
@@ -38,7 +40,8 @@ const courses = ref([
     location: 'Arts Center, Studio B',
     seatsOpen: 12,
     status: 'Open',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBB7_W0zTridFxqR3C3ednT0mfqfcSXX5AX7Bf2ir5_uoYiHaLOPAL1bYTTzL3DXdXQnMONU4Lgwvcpe2wQFS8EUOahOmnI1XUEvGGgViXMQmdGjTy1jrytU0HDb-CY6GKF_7hg0ObFFKj_hWK9701vP48-8ZOL5GcZA-dCSAjDv-daXUjhJOXOHM-uZEzTcYWQ8mTx-F3VuyWOYszvTogN0w3-9YM_ErcOWiDJj2SVnZKqNISnGvYWp7VJzeDwSDTPWwcVeD45_h0'
+    image:
+      'https://lh3.googleusercontent.com/aida-public/AB6AXuBB7_W0zTridFxqR3C3ednT0mfqfcSXX5AX7Bf2ir5_uoYiHaLOPAL1bYTTzL3DXdXQnMONU4Lgwvcpe2wQFS8EUOahOmnI1XUEvGGgViXMQmdGjTy1jrytU0HDb-CY6GKF_7hg0ObFFKj_hWK9701vP48-8ZOL5GcZA-dCSAjDv-daXUjhJOXOHM-uZEzTcYWQ8mTx-F3VuyWOYszvTogN0w3-9YM_ErcOWiDJj2SVnZKqNISnGvYWp7VJzeDwSDTPWwcVeD45_h0',
   },
   {
     code: 'CHEM-301',
@@ -49,7 +52,8 @@ const courses = ref([
     location: 'Science Hall, Lab 4',
     seatsOpen: 0,
     status: 'Waitlist',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCeY8X2jdx4e9l19o_fRutPKjtUsbAy-87Xq4TIDlUJv0MSwCODU4T5rWz4iGvpxeBHETKw1XTngJOmrxFaYaPb9wMvi4P6rujdxqk-ztEZ9JZmav16kKeRTbZwNWfhUPJhADSNcwnc1UP4JdtFs9mc_ZPXCS-dr0pnkBvC_VxzkmFrZpjwSchh6Zw4_glgYseIvdHjK5v9oRZjQe74XKb81A8hdosf9F5skVTetxFTPLqwTPUciSNmJHpJIP1HQBW2aJBAO-vI8og'
+    image:
+      'https://lh3.googleusercontent.com/aida-public/AB6AXuCeY8X2jdx4e9l19o_fRutPKjtUsbAy-87Xq4TIDlUJv0MSwCODU4T5rWz4iGvpxeBHETKw1XTngJOmrxFaYaPb9wMvi4P6rujdxqk-ztEZ9JZmav16kKeRTbZwNWfhUPJhADSNcwnc1UP4JdtFs9mc_ZPXCS-dr0pnkBvC_VxzkmFrZpjwSchh6Zw4_glgYseIvdHjK5v9oRZjQe74XKb81A8hdosf9F5skVTetxFTPLqwTPUciSNmJHpJIP1HQBW2aJBAO-vI8og',
   },
   {
     code: 'ECON-101',
@@ -60,7 +64,8 @@ const courses = ref([
     location: 'Business School, Hall C',
     seatsOpen: 50,
     status: 'Open',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAFUzW-PWX_tvaZE86XJUB2kvKpCprXbZmXs5qWn8QaVsBe4V2fPffz5iCsc-wcfSyQVWQWpBuLF1NizF1-hUhTHTdPAwBDhlf5XhYqYZtIZDMtYlXNoWEPPVRa_Peetta984hC0NURLw6ORavvfVTQNGRQGCsqvqCthDvAMIh5OofcvWildhTsIAP3AqZ6VjvBt-yBvkOxorHGvhZgkNGG2i5Ep-GiCTfwkkyx71bQE7MLQylnr8CJC6v87EwWD9PbOPRoFR1BZ5o'
+    image:
+      'https://lh3.googleusercontent.com/aida-public/AB6AXuAFUzW-PWX_tvaZE86XJUB2kvKpCprXbZmXs5qWn8QaVsBe4V2fPffz5iCsc-wcfSyQVWQWpBuLF1NizF1-hUhTHTdPAwBDhlf5XhYqYZtIZDMtYlXNoWEPPVRa_Peetta984hC0NURLw6ORavvfVTQNGRQGCsqvqCthDvAMIh5OofcvWildhTsIAP3AqZ6VjvBt-yBvkOxorHGvhZgkNGG2i5Ep-GiCTfwkkyx71bQE7MLQylnr8CJC6v87EwWD9PbOPRoFR1BZ5o',
   },
   {
     code: 'LIT-204',
@@ -71,12 +76,13 @@ const courses = ref([
     location: 'Humanities Bldg, Room 202',
     seatsOpen: 8,
     status: 'Open',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAgzOeiKLKYeid_D_6l81dpyGmSMf3tWNiJaQC_2_5oBx81u8i55EIxel17NRxBZG6JWzIKhKXadpvzDYENKgQroRhW3ISI1t7V_W3BWCujx9j7FVzWLPQ6Q6GUIr_eGxG969w1d-HBs8xBRnbGh5WsyiSwza72YsSoxFsVDfnL_k0DeBMOBSWFxUkF1araE8WPrKoE6WeLu5rVjgj7AvAuKAYrenl3SWdDMCnNaUAFHRx37mCQ0lxAwYdRsSF73YU9rdowM14VtWA'
-  }
+    image:
+      'https://lh3.googleusercontent.com/aida-public/AB6AXuAgzOeiKLKYeid_D_6l81dpyGmSMf3tWNiJaQC_2_5oBx81u8i55EIxel17NRxBZG6JWzIKhKXadpvzDYENKgQroRhW3ISI1t7V_W3BWCujx9j7FVzWLPQ6Q6GUIr_eGxG969w1d-HBs8xBRnbGh5WsyiSwza72YsSoxFsVDfnL_k0DeBMOBSWFxUkF1araE8WPrKoE6WeLu5rVjgj7AvAuKAYrenl3SWdDMCnNaUAFHRx37mCQ0lxAwYdRsSF73YU9rdowM14VtWA',
+  },
 ])
 
 function removeFilter(filter: string) {
-  selectedDepartments.value = selectedDepartments.value.filter(d => d !== filter)
+  selectedDepartments.value = selectedDepartments.value.filter((d) => d !== filter)
 }
 
 function clearAllFilters() {
@@ -90,7 +96,9 @@ function clearAllFilters() {
       <!-- Page Heading & Actions -->
       <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div class="flex flex-col gap-2">
-          <h1 class="text-text-main-light dark:text-text-main-dark text-3xl md:text-4xl font-black tracking-tight">
+          <h1
+            class="text-text-main-light dark:text-text-main-dark text-3xl md:text-4xl font-black tracking-tight"
+          >
             Course Registration
           </h1>
           <p class="text-text-muted-light dark:text-text-muted-dark text-base max-w-2xl">
@@ -161,9 +169,7 @@ function clearAllFilters() {
               >expand_more</span
             >
           </button>
-          <div
-            class="h-8 w-px bg-border-light dark:bg-border-dark mx-1 hidden md:block"
-          ></div>
+          <div class="h-8 w-px bg-border-light dark:bg-border-dark mx-1 hidden md:block"></div>
           <button
             class="flex items-center justify-center size-10 rounded-lg bg-input-bg-light dark:bg-input-bg-dark text-text-main-light dark:text-text-main-dark hover:text-primary hover:bg-primary/10 transition-colors"
           >
@@ -184,9 +190,13 @@ function clearAllFilters() {
             <span class="material-symbols-outlined !text-[16px] align-middle">close</span>
           </button>
         </span>
-        <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium border border-primary/20">
+        <span
+          class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium border border-primary/20"
+        >
           Fall 2024
-          <button class="hover:text-red-500 ml-1"><span class="material-symbols-outlined !text-[16px] align-middle">close</span></button>
+          <button class="hover:text-red-500 ml-1">
+            <span class="material-symbols-outlined !text-[16px] align-middle">close</span>
+          </button>
         </span>
         <button
           @click="clearAllFilters"

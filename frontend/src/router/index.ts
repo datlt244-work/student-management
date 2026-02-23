@@ -158,7 +158,7 @@ const router = createRouter({
         {
           path: 'schedule',
           name: 'student-schedule',
-          component: () => import('@/views/student/DashboardView.vue'), // TODO: create Schedule page
+          component: () => import('@/views/student/ScheduleView.vue'),
         },
         {
           path: 'profile',

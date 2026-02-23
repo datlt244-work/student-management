@@ -1,6 +1,20 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
+interface ScheduledClassItem {
+  id: string
+  name: string
+  course: string
+  teacher: string
+  teacherImg: string
+  schedule: string
+  room: string
+  students: number
+  capacity: number
+  progress: number
+  progressColor: string
+}
+
 const stats = [
   { label: 'Total Classes', value: '124', icon: 'class', color: 'blue' },
   { label: 'Ongoing Classes', value: '8', icon: 'timelapse', color: 'orange' },
@@ -11,7 +25,7 @@ const semesters = ['Fall 2023', 'Spring 2024', 'Summer 2024']
 const departments = ['Computer Science', 'English', 'Mathematics', 'Physics']
 const statuses = ['Active', 'Cancelled', 'Completed']
 
-const classes = ref([
+const classes = ref<ScheduledClassItem[]>([
   {
     id: '#CL-1024',
     name: 'CS101-A',
@@ -58,8 +72,9 @@ const classes = ref([
 
 const searchQuery = ref('')
 
-// Add New Class modal state
+// Modal state
 const showAddClassModal = ref(false)
+const showEditClassModal = ref(false)
 const createLoading = ref(false)
 const createError = ref<string | null>(null)
 
@@ -72,7 +87,9 @@ const newClass = ref({
   maxStudents: 40,
 })
 
-// Mock data for selects (in a real app, these would be fetched from API)
+const editingClass = ref<ScheduledClassItem | null>(null)
+
+// Mock data for selects
 const mockCourses = [
   { id: '1', name: 'Intro to Comp Sci' },
   { id: '2', name: 'Advanced Literature' },
@@ -97,8 +114,31 @@ function handleAddClass() {
   }
 }
 
+function handleEditClass(cls: ScheduledClassItem) {
+  editingClass.value = { ...cls }
+  const course = mockCourses.find((c) => c.name === cls.course)
+  const teacher = mockTeachers.find((t) => t.name === cls.teacher)
+
+  newClass.value = {
+    courseId: course?.id || '',
+    teacherId: teacher?.id || '',
+    semesterId: cls.id.includes('1024') ? 'Fall 2023' : 'Spring 2024',
+    room: cls.room,
+    schedule: cls.schedule,
+    maxStudents: cls.capacity,
+  }
+  showEditClassModal.value = true
+  createError.value = null
+}
+
 function closeAddClassModal() {
   showAddClassModal.value = false
+  createError.value = null
+}
+
+function closeEditClassModal() {
+  showEditClassModal.value = false
+  editingClass.value = null
   createError.value = null
 }
 
@@ -115,11 +155,8 @@ async function submitNewClass() {
 
   try {
     createLoading.value = true
-    // Mock API call
     await new Promise((resolve) => setTimeout(resolve, 1000))
-    console.log('Creating class:', newClass.value)
 
-    // Add to list for demo purposes
     const selectedCourse = mockCourses.find((c) => c.id === newClass.value.courseId)
     const selectedTeacher = mockTeachers.find((t) => t.id === newClass.value.teacherId)
 
@@ -141,6 +178,49 @@ async function submitNewClass() {
     closeAddClassModal()
   } catch {
     createError.value = 'Failed to create class. Please try again.'
+  } finally {
+    createLoading.value = false
+  }
+}
+
+async function submitEditClass() {
+  if (
+    !editingClass.value ||
+    !newClass.value.courseId ||
+    !newClass.value.semesterId ||
+    !newClass.value.room ||
+    !newClass.value.schedule
+  ) {
+    createError.value = 'Please fill in all required fields.'
+    return
+  }
+
+  try {
+    createLoading.value = true
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+
+    const index = classes.value.findIndex((c) => c.id === editingClass.value?.id)
+    if (index !== -1 && classes.value[index]) {
+      const originalClass = classes.value[index]!
+      const selectedCourse = mockCourses.find((c) => c.id === newClass.value.courseId)
+      const selectedTeacher = mockTeachers.find((t) => t.id === newClass.value.teacherId)
+
+      const updatedClass: ScheduledClassItem = {
+        ...originalClass,
+        course: selectedCourse?.name || originalClass.course,
+        teacher: selectedTeacher?.name || originalClass.teacher,
+        schedule: newClass.value.schedule,
+        room: newClass.value.room,
+        capacity: newClass.value.maxStudents,
+        progress: Math.floor((originalClass.students / newClass.value.maxStudents) * 100),
+      }
+
+      classes.value[index] = updatedClass
+    }
+
+    closeEditClassModal()
+  } catch {
+    createError.value = 'Failed to update class. Please try again.'
   } finally {
     createLoading.value = false
   }
@@ -353,6 +433,7 @@ async function submitNewClass() {
                     <span class="material-symbols-outlined text-[20px]">group</span>
                   </router-link>
                   <button
+                    @click="handleEditClass(cls)"
                     class="p-2 text-slate-400 hover:text-primary transition-colors"
                     title="Edit"
                   >
@@ -422,16 +503,16 @@ async function submitNewClass() {
     </div>
   </div>
 
-  <!-- Add New Class Modal -->
+  <!-- Add/Edit Class Modal (Shared Form) -->
   <Teleport to="body">
     <Transition name="fade">
       <div
-        v-if="showAddClassModal"
+        v-if="showAddClassModal || showEditClassModal"
         class="fixed inset-0 z-[100] flex items-center justify-center p-4"
       >
         <div
           class="absolute inset-0 bg-black/50 backdrop-blur-md"
-          @click="closeAddClassModal"
+          @click="showAddClassModal ? closeAddClassModal() : closeEditClassModal()"
         ></div>
         <div
           class="relative bg-white dark:bg-surface-dark w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
@@ -442,12 +523,16 @@ async function submitNewClass() {
           >
             <div class="flex items-center gap-3">
               <div class="p-2 rounded-xl bg-primary/10 text-primary">
-                <span class="material-symbols-outlined">add_circle</span>
+                <span class="material-symbols-outlined">{{
+                  showEditClassModal ? 'edit' : 'add_circle'
+                }}</span>
               </div>
-              <h2 class="text-xl font-bold text-slate-900 dark:text-white">Add New Class</h2>
+              <h2 class="text-xl font-bold text-slate-900 dark:text-white">
+                {{ showEditClassModal ? 'Edit Class' : 'Add New Class' }}
+              </h2>
             </div>
             <button
-              @click="closeAddClassModal"
+              @click="showAddClassModal ? closeAddClassModal() : closeEditClassModal()"
               class="p-1.5 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 text-slate-400 transition-colors"
             >
               <span class="material-symbols-outlined">close</span>
@@ -455,7 +540,10 @@ async function submitNewClass() {
           </div>
 
           <!-- Form Content -->
-          <form @submit.prevent="submitNewClass" class="p-6 overflow-y-auto space-y-5">
+          <form
+            @submit.prevent="showEditClassModal ? submitEditClass() : submitNewClass()"
+            class="p-6 overflow-y-auto space-y-5"
+          >
             <div
               v-if="createError"
               class="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm"
@@ -550,7 +638,7 @@ async function submitNewClass() {
             >
               <button
                 type="button"
-                @click="closeAddClassModal"
+                @click="showAddClassModal ? closeAddClassModal() : closeEditClassModal()"
                 class="px-5 py-2.5 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition-all"
               >
                 Cancel
@@ -564,7 +652,15 @@ async function submitNewClass() {
                   v-if="createLoading"
                   class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"
                 ></span>
-                <span>{{ createLoading ? 'Creating...' : 'Create Class' }}</span>
+                <span>{{
+                  createLoading
+                    ? showEditClassModal
+                      ? 'Updating...'
+                      : 'Creating...'
+                    : showEditClassModal
+                      ? 'Save Changes'
+                      : 'Create Class'
+                }}</span>
               </button>
             </div>
           </form>

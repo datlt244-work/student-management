@@ -67,7 +67,6 @@ async function fetchUsers() {
     totalElements.value = result.totalElements
   } catch (err: unknown) {
     if (err && typeof err === 'object' && 'message' in err) {
-       
       errorMessage.value = String((err as { message?: unknown }).message) || 'Failed to load users'
     } else {
       errorMessage.value = 'Failed to load users'
@@ -187,12 +186,14 @@ function getStatusPillClasses(status: UserStatus): { container: string; dot: str
   switch (status) {
     case 'ACTIVE':
       return {
-        container: 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 ring-green-600/20',
+        container:
+          'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 ring-green-600/20',
         dot: 'bg-green-500',
       }
     case 'INACTIVE':
       return {
-        container: 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 ring-stone-500/20',
+        container:
+          'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 ring-stone-500/20',
         dot: 'bg-stone-400',
       }
     case 'BLOCKED':
@@ -203,7 +204,8 @@ function getStatusPillClasses(status: UserStatus): { container: string; dot: str
     case 'PENDING_VERIFICATION':
     default:
       return {
-        container: 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 ring-yellow-600/20',
+        container:
+          'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 ring-yellow-600/20',
         dot: 'bg-yellow-500',
       }
   }
@@ -260,11 +262,13 @@ async function confirmDeleteUser() {
   }
 }
 
+/*
 function closeDeleteModals() {
   showDeleteConfirmModal.value = false
   deleteTargetUser.value = null
   deleteError.value = null
 }
+*/
 
 async function handleAddUser() {
   showAddUserModal.value = true
@@ -494,7 +498,9 @@ function processImport() {
     <!-- Header -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div>
-        <h1 class="text-slate-900 dark:text-white text-3xl font-bold leading-tight tracking-tight">User Management</h1>
+        <h1 class="text-slate-900 dark:text-white text-3xl font-bold leading-tight tracking-tight">
+          User Management
+        </h1>
         <p class="text-slate-500 dark:text-slate-400 mt-1 text-sm">
           Manage student, teacher, and administrator accounts across the system.
         </p>
@@ -504,7 +510,9 @@ function processImport() {
           v-if="isLoading"
           class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-stone-100 dark:bg-stone-800 text-xs font-medium text-slate-600 dark:text-slate-300"
         >
-          <span class="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></span>
+          <span
+            class="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"
+          ></span>
           <span>Loading...</span>
         </div>
         <button
@@ -531,7 +539,10 @@ function processImport() {
       class="bg-surface-light dark:bg-surface-dark p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm flex flex-col lg:flex-row gap-4"
     >
       <div class="relative flex-1 min-w-0">
-        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">search</span>
+        <span
+          class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]"
+          >search</span
+        >
         <input
           v-model="searchQuery"
           class="w-full pl-10 pr-4 h-11 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary"
@@ -577,17 +588,45 @@ function processImport() {
     </div>
 
     <!-- Table -->
-    <div class="w-full overflow-hidden rounded-xl border border-stone-200 dark:border-stone-800 bg-surface-light dark:bg-surface-dark shadow-sm">
+    <div
+      class="w-full overflow-hidden rounded-xl border border-stone-200 dark:border-stone-800 bg-surface-light dark:bg-surface-dark shadow-sm"
+    >
       <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse">
           <thead>
-            <tr class="bg-stone-50 dark:bg-stone-900/50 border-b border-stone-200 dark:border-stone-800">
-              <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">ID</th>
-              <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">User</th>
-              <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">Role</th>
-              <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">Status</th>
-              <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">Created At</th>
-              <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap text-right">Actions</th>
+            <tr
+              class="bg-stone-50 dark:bg-stone-900/50 border-b border-stone-200 dark:border-stone-800"
+            >
+              <th
+                class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap"
+              >
+                ID
+              </th>
+              <th
+                class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap"
+              >
+                User
+              </th>
+              <th
+                class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap"
+              >
+                Role
+              </th>
+              <th
+                class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap"
+              >
+                Status
+              </th>
+              <th
+                class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap"
+              >
+                Created At
+              </th>
+              <th
+                class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap text-right"
+              >
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody class="divide-y divide-stone-200 dark:divide-stone-800">
@@ -611,20 +650,38 @@ function processImport() {
                       class="w-full h-full object-cover"
                     />
                     <span v-else class="text-primary font-bold text-sm">
-                      {{ (user.fullName && user.fullName.length > 0 ? user.fullName : buildDisplayName(user.email)).substring(0, 2).toUpperCase() }}
+                      {{
+                        (user.fullName && user.fullName.length > 0
+                          ? user.fullName
+                          : buildDisplayName(user.email)
+                        )
+                          .substring(0, 2)
+                          .toUpperCase()
+                      }}
                     </span>
                   </div>
                   <div class="flex flex-col min-w-0">
-                    <span class="text-sm font-bold text-slate-900 dark:text-white leading-none truncate">
-                      {{ user.fullName && user.fullName.length > 0 ? user.fullName : buildDisplayName(user.email) }}
+                    <span
+                      class="text-sm font-bold text-slate-900 dark:text-white leading-none truncate"
+                    >
+                      {{
+                        user.fullName && user.fullName.length > 0
+                          ? user.fullName
+                          : buildDisplayName(user.email)
+                      }}
                     </span>
-                    <span class="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">{{ user.email }}</span>
+                    <span class="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">{{
+                      user.email
+                    }}</span>
                   </div>
                 </div>
               </td>
               <td class="p-4">
                 <span
-                  :class="['text-xs font-bold px-2 py-1 rounded-md', getRolePillClasses(user.role.roleName)]"
+                  :class="[
+                    'text-xs font-bold px-2 py-1 rounded-md',
+                    getRolePillClasses(user.role.roleName),
+                  ]"
                 >
                   {{ user.role.roleName }}
                 </span>
@@ -685,7 +742,9 @@ function processImport() {
           </select>
         </div>
         <div class="flex items-center gap-2">
-          <span class="text-sm font-medium text-slate-700 dark:text-slate-300 mr-2">Page {{ currentPage }} of {{ totalPages }}</span>
+          <span class="text-sm font-medium text-slate-700 dark:text-slate-300 mr-2"
+            >Page {{ currentPage }} of {{ totalPages }}</span
+          >
           <div class="flex gap-1">
             <button
               class="w-9 h-9 flex items-center justify-center rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-slate-400 hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -725,32 +784,39 @@ function processImport() {
   <!-- Add New User Modal -->
   <Teleport to="body">
     <Transition name="fade">
-      <div
-        v-if="showAddUserModal"
-        class="fixed inset-0 z-100 flex items-center justify-center p-4"
-      >
+      <div v-if="showAddUserModal" class="fixed inset-0 z-100 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-black/50 backdrop-blur-md" @click="closeAddUserModal"></div>
         <div
           class="relative bg-white dark:bg-surface-dark w-full max-w-2xl rounded-2xl shadow-2xl max-h-[90vh] flex flex-col"
         >
           <!-- Header -->
-          <div class="flex items-center justify-between px-6 py-5 border-b border-stone-100 dark:border-stone-800 shrink-0">
+          <div
+            class="flex items-center justify-between px-6 py-5 border-b border-stone-100 dark:border-stone-800 shrink-0"
+          >
             <div class="flex items-center gap-3">
               <div class="p-2 rounded-xl bg-orange-100 dark:bg-orange-900/20 text-primary">
                 <span class="material-symbols-outlined">person_add</span>
               </div>
               <h2 class="text-xl font-bold text-slate-900 dark:text-white">Add New User</h2>
             </div>
-            <button class="p-1.5 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 text-slate-400 transition-colors" @click="closeAddUserModal">
+            <button
+              class="p-1.5 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 text-slate-400 transition-colors"
+              @click="closeAddUserModal"
+            >
               <span class="material-symbols-outlined">close</span>
             </button>
           </div>
           <form class="p-6 overflow-y-auto space-y-6 flex-1" @submit.prevent="submitNewUser">
-            <div v-if="createUserError" class="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm">
+            <div
+              v-if="createUserError"
+              class="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm"
+            >
               {{ createUserError }}
             </div>
             <div class="space-y-3">
-              <label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Role Selection</label>
+              <label class="text-sm font-semibold text-slate-700 dark:text-slate-300"
+                >Role Selection</label
+              >
               <div class="flex p-1 bg-stone-100 dark:bg-stone-800 rounded-lg gap-1">
                 <button
                   type="button"
@@ -847,7 +913,9 @@ function processImport() {
                         {{ d.name }}
                       </option>
                     </select>
-                    <p v-if="departmentsLoading" class="text-xs text-slate-500 mt-1">Loading departments…</p>
+                    <p v-if="departmentsLoading" class="text-xs text-slate-500 mt-1">
+                      Loading departments…
+                    </p>
                   </div>
                   <div class="space-y-1.5">
                     <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">
@@ -983,7 +1051,9 @@ function processImport() {
                         {{ d.name }}
                       </option>
                     </select>
-                    <p v-if="departmentsLoading" class="text-xs text-slate-500 mt-1">Loading departments…</p>
+                    <p v-if="departmentsLoading" class="text-xs text-slate-500 mt-1">
+                      Loading departments…
+                    </p>
                   </div>
                   <div class="space-y-1.5">
                     <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">
@@ -1079,7 +1149,9 @@ function processImport() {
               </div>
             </div>
 
-            <div class="flex items-center justify-end gap-3 pt-6 border-t border-stone-200 dark:border-stone-800 shrink-0">
+            <div
+              class="flex items-center justify-end gap-3 pt-6 border-t border-stone-200 dark:border-stone-800 shrink-0"
+            >
               <button
                 type="button"
                 class="px-5 py-2.5 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-stone-100 dark:hover:bg-stone-800 font-bold transition-all"
@@ -1092,7 +1164,11 @@ function processImport() {
                 :disabled="createUserLoading"
                 class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                <span v-if="createUserLoading" class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+                <span
+                  v-if="createUserLoading"
+                  class="material-symbols-outlined text-[18px] animate-spin"
+                  >progress_activity</span
+                >
                 Create User
               </button>
             </div>
@@ -1109,35 +1185,50 @@ function processImport() {
         v-if="showImportExcelModal"
         class="fixed inset-0 z-100 flex items-center justify-center p-4"
       >
-        <div class="absolute inset-0 bg-black/50 backdrop-blur-md" @click="closeImportExcelModal"></div>
+        <div
+          class="absolute inset-0 bg-black/50 backdrop-blur-md"
+          @click="closeImportExcelModal"
+        ></div>
         <div
           class="relative bg-white dark:bg-surface-dark w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-stone-200 dark:border-stone-800"
         >
           <!-- Header -->
-          <div class="px-8 py-6 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between">
+          <div
+            class="px-8 py-6 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between"
+          >
             <div class="flex items-center gap-4">
-              <div class="w-12 h-12 rounded-2xl bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center text-primary">
+              <div
+                class="w-12 h-12 rounded-2xl bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center text-primary"
+              >
                 <span class="material-symbols-outlined text-3xl">upload_file</span>
               </div>
               <div>
                 <h2 class="text-xl font-bold text-slate-900 dark:text-white">Bulk Import Users</h2>
-                <p class="text-sm text-slate-500 dark:text-slate-400">Import multiple accounts using Excel templates</p>
+                <p class="text-sm text-slate-500 dark:text-slate-400">
+                  Import multiple accounts using Excel templates
+                </p>
               </div>
             </div>
-            <button class="p-2 rounded-xl hover:bg-stone-100 dark:hover:bg-stone-800 text-slate-400 transition-colors" @click="closeImportExcelModal">
+            <button
+              class="p-2 rounded-xl hover:bg-stone-100 dark:hover:bg-stone-800 text-slate-400 transition-colors"
+              @click="closeImportExcelModal"
+            >
               <span class="material-symbols-outlined text-2xl">close</span>
             </button>
           </div>
 
           <div class="px-8 py-8 flex flex-col gap-8 max-h-[70vh] overflow-y-auto">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div class="p-5 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-900/30 flex flex-col gap-4">
+              <div
+                class="p-5 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-900/30 flex flex-col gap-4"
+              >
                 <div class="flex items-center gap-2">
                   <span class="material-symbols-outlined text-primary">school</span>
                   <h3 class="font-bold text-slate-800 dark:text-slate-200">Teacher Template</h3>
                 </div>
                 <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Download the Excel format specialized for teacher profiles, departments, and payroll IDs.
+                  Download the Excel format specialized for teacher profiles, departments, and
+                  payroll IDs.
                 </p>
                 <button
                   type="button"
@@ -1148,13 +1239,16 @@ function processImport() {
                   Download Template
                 </button>
               </div>
-              <div class="p-5 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-900/30 flex flex-col gap-4">
+              <div
+                class="p-5 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-900/30 flex flex-col gap-4"
+              >
                 <div class="flex items-center gap-2">
                   <span class="material-symbols-outlined text-primary">group</span>
                   <h3 class="font-bold text-slate-800 dark:text-slate-200">Student Template</h3>
                 </div>
                 <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Download the Excel format specialized for student data, parent contact, and grade levels.
+                  Download the Excel format specialized for student data, parent contact, and grade
+                  levels.
                 </p>
                 <button
                   type="button"
@@ -1168,7 +1262,9 @@ function processImport() {
             </div>
 
             <div class="flex flex-col gap-3">
-              <label class="text-sm font-bold text-slate-700 dark:text-slate-300">Upload Filled Template</label>
+              <label class="text-sm font-bold text-slate-700 dark:text-slate-300"
+                >Upload Filled Template</label
+              >
               <input
                 ref="importFileInputRef"
                 type="file"
@@ -1182,7 +1278,9 @@ function processImport() {
                 @drop="handleImportDrop"
                 @dragover="handleImportDragOver"
               >
-                <div class="w-14 h-14 rounded-full bg-white dark:bg-stone-800 shadow-md flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                <div
+                  class="w-14 h-14 rounded-full bg-white dark:bg-stone-800 shadow-md flex items-center justify-center text-primary group-hover:scale-110 transition-transform"
+                >
                   <span class="material-symbols-outlined text-3xl">cloud_upload</span>
                 </div>
                 <div class="text-center">
@@ -1190,13 +1288,17 @@ function processImport() {
                     Click to upload or drag and drop
                   </p>
                   <p v-else class="text-sm font-bold text-primary">{{ importFile.name }}</p>
-                  <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Excel files only (.xlsx, .xls) up to 10MB</p>
+                  <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    Excel files only (.xlsx, .xls) up to 10MB
+                  </p>
                 </div>
               </div>
             </div>
           </div>
 
-          <div class="px-8 py-5 border-t border-stone-100 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-900/50 flex items-center justify-end gap-3">
+          <div
+            class="px-8 py-5 border-t border-stone-100 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-900/50 flex items-center justify-end gap-3"
+          >
             <button
               type="button"
               class="px-6 py-2.5 text-slate-600 dark:text-slate-400 font-bold hover:bg-stone-200 dark:hover:bg-stone-800 rounded-lg transition-all"
@@ -1230,7 +1332,10 @@ function processImport() {
         v-if="showDeleteConfirmModal"
         class="fixed inset-0 z-120 flex items-center justify-center p-4"
       >
-        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="showDeleteConfirmModal = false"></div>
+        <div
+          class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+          @click="showDeleteConfirmModal = false"
+        ></div>
         <div
           class="relative bg-white dark:bg-surface-dark w-full max-w-sm rounded-2xl shadow-2xl p-6 flex flex-col gap-5"
         >
@@ -1248,7 +1353,9 @@ function processImport() {
           </div>
 
           <!-- User Info Card -->
-          <div class="rounded-xl bg-stone-50 dark:bg-stone-900/40 border border-stone-200 dark:border-stone-800 p-3 text-sm">
+          <div
+            class="rounded-xl bg-stone-50 dark:bg-stone-900/40 border border-stone-200 dark:border-stone-800 p-3 text-sm"
+          >
             <p class="font-semibold text-slate-900 dark:text-white text-center">
               {{ deleteTargetUser?.fullName || deleteTargetUser?.email }}
             </p>
@@ -1281,7 +1388,9 @@ function processImport() {
               class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-red-500/20 transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
               @click="confirmDeleteUser"
             >
-              <span v-if="deleteLoading" class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+              <span v-if="deleteLoading" class="material-symbols-outlined text-[18px] animate-spin"
+                >progress_activity</span
+              >
               Delete
             </button>
           </div>
@@ -1289,8 +1398,6 @@ function processImport() {
       </div>
     </Transition>
   </Teleport>
-
-
 </template>
 
 <style scoped>

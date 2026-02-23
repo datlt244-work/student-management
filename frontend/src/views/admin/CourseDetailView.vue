@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import {
   getAdminCourse,
@@ -53,14 +53,14 @@ async function fetchDepartments() {
 
 async function openEditModal() {
   if (!course.value) return
-  
+
   showEditCourseModal.value = true
   editCourseLoading.value = true
   editCourseError.value = null
-  
+
   try {
     await fetchDepartments()
-    
+
     // Fill data
     editingCourseData.value = {
       name: course.value.name,
@@ -69,8 +69,8 @@ async function openEditModal() {
       departmentId: course.value.departmentId || 0,
       description: course.value.description || '',
     }
-  } catch (e: unknown) {
-     editCourseError.value = 'Failed to prepare edit form'
+  } catch {
+    editCourseError.value = 'Failed to prepare edit form'
   } finally {
     editCourseLoading.value = false
   }
@@ -78,21 +78,21 @@ async function openEditModal() {
 
 async function submitEditCourse() {
   if (!course.value) return
-  
+
   try {
     editCourseSubmitting.value = true
     editCourseError.value = null
-    
+
     await updateAdminCourse(courseId, editingCourseData.value)
-    
+
     showEditCourseModal.value = false
     // Refresh detail
     await fetchCourseDetail()
   } catch (e: unknown) {
     if (e && typeof e === 'object' && 'message' in e) {
-       editCourseError.value = String((e as { message?: unknown }).message)
+      editCourseError.value = String((e as { message?: unknown }).message)
     } else {
-       editCourseError.value = 'Failed to update course'
+      editCourseError.value = 'Failed to update course'
     }
   } finally {
     editCourseSubmitting.value = false
@@ -141,7 +141,10 @@ onMounted(() => {
       <div v-else-if="course" class="max-w-[1100px] w-full mx-auto p-8 md:p-12 flex flex-col gap-8">
         <div class="flex items-center justify-between">
           <nav class="flex items-center gap-2 text-sm font-medium">
-            <RouterLink :to="{ name: 'admin-courses' }" class="text-slate-500 hover:text-primary transition-colors">
+            <RouterLink
+              :to="{ name: 'admin-courses' }"
+              class="text-slate-500 hover:text-primary transition-colors"
+            >
               Course Management
             </RouterLink>
             <span class="material-symbols-outlined text-slate-400 text-[18px]">chevron_right</span>
@@ -260,7 +263,9 @@ onMounted(() => {
                 <span class="material-symbols-outlined text-primary">description</span>
                 <h3 class="text-xl font-bold text-slate-900 dark:text-white">Course Overview</h3>
               </div>
-              <p class="text-slate-600 dark:text-slate-300 text-lg leading-relaxed font-body break-words whitespace-pre-wrap">
+              <p
+                class="text-slate-600 dark:text-slate-300 text-lg leading-relaxed font-body break-words whitespace-pre-wrap"
+              >
                 {{ course.description || 'No description provided.' }}
               </p>
             </div>
@@ -317,14 +322,17 @@ onMounted(() => {
         </div>
       </div>
     </main>
-  
+
     <!-- Edit Course Modal -->
     <Teleport to="body">
       <div
         v-if="showEditCourseModal"
         class="fixed inset-0 z-50 flex items-center justify-center px-4"
       >
-        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="showEditCourseModal = false"></div>
+        <div
+          class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+          @click="showEditCourseModal = false"
+        ></div>
         <div
           class="relative bg-white dark:bg-surface-dark w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] p-6"
         >
@@ -345,19 +353,30 @@ onMounted(() => {
           </div>
 
           <div v-if="editCourseLoading" class="py-12 flex justify-center">
-             <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+            <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
           </div>
 
-          <form v-else @submit.prevent="submitEditCourse" class="flex flex-col flex-1 overflow-hidden gap-5">
+          <form
+            v-else
+            @submit.prevent="submitEditCourse"
+            class="flex flex-col flex-1 overflow-hidden gap-5"
+          >
             <div class="overflow-y-auto flex-1">
-              <p v-if="editCourseError" class="mb-4 text-sm text-red-500 flex items-center gap-1.5 px-3 py-2 bg-red-50 dark:bg-red-900/20 rounded-lg">
+              <p
+                v-if="editCourseError"
+                class="mb-4 text-sm text-red-500 flex items-center gap-1.5 px-3 py-2 bg-red-50 dark:bg-red-900/20 rounded-lg"
+              >
                 <span class="material-symbols-outlined text-[16px]">error</span>
                 {{ editCourseError }}
               </p>
-            
+
               <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div class="md:col-span-2 flex flex-col gap-1.5">
-                  <label class="text-xs font-semibold text-slate-600 dark:text-slate-300" for="edit-course-name">Course Name</label>
+                  <label
+                    class="text-xs font-semibold text-slate-600 dark:text-slate-300"
+                    for="edit-course-name"
+                    >Course Name</label
+                  >
                   <input
                     v-model="editingCourseData.name"
                     class="py-2.5 px-3 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary transition-all"
@@ -367,7 +386,11 @@ onMounted(() => {
                   />
                 </div>
                 <div class="flex flex-col gap-1.5">
-                  <label class="text-xs font-semibold text-slate-600 dark:text-slate-300" for="edit-course-code">Course Code</label>
+                  <label
+                    class="text-xs font-semibold text-slate-600 dark:text-slate-300"
+                    for="edit-course-code"
+                    >Course Code</label
+                  >
                   <input
                     v-model="editingCourseData.code"
                     class="py-2.5 px-3 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary transition-all"
@@ -377,7 +400,11 @@ onMounted(() => {
                   />
                 </div>
                 <div class="flex flex-col gap-1.5">
-                  <label class="text-xs font-semibold text-slate-600 dark:text-slate-300" for="edit-credits">Credits</label>
+                  <label
+                    class="text-xs font-semibold text-slate-600 dark:text-slate-300"
+                    for="edit-credits"
+                    >Credits</label
+                  >
                   <input
                     v-model.number="editingCourseData.credits"
                     class="py-2.5 px-3 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary transition-all"
@@ -388,7 +415,11 @@ onMounted(() => {
                   />
                 </div>
                 <div class="md:col-span-2 flex flex-col gap-1.5">
-                  <label class="text-xs font-semibold text-slate-600 dark:text-slate-300" for="edit-department">Department</label>
+                  <label
+                    class="text-xs font-semibold text-slate-600 dark:text-slate-300"
+                    for="edit-department"
+                    >Department</label
+                  >
                   <select
                     v-model.number="editingCourseData.departmentId"
                     class="py-2.5 px-3 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary transition-all appearance-none cursor-pointer"
@@ -405,7 +436,11 @@ onMounted(() => {
                   </select>
                 </div>
                 <div class="md:col-span-2 flex flex-col gap-1.5">
-                  <label class="text-xs font-semibold text-slate-600 dark:text-slate-300" for="edit-description">Description</label>
+                  <label
+                    class="text-xs font-semibold text-slate-600 dark:text-slate-300"
+                    for="edit-description"
+                    >Description</label
+                  >
                   <textarea
                     v-model="editingCourseData.description"
                     class="py-2.5 px-3 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary transition-all resize-none"
@@ -415,7 +450,9 @@ onMounted(() => {
                 </div>
               </div>
             </div>
-            <div class="border-t border-stone-100 dark:border-stone-800 pt-5 flex items-center justify-end gap-3">
+            <div
+              class="border-t border-stone-100 dark:border-stone-800 pt-5 flex items-center justify-end gap-3"
+            >
               <button
                 type="button"
                 @click="showEditCourseModal = false"
@@ -428,7 +465,11 @@ onMounted(() => {
                 :disabled="editCourseSubmitting"
                 class="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary-dark disabled:opacity-60 text-white text-sm font-bold rounded-xl transition-all active:scale-95 shadow-lg shadow-orange-500/20"
               >
-                <span v-if="editCourseSubmitting" class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+                <span
+                  v-if="editCourseSubmitting"
+                  class="material-symbols-outlined text-[18px] animate-spin"
+                  >progress_activity</span
+                >
                 Save Changes
               </button>
             </div>

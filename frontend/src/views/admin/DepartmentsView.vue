@@ -11,6 +11,9 @@ import {
   type AdminUpdateDepartmentRequest,
   updateAdminDepartmentStatus,
 } from '@/services/adminUserService'
+import { useToast } from '@/composables/useToast'
+
+const { toast, showToast } = useToast()
 
 // Filters & pagination
 const searchQuery = ref('')
@@ -29,14 +32,7 @@ const errorMessage = ref<string | null>(null)
 const departments = ref<AdminDepartmentListItem[]>([])
 const totalCoursesCount = ref(0)
 
-// Toast
-const toast = ref<{ message: string; type: 'success' | 'error' } | null>(null)
-let toastTimer: ReturnType<typeof setTimeout> | null = null
-function showToast(message: string, type: 'success' | 'error' = 'success') {
-  if (toastTimer) clearTimeout(toastTimer)
-  toast.value = { message, type }
-  toastTimer = setTimeout(() => (toast.value = null), 3500)
-}
+// Status toggle handler
 
 // Status toggle handler
 async function toggleDepartmentStatus(dept: AdminDepartmentListItem) {
@@ -66,8 +62,6 @@ const newDepartment = ref({
 const createDepartmentLoading = ref(false)
 const createDepartmentError = ref<string | null>(null)
 
-
-
 // Edit Department modal state
 const showEditDepartmentModal = ref(false)
 const editingDepartment = ref<AdminDepartmentListItem | null>(null)
@@ -84,7 +78,7 @@ const updateDepartmentError = ref<string | null>(null)
 const showDeleteConfirmModal = ref(false)
 const deletingDepartment = ref<AdminDepartmentListItem | null>(null)
 const deleteDepartmentLoading = ref(false)
- 
+
 function clearFilters() {
   searchQuery.value = ''
   statusFilter.value = ''
@@ -111,7 +105,8 @@ async function fetchDepartments() {
     totalCoursesCount.value = (result as unknown as { totalCourses?: number }).totalCourses ?? 0
   } catch (err: unknown) {
     if (err && typeof err === 'object' && 'message' in err) {
-      errorMessage.value = String((err as { message?: unknown }).message) || 'Failed to load departments'
+      errorMessage.value =
+        String((err as { message?: unknown }).message) || 'Failed to load departments'
     } else {
       errorMessage.value = 'Failed to load departments'
     }
@@ -207,8 +202,6 @@ async function submitNewDepartment() {
   }
 }
 
-
-
 // Edit modal handlers
 function handleEditDepartment(dept: AdminDepartmentListItem) {
   editingDepartment.value = dept
@@ -290,7 +283,6 @@ async function confirmDeleteDepartment() {
     deleteDepartmentLoading.value = false
   }
 }
-
 </script>
 
 <template>
@@ -314,7 +306,9 @@ async function confirmDeleteDepartment() {
 
   <div class="max-w-[1400px] w-full mx-auto p-6 md:p-10 flex flex-col gap-8">
     <!-- Header -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-4 border-b border-stone-200 dark:border-stone-800">
+    <div
+      class="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-4 border-b border-stone-200 dark:border-stone-800"
+    >
       <div>
         <h1 class="text-slate-900 dark:text-white text-3xl font-bold leading-tight tracking-tight">
           Department Management
@@ -334,7 +328,9 @@ async function confirmDeleteDepartment() {
 
     <!-- Stats Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div class="flex items-center gap-5 rounded-xl p-6 bg-surface-light dark:bg-surface-dark border border-stone-200 dark:border-stone-800 shadow-sm">
+      <div
+        class="flex items-center gap-5 rounded-xl p-6 bg-surface-light dark:bg-surface-dark border border-stone-200 dark:border-stone-800 shadow-sm"
+      >
         <div class="p-3 rounded-lg bg-orange-100 dark:bg-orange-900/20 text-primary">
           <span class="material-symbols-outlined text-3xl">corporate_fare</span>
         </div>
@@ -345,8 +341,12 @@ async function confirmDeleteDepartment() {
           </p>
         </div>
       </div>
-      <div class="flex items-center gap-5 rounded-xl p-6 bg-surface-light dark:bg-surface-dark border border-stone-200 dark:border-stone-800 shadow-sm">
-        <div class="p-3 rounded-lg bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
+      <div
+        class="flex items-center gap-5 rounded-xl p-6 bg-surface-light dark:bg-surface-dark border border-stone-200 dark:border-stone-800 shadow-sm"
+      >
+        <div
+          class="p-3 rounded-lg bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+        >
           <span class="material-symbols-outlined text-3xl">menu_book</span>
         </div>
         <div>
@@ -359,9 +359,14 @@ async function confirmDeleteDepartment() {
     </div>
 
     <!-- Filters & Search -->
-    <div class="flex flex-col md:flex-row items-center gap-4 bg-white dark:bg-surface-dark p-4 rounded-xl border border-stone-200 dark:border-stone-800">
+    <div
+      class="flex flex-col md:flex-row items-center gap-4 bg-white dark:bg-surface-dark p-4 rounded-xl border border-stone-200 dark:border-stone-800"
+    >
       <div class="relative flex-1 w-full">
-        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">search</span>
+        <span
+          class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]"
+          >search</span
+        >
         <input
           v-model="searchQuery"
           class="w-full pl-10 pr-4 py-2 bg-stone-50 dark:bg-stone-800/50 border-stone-200 dark:border-stone-700 rounded-lg text-sm focus:ring-primary focus:border-primary transition-all"
@@ -399,32 +404,73 @@ async function confirmDeleteDepartment() {
     </div>
 
     <!-- Error Message -->
-    <div v-if="errorMessage" class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm">
+    <div
+      v-if="errorMessage"
+      class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm"
+    >
       {{ errorMessage }}
     </div>
 
     <!-- Table -->
-    <div class="w-full overflow-hidden rounded-xl border border-stone-200 dark:border-stone-800 bg-surface-light dark:bg-surface-dark shadow-sm">
+    <div
+      class="w-full overflow-hidden rounded-xl border border-stone-200 dark:border-stone-800 bg-surface-light dark:bg-surface-dark shadow-sm"
+    >
       <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse">
           <thead>
-            <tr class="bg-stone-50 dark:bg-stone-900/50 border-b border-stone-200 dark:border-stone-800">
-              <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">ID</th>
-              <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Name</th>
-              <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Office Location</th>
-              <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Courses</th>
-              <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Created At</th>
-              <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Status</th>
-              <th class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">Actions</th>
+            <tr
+              class="bg-stone-50 dark:bg-stone-900/50 border-b border-stone-200 dark:border-stone-800"
+            >
+              <th
+                class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+              >
+                ID
+              </th>
+              <th
+                class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+              >
+                Name
+              </th>
+              <th
+                class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+              >
+                Office Location
+              </th>
+              <th
+                class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+              >
+                Total Courses
+              </th>
+              <th
+                class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+              >
+                Created At
+              </th>
+              <th
+                class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+              >
+                Status
+              </th>
+              <th
+                class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right"
+              >
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody class="divide-y divide-stone-200 dark:divide-stone-800">
-            <tr v-if="isLoading" class="hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors">
+            <tr
+              v-if="isLoading"
+              class="hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors"
+            >
               <td colspan="7" class="p-8 text-center text-slate-500 dark:text-slate-400">
                 Loading departments...
               </td>
             </tr>
-            <tr v-else-if="departments.length === 0" class="hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors">
+            <tr
+              v-else-if="departments.length === 0"
+              class="hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors"
+            >
               <td colspan="7" class="p-8 text-center text-slate-500 dark:text-slate-400">
                 No departments found
               </td>
@@ -442,7 +488,9 @@ async function confirmDeleteDepartment() {
               </td>
               <td class="p-4 text-sm text-slate-600 dark:text-slate-300">
                 <div v-if="dept.officeLocation" class="flex items-center gap-1.5">
-                  <span class="material-symbols-outlined text-[18px] text-stone-400">location_on</span>
+                  <span class="material-symbols-outlined text-[18px] text-stone-400"
+                    >location_on</span
+                  >
                   {{ dept.officeLocation }}
                 </div>
                 <span v-else class="text-slate-400 dark:text-slate-500 italic">—</span>
@@ -476,7 +524,9 @@ async function confirmDeleteDepartment() {
                         ? 'text-green-500 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20'
                         : 'text-slate-400 hover:text-slate-600 hover:bg-stone-100 dark:hover:bg-stone-800',
                     ]"
-                    :title="dept.status === 'ACTIVE' ? 'Deactivate department' : 'Activate department'"
+                    :title="
+                      dept.status === 'ACTIVE' ? 'Deactivate department' : 'Activate department'
+                    "
                     @click="toggleDepartmentStatus(dept)"
                   >
                     <span class="material-symbols-outlined text-[20px]">
@@ -521,7 +571,9 @@ async function confirmDeleteDepartment() {
           </select>
         </div>
         <div class="flex items-center gap-2">
-          <span class="text-sm font-medium text-slate-700 dark:text-slate-300 mr-2">Page {{ currentPage }} of {{ totalPages }}</span>
+          <span class="text-sm font-medium text-slate-700 dark:text-slate-300 mr-2"
+            >Page {{ currentPage }} of {{ totalPages }}</span
+          >
           <div class="flex gap-1">
             <button
               class="w-9 h-9 flex items-center justify-center rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-slate-400 hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -565,8 +617,13 @@ async function confirmDeleteDepartment() {
           class="fixed inset-0 z-50 flex items-center justify-center p-4"
           role="dialog"
         >
-          <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closeAddDepartmentModal"></div>
-          <div class="relative w-full max-w-md bg-white dark:bg-surface-dark rounded-2xl shadow-2xl p-6 flex flex-col gap-5">
+          <div
+            class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            @click="closeAddDepartmentModal"
+          ></div>
+          <div
+            class="relative w-full max-w-md bg-white dark:bg-surface-dark rounded-2xl shadow-2xl p-6 flex flex-col gap-5"
+          >
             <!-- Header -->
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-3">
@@ -575,18 +632,27 @@ async function confirmDeleteDepartment() {
                 </div>
                 <h2 class="text-lg font-bold text-slate-900 dark:text-white">Add New Department</h2>
               </div>
-              <button class="p-1.5 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 text-slate-400 transition-colors" @click="closeAddDepartmentModal">
+              <button
+                class="p-1.5 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 text-slate-400 transition-colors"
+                @click="closeAddDepartmentModal"
+              >
                 <span class="material-symbols-outlined">close</span>
               </button>
             </div>
             <!-- Form -->
             <form class="flex flex-col gap-4" @submit.prevent="submitNewDepartment">
-              <p v-if="createDepartmentError" class="text-sm text-red-500 flex items-center gap-1.5">
+              <p
+                v-if="createDepartmentError"
+                class="text-sm text-red-500 flex items-center gap-1.5"
+              >
                 <span class="material-symbols-outlined text-[16px]">error</span>
                 {{ createDepartmentError }}
               </p>
               <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-semibold text-slate-600 dark:text-slate-300" for="dept-add-name">
+                <label
+                  class="text-xs font-semibold text-slate-600 dark:text-slate-300"
+                  for="dept-add-name"
+                >
                   Department Name <span class="text-red-500">*</span>
                 </label>
                 <input
@@ -599,7 +665,10 @@ async function confirmDeleteDepartment() {
                 />
               </div>
               <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-semibold text-slate-600 dark:text-slate-300" for="dept-add-office">
+                <label
+                  class="text-xs font-semibold text-slate-600 dark:text-slate-300"
+                  for="dept-add-office"
+                >
                   Office Location
                 </label>
                 <input
@@ -624,7 +693,11 @@ async function confirmDeleteDepartment() {
                   :disabled="createDepartmentLoading"
                   class="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary-dark disabled:opacity-60 text-white text-sm font-bold rounded-xl transition-all active:scale-95"
                 >
-                  <span v-if="createDepartmentLoading" class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+                  <span
+                    v-if="createDepartmentLoading"
+                    class="material-symbols-outlined text-[18px] animate-spin"
+                    >progress_activity</span
+                  >
                   Create Department
                 </button>
               </div>
@@ -642,8 +715,13 @@ async function confirmDeleteDepartment() {
           class="fixed inset-0 z-50 flex items-center justify-center p-4"
           role="dialog"
         >
-          <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closeEditDepartmentModal"></div>
-          <div class="relative w-full max-w-md bg-white dark:bg-surface-dark rounded-2xl shadow-2xl p-6 flex flex-col gap-5">
+          <div
+            class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            @click="closeEditDepartmentModal"
+          ></div>
+          <div
+            class="relative w-full max-w-md bg-white dark:bg-surface-dark rounded-2xl shadow-2xl p-6 flex flex-col gap-5"
+          >
             <!-- Header -->
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-3">
@@ -655,18 +733,27 @@ async function confirmDeleteDepartment() {
                   <p class="text-xs text-slate-400">{{ editingDepartment?.name }}</p>
                 </div>
               </div>
-              <button class="p-1.5 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 text-slate-400 transition-colors" @click="closeEditDepartmentModal">
+              <button
+                class="p-1.5 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 text-slate-400 transition-colors"
+                @click="closeEditDepartmentModal"
+              >
                 <span class="material-symbols-outlined">close</span>
               </button>
             </div>
             <!-- Form -->
             <form class="flex flex-col gap-4" @submit.prevent="submitUpdateDepartment">
-              <p v-if="updateDepartmentError" class="text-sm text-red-500 flex items-center gap-1.5">
+              <p
+                v-if="updateDepartmentError"
+                class="text-sm text-red-500 flex items-center gap-1.5"
+              >
                 <span class="material-symbols-outlined text-[16px]">error</span>
                 {{ updateDepartmentError }}
               </p>
               <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-semibold text-slate-600 dark:text-slate-300" for="dept-edit-name">
+                <label
+                  class="text-xs font-semibold text-slate-600 dark:text-slate-300"
+                  for="dept-edit-name"
+                >
                   Department Name <span class="text-red-500">*</span>
                 </label>
                 <input
@@ -679,7 +766,10 @@ async function confirmDeleteDepartment() {
                 />
               </div>
               <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-semibold text-slate-600 dark:text-slate-300" for="dept-edit-office">
+                <label
+                  class="text-xs font-semibold text-slate-600 dark:text-slate-300"
+                  for="dept-edit-office"
+                >
                   Office Location
                 </label>
                 <input
@@ -704,7 +794,11 @@ async function confirmDeleteDepartment() {
                   :disabled="updateDepartmentLoading"
                   class="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary-dark disabled:opacity-60 text-white text-sm font-bold rounded-xl transition-all active:scale-95"
                 >
-                  <span v-if="updateDepartmentLoading" class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+                  <span
+                    v-if="updateDepartmentLoading"
+                    class="material-symbols-outlined text-[18px] animate-spin"
+                    >progress_activity</span
+                  >
                   Save Changes
                 </button>
               </div>
@@ -714,8 +808,6 @@ async function confirmDeleteDepartment() {
       </Transition>
     </Teleport>
 
-
-
     <!-- Delete Confirmation Modal -->
     <Teleport to="body">
       <Transition name="fade">
@@ -724,8 +816,13 @@ async function confirmDeleteDepartment() {
           class="fixed inset-0 z-50 flex items-center justify-center p-4"
           role="dialog"
         >
-          <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closeDeleteConfirmModal"></div>
-          <div class="relative w-full max-w-sm bg-white dark:bg-surface-dark rounded-2xl shadow-2xl p-6 flex flex-col gap-5">
+          <div
+            class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            @click="closeDeleteConfirmModal"
+          ></div>
+          <div
+            class="relative w-full max-w-sm bg-white dark:bg-surface-dark rounded-2xl shadow-2xl p-6 flex flex-col gap-5"
+          >
             <div class="flex flex-col items-center text-center gap-3">
               <div class="p-3 rounded-full bg-red-100 dark:bg-red-900/20">
                 <span class="material-symbols-outlined text-3xl text-red-500">delete_forever</span>
@@ -734,12 +831,18 @@ async function confirmDeleteDepartment() {
                 <h2 class="text-lg font-bold text-slate-900 dark:text-white">Delete Department</h2>
                 <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
                   Are you sure you want to delete
-                  <span class="font-semibold text-slate-700 dark:text-slate-200">{{ deletingDepartment?.name }}</span>?
-                  This action cannot be undone.
+                  <span class="font-semibold text-slate-700 dark:text-slate-200">{{
+                    deletingDepartment?.name
+                  }}</span
+                  >? This action cannot be undone.
                 </p>
               </div>
-              <div class="w-full flex items-start gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3">
-                <span class="material-symbols-outlined text-amber-500 text-[18px] mt-0.5">warning</span>
+              <div
+                class="w-full flex items-start gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3"
+              >
+                <span class="material-symbols-outlined text-amber-500 text-[18px] mt-0.5"
+                  >warning</span
+                >
                 <p class="text-xs text-amber-700 dark:text-amber-300 text-left">
                   Cannot be deleted if it has active teachers, students, or courses.
                 </p>
@@ -760,7 +863,11 @@ async function confirmDeleteDepartment() {
                 class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 disabled:opacity-60 text-white text-sm font-bold rounded-xl transition-all active:scale-95"
                 @click="confirmDeleteDepartment"
               >
-                <span v-if="deleteDepartmentLoading" class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+                <span
+                  v-if="deleteDepartmentLoading"
+                  class="material-symbols-outlined text-[18px] animate-spin"
+                  >progress_activity</span
+                >
                 Delete
               </button>
             </div>
@@ -814,6 +921,8 @@ async function confirmDeleteDepartment() {
 }
 
 .animate-in {
-  animation: fade-in 0.2s ease, zoom-in 0.2s ease;
+  animation:
+    fade-in 0.2s ease,
+    zoom-in 0.2s ease;
 }
 </style>

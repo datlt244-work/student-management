@@ -14,6 +14,9 @@ import {
   type AdminDepartmentItem,
   type AdminUpdateCourseRequest,
 } from '@/services/adminUserService'
+import { useToast } from '@/composables/useToast'
+
+const { toast, showToast } = useToast()
 
 const router = useRouter()
 
@@ -52,14 +55,14 @@ async function openEditModal(courseId: number) {
   showEditCourseModal.value = true
   editCourseLoading.value = true
   editCourseError.value = null
-  
+
   try {
     const detail = await getAdminCourse(courseId)
     editingCourseCode.value = detail.code
     editingCourseData.value = {
       name: detail.name,
       code: detail.code,
-      credits: (detail.credits),
+      credits: detail.credits,
       departmentId: detail.departmentId ?? 0,
       description: detail.description || '',
     }
@@ -76,7 +79,7 @@ async function openEditModal(courseId: number) {
 
 async function submitEditCourse() {
   if (!editingCourseId.value) return
-  
+
   try {
     editCourseSubmitting.value = true
     editCourseError.value = null
@@ -86,15 +89,14 @@ async function submitEditCourse() {
     showToast('Course updated successfully.')
   } catch (e: unknown) {
     if (e && typeof e === 'object' && 'message' in e) {
-       editCourseError.value = String((e as { message?: unknown }).message)
+      editCourseError.value = String((e as { message?: unknown }).message)
     } else {
-       editCourseError.value = 'Failed to update course'
+      editCourseError.value = 'Failed to update course'
     }
   } finally {
     editCourseSubmitting.value = false
   }
 }
-
 
 const newCourse = ref({
   name: '',
@@ -137,14 +139,7 @@ async function confirmDeleteCourse() {
   }
 }
 
-// Toast
-const toast = ref<{ message: string; type: 'success' | 'error' } | null>(null)
-let toastTimer: ReturnType<typeof setTimeout> | null = null
-function showToast(message: string, type: 'success' | 'error' = 'success') {
-  if (toastTimer) clearTimeout(toastTimer)
-  toast.value = { message, type }
-  toastTimer = setTimeout(() => (toast.value = null), 3500)
-}
+// Pagination
 
 // Pagination
 const currentPage = ref(1)
@@ -202,9 +197,9 @@ async function fetchCourses() {
     totalPages.value = result.totalPages
   } catch (e: unknown) {
     if (e && typeof e === 'object' && 'message' in e) {
-       error.value = String((e as { message?: unknown }).message) || 'Failed to load courses'
+      error.value = String((e as { message?: unknown }).message) || 'Failed to load courses'
     } else {
-       error.value = 'Failed to load courses'
+      error.value = 'Failed to load courses'
     }
     courses.value = []
   } finally {
@@ -228,8 +223,6 @@ watchDebounced(
   { debounce: 500, maxWait: 1000 },
 )
 
-
-
 onMounted(() => {
   fetchData()
 })
@@ -244,9 +237,10 @@ async function toggleCourseStatus(course: AdminCourseListItem) {
   } catch (e: unknown) {
     course.status = originalStatus // Revert on failure
     console.error('Failed to update status', e)
-    const msg = e && typeof e === 'object' && 'message' in e
-      ? String((e as { message?: unknown }).message)
-      : 'Failed to update status'
+    const msg =
+      e && typeof e === 'object' && 'message' in e
+        ? String((e as { message?: unknown }).message)
+        : 'Failed to update status'
     showToast(msg, 'error')
   }
 }
@@ -373,7 +367,9 @@ function clearFilters() {
         class="flex flex-col justify-between gap-4 rounded-xl p-6 bg-surface-light dark:bg-surface-dark border border-stone-200 dark:border-stone-800 shadow-sm hover:shadow-md transition-shadow"
       >
         <div class="flex justify-between items-start">
-          <div class="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
+          <div
+            class="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+          >
             <span class="material-symbols-outlined">grade</span>
           </div>
         </div>
@@ -389,7 +385,9 @@ function clearFilters() {
         class="flex flex-col justify-between gap-4 rounded-xl p-6 bg-surface-light dark:bg-surface-dark border border-stone-200 dark:border-stone-800 shadow-sm hover:shadow-md transition-shadow"
       >
         <div class="flex justify-between items-start">
-          <div class="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400">
+          <div
+            class="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400"
+          >
             <span class="material-symbols-outlined">domain</span>
           </div>
         </div>
@@ -470,7 +468,9 @@ function clearFilters() {
       <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse">
           <thead>
-            <tr class="bg-stone-50 dark:bg-stone-900/50 border-b border-stone-200 dark:border-stone-800">
+            <tr
+              class="bg-stone-50 dark:bg-stone-900/50 border-b border-stone-200 dark:border-stone-800"
+            >
               <th
                 class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap"
               >
@@ -509,7 +509,9 @@ function clearFilters() {
               :key="course.courseId"
               class="hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors"
             >
-              <td class="p-4 text-sm font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">
+              <td
+                class="p-4 text-sm font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap"
+              >
                 {{ course.code }}
               </td>
               <td class="p-4 text-sm font-bold text-slate-900 dark:text-white whitespace-nowrap">
@@ -564,7 +566,12 @@ function clearFilters() {
                   </button>
                   <button
                     class="p-1 rounded-md text-slate-400 hover:text-primary hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors"
-                    @click="router.push({ name: 'admin-course-detail', params: { courseId: course.courseId } })"
+                    @click="
+                      router.push({
+                        name: 'admin-course-detail',
+                        params: { courseId: course.courseId },
+                      })
+                    "
                     title="View details"
                   >
                     <span class="material-symbols-outlined text-[20px]">visibility</span>
@@ -607,7 +614,9 @@ function clearFilters() {
           </select>
         </div>
         <div class="flex items-center gap-2">
-          <span class="text-sm font-medium text-slate-700 dark:text-slate-300 mr-2">Page {{ currentPage }} of {{ totalPages }}</span>
+          <span class="text-sm font-medium text-slate-700 dark:text-slate-300 mr-2"
+            >Page {{ currentPage }} of {{ totalPages }}</span
+          >
           <div class="flex gap-1">
             <button
               class="w-9 h-9 flex items-center justify-center rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-slate-400 hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -646,9 +655,17 @@ function clearFilters() {
     <!-- Add Course Modal -->
     <Teleport to="body">
       <Transition name="fade">
-        <div v-if="showAddCourseModal" class="fixed inset-0 z-[120] flex items-center justify-center p-4">
-          <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closeAddCourseModal"></div>
-          <div class="relative bg-white dark:bg-surface-dark w-full max-w-xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] p-6">
+        <div
+          v-if="showAddCourseModal"
+          class="fixed inset-0 z-[120] flex items-center justify-center p-4"
+        >
+          <div
+            class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            @click="closeAddCourseModal"
+          ></div>
+          <div
+            class="relative bg-white dark:bg-surface-dark w-full max-w-xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] p-6"
+          >
             <!-- Header -->
             <div class="flex items-center justify-between mb-5">
               <div class="flex items-center gap-3">
@@ -657,50 +674,133 @@ function clearFilters() {
                 </div>
                 <h2 class="text-xl font-bold text-slate-900 dark:text-white">Add New Course</h2>
               </div>
-              <button class="p-1.5 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 text-slate-400 transition-colors" @click="closeAddCourseModal">
+              <button
+                class="p-1.5 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 text-slate-400 transition-colors"
+                @click="closeAddCourseModal"
+              >
                 <span class="material-symbols-outlined">close</span>
               </button>
             </div>
             <!-- Form body -->
             <div class="overflow-y-auto flex-1">
               <form class="grid grid-cols-1 md:grid-cols-2 gap-5" @submit.prevent="submitNewCourse">
-                <p v-if="createCourseError" class="md:col-span-2 text-sm text-red-500 flex items-center gap-1.5">
+                <p
+                  v-if="createCourseError"
+                  class="md:col-span-2 text-sm text-red-500 flex items-center gap-1.5"
+                >
                   <span class="material-symbols-outlined text-[16px]">error</span>
                   {{ createCourseError }}
                 </p>
                 <div class="md:col-span-2 flex flex-col gap-1.5">
-                  <label class="text-xs font-semibold text-slate-600 dark:text-slate-300" for="course-name">Course Name <span class="text-red-500">*</span></label>
-                  <input v-model="newCourse.name" required class="py-2.5 px-3 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary transition-all" id="course-name" placeholder="e.g. Advanced Data Structures" type="text"/>
+                  <label
+                    class="text-xs font-semibold text-slate-600 dark:text-slate-300"
+                    for="course-name"
+                    >Course Name <span class="text-red-500">*</span></label
+                  >
+                  <input
+                    v-model="newCourse.name"
+                    required
+                    class="py-2.5 px-3 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary transition-all"
+                    id="course-name"
+                    placeholder="e.g. Advanced Data Structures"
+                    type="text"
+                  />
                 </div>
                 <div class="flex flex-col gap-1.5">
-                  <label class="text-xs font-semibold text-slate-600 dark:text-slate-300" for="course-code">Course Code <span class="text-red-500">*</span></label>
-                  <input v-model="newCourse.code" required class="py-2.5 px-3 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary transition-all" id="course-code" placeholder="e.g. CS302" type="text"/>
+                  <label
+                    class="text-xs font-semibold text-slate-600 dark:text-slate-300"
+                    for="course-code"
+                    >Course Code <span class="text-red-500">*</span></label
+                  >
+                  <input
+                    v-model="newCourse.code"
+                    required
+                    class="py-2.5 px-3 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary transition-all"
+                    id="course-code"
+                    placeholder="e.g. CS302"
+                    type="text"
+                  />
                 </div>
                 <div class="flex flex-col gap-1.5">
-                  <label class="text-xs font-semibold text-slate-600 dark:text-slate-300" for="credits">Credits</label>
-                  <input v-model="newCourse.credits" required class="py-2.5 px-3 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary transition-all" id="credits" placeholder="3" step="1" type="number"/>
+                  <label
+                    class="text-xs font-semibold text-slate-600 dark:text-slate-300"
+                    for="credits"
+                    >Credits</label
+                  >
+                  <input
+                    v-model="newCourse.credits"
+                    required
+                    class="py-2.5 px-3 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary transition-all"
+                    id="credits"
+                    placeholder="3"
+                    step="1"
+                    type="number"
+                  />
                 </div>
                 <div class="md:col-span-2 flex flex-col gap-1.5">
-                  <label class="text-xs font-semibold text-slate-600 dark:text-slate-300" for="department">Department <span class="text-red-500">*</span></label>
+                  <label
+                    class="text-xs font-semibold text-slate-600 dark:text-slate-300"
+                    for="department"
+                    >Department <span class="text-red-500">*</span></label
+                  >
                   <div class="relative">
-                    <select v-model="newCourse.departmentId" required class="w-full py-2.5 px-3 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary transition-all appearance-none cursor-pointer" id="department">
+                    <select
+                      v-model="newCourse.departmentId"
+                      required
+                      class="w-full py-2.5 px-3 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary transition-all appearance-none cursor-pointer"
+                      id="department"
+                    >
                       <option disabled value="">Select Department</option>
-                      <option v-for="dept in departments" :key="dept.departmentId" :value="dept.departmentId">{{ dept.name }}</option>
+                      <option
+                        v-for="dept in departments"
+                        :key="dept.departmentId"
+                        :value="dept.departmentId"
+                      >
+                        {{ dept.name }}
+                      </option>
                     </select>
-                    <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">expand_more</span>
+                    <span
+                      class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"
+                      >expand_more</span
+                    >
                   </div>
                 </div>
                 <div class="md:col-span-2 flex flex-col gap-1.5">
-                  <label class="text-xs font-semibold text-slate-600 dark:text-slate-300" for="description">Description</label>
-                  <textarea v-model="newCourse.description" class="py-2.5 px-3 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary transition-all resize-none" id="description" placeholder="Enter course description and learning objectives..." rows="3"></textarea>
+                  <label
+                    class="text-xs font-semibold text-slate-600 dark:text-slate-300"
+                    for="description"
+                    >Description</label
+                  >
+                  <textarea
+                    v-model="newCourse.description"
+                    class="py-2.5 px-3 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary transition-all resize-none"
+                    id="description"
+                    placeholder="Enter course description and learning objectives..."
+                    rows="3"
+                  ></textarea>
                 </div>
               </form>
             </div>
             <!-- Footer -->
-            <div class="flex items-center justify-end gap-3 pt-5 mt-3 border-t border-stone-100 dark:border-stone-800">
-              <button @click="closeAddCourseModal" class="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition-colors">Cancel</button>
-              <button @click="submitNewCourse" :disabled="createCourseLoading" class="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary-dark disabled:opacity-60 text-white text-sm font-bold rounded-xl transition-all active:scale-95">
-                <span v-if="createCourseLoading" class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+            <div
+              class="flex items-center justify-end gap-3 pt-5 mt-3 border-t border-stone-100 dark:border-stone-800"
+            >
+              <button
+                @click="closeAddCourseModal"
+                class="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                @click="submitNewCourse"
+                :disabled="createCourseLoading"
+                class="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary-dark disabled:opacity-60 text-white text-sm font-bold rounded-xl transition-all active:scale-95"
+              >
+                <span
+                  v-if="createCourseLoading"
+                  class="material-symbols-outlined text-[18px] animate-spin"
+                  >progress_activity</span
+                >
                 Create Course
               </button>
             </div>
@@ -709,15 +809,16 @@ function clearFilters() {
       </Transition>
     </Teleport>
 
-
-
     <!-- Edit Course Modal -->
     <Teleport to="body">
       <div
         v-if="showEditCourseModal"
         class="fixed inset-0 z-50 flex items-center justify-center px-4"
       >
-        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="showEditCourseModal = false"></div>
+        <div
+          class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+          @click="showEditCourseModal = false"
+        ></div>
         <div
           class="relative bg-white dark:bg-surface-dark w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] p-6"
         >
@@ -738,19 +839,27 @@ function clearFilters() {
           </div>
 
           <div v-if="editCourseLoading" class="py-12 flex justify-center">
-             <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+            <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
           </div>
 
-          <form v-else @submit.prevent="submitEditCourse" class="flex flex-col flex-1 overflow-hidden gap-5">
+          <form
+            v-else
+            @submit.prevent="submitEditCourse"
+            class="flex flex-col flex-1 overflow-hidden gap-5"
+          >
             <div class="overflow-y-auto flex-1">
               <p v-if="editCourseError" class="mb-4 text-sm text-red-500 flex items-center gap-1.5">
                 <span class="material-symbols-outlined text-[16px]">error</span>
                 {{ editCourseError }}
               </p>
-            
+
               <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div class="md:col-span-2 flex flex-col gap-1.5">
-                  <label class="text-xs font-semibold text-slate-600 dark:text-slate-300" for="edit-course-name">Course Name</label>
+                  <label
+                    class="text-xs font-semibold text-slate-600 dark:text-slate-300"
+                    for="edit-course-name"
+                    >Course Name</label
+                  >
                   <input
                     v-model="editingCourseData.name"
                     class="py-2.5 px-3 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary transition-all"
@@ -760,7 +869,11 @@ function clearFilters() {
                   />
                 </div>
                 <div class="flex flex-col gap-1.5">
-                  <label class="text-xs font-semibold text-slate-600 dark:text-slate-300" for="edit-course-code">Course Code</label>
+                  <label
+                    class="text-xs font-semibold text-slate-600 dark:text-slate-300"
+                    for="edit-course-code"
+                    >Course Code</label
+                  >
                   <input
                     v-model="editingCourseData.code"
                     class="py-2.5 px-3 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary transition-all"
@@ -770,7 +883,11 @@ function clearFilters() {
                   />
                 </div>
                 <div class="flex flex-col gap-1.5">
-                  <label class="text-xs font-semibold text-slate-600 dark:text-slate-300" for="edit-credits">Credits</label>
+                  <label
+                    class="text-xs font-semibold text-slate-600 dark:text-slate-300"
+                    for="edit-credits"
+                    >Credits</label
+                  >
                   <input
                     v-model.number="editingCourseData.credits"
                     class="py-2.5 px-3 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary transition-all"
@@ -781,7 +898,11 @@ function clearFilters() {
                   />
                 </div>
                 <div class="md:col-span-2 flex flex-col gap-1.5">
-                  <label class="text-xs font-semibold text-slate-600 dark:text-slate-300" for="edit-department">Department</label>
+                  <label
+                    class="text-xs font-semibold text-slate-600 dark:text-slate-300"
+                    for="edit-department"
+                    >Department</label
+                  >
                   <select
                     v-model.number="editingCourseData.departmentId"
                     class="py-2.5 px-3 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary transition-all appearance-none cursor-pointer"
@@ -798,7 +919,11 @@ function clearFilters() {
                   </select>
                 </div>
                 <div class="md:col-span-2 flex flex-col gap-1.5">
-                  <label class="text-xs font-semibold text-slate-600 dark:text-slate-300" for="edit-description">Description</label>
+                  <label
+                    class="text-xs font-semibold text-slate-600 dark:text-slate-300"
+                    for="edit-description"
+                    >Description</label
+                  >
                   <textarea
                     v-model="editingCourseData.description"
                     class="py-2.5 px-3 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary transition-all resize-none"
@@ -823,7 +948,11 @@ function clearFilters() {
                 :disabled="editCourseSubmitting"
                 class="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary-dark disabled:opacity-60 text-white text-sm font-bold rounded-xl transition-all active:scale-95"
               >
-                <span v-if="editCourseSubmitting" class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+                <span
+                  v-if="editCourseSubmitting"
+                  class="material-symbols-outlined text-[18px] animate-spin"
+                  >progress_activity</span
+                >
                 Save Changes
               </button>
             </div>
@@ -831,7 +960,7 @@ function clearFilters() {
         </div>
       </div>
     </Teleport>
-    
+
     <!-- Delete Confirmation Modal -->
     <Teleport to="body">
       <Transition name="fade">
@@ -840,8 +969,13 @@ function clearFilters() {
           class="fixed inset-0 z-50 flex items-center justify-center p-4"
           role="dialog"
         >
-          <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closeDeleteConfirmModal"></div>
-          <div class="relative w-full max-w-sm bg-white dark:bg-surface-dark rounded-2xl shadow-2xl p-6 flex flex-col gap-5">
+          <div
+            class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            @click="closeDeleteConfirmModal"
+          ></div>
+          <div
+            class="relative w-full max-w-sm bg-white dark:bg-surface-dark rounded-2xl shadow-2xl p-6 flex flex-col gap-5"
+          >
             <div class="flex flex-col items-center text-center gap-3">
               <div class="p-3 rounded-full bg-red-100 dark:bg-red-900/20">
                 <span class="material-symbols-outlined text-3xl text-red-500">delete_forever</span>
@@ -850,8 +984,10 @@ function clearFilters() {
                 <h2 class="text-lg font-bold text-slate-900 dark:text-white">Delete Course</h2>
                 <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
                   Are you sure you want to delete
-                  <span class="font-semibold text-slate-700 dark:text-slate-200">{{ deletingCourse?.name }}</span>?
-                  This action cannot be undone.
+                  <span class="font-semibold text-slate-700 dark:text-slate-200">{{
+                    deletingCourse?.name
+                  }}</span
+                  >? This action cannot be undone.
                 </p>
               </div>
             </div>
@@ -870,7 +1006,11 @@ function clearFilters() {
                 class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 disabled:opacity-60 text-white text-sm font-bold rounded-xl transition-all active:scale-95"
                 @click="confirmDeleteCourse"
               >
-                <span v-if="deleteCourseLoading" class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+                <span
+                  v-if="deleteCourseLoading"
+                  class="material-symbols-outlined text-[18px] animate-spin"
+                  >progress_activity</span
+                >
                 Delete
               </button>
             </div>

@@ -253,12 +253,16 @@ const searchQuery = ref('')
               </td>
               <td class="p-4 text-right whitespace-nowrap">
                 <div class="flex items-center justify-end gap-1">
-                  <button
+                  <router-link
+                    :to="{
+                      name: 'admin-class-detail',
+                      params: { classId: cls.id.replace('#', '') },
+                    }"
                     class="p-2 text-slate-400 hover:text-blue-500 transition-colors"
                     title="View Students"
                   >
                     <span class="material-symbols-outlined text-[20px]">group</span>
-                  </button>
+                  </router-link>
                   <button
                     class="p-2 text-slate-400 hover:text-primary transition-colors"
                     title="Edit"

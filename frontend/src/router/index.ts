@@ -79,7 +79,12 @@ const router = createRouter({
         {
           path: 'classes',
           name: 'admin-classes',
-          component: () => import('@/views/admin/DashboardView.vue'), // TODO: create ClassManagement page
+          component: () => import('@/views/admin/ClassesView.vue'),
+        },
+        {
+          path: 'classes/:classId',
+          name: 'admin-class-detail',
+          component: () => import('@/views/admin/ClassDetailView.vue'),
         },
         {
           path: 'logs',
@@ -148,17 +153,17 @@ const router = createRouter({
         {
           path: 'courses',
           name: 'student-courses',
-          component: () => import('@/views/student/DashboardView.vue'), // TODO: create Courses page
+          component: () => import('@/views/student/CourseRegistrationView.vue'),
         },
         {
           path: 'grades',
           name: 'student-grades',
-          component: () => import('@/views/student/DashboardView.vue'), // TODO: create Grades page
+          component: () => import('@/views/student/GradesView.vue'),
         },
         {
           path: 'schedule',
           name: 'student-schedule',
-          component: () => import('@/views/student/DashboardView.vue'), // TODO: create Schedule page
+          component: () => import('@/views/student/ScheduleView.vue'),
         },
         {
           path: 'profile',

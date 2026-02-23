@@ -12,6 +12,7 @@ import com.newwave.student_management.domains.auth.dto.response.AdminUserListRes
 import com.newwave.student_management.domains.auth.entity.Role;
 import com.newwave.student_management.domains.auth.entity.User;
 import com.newwave.student_management.domains.auth.entity.UserStatus;
+import com.newwave.student_management.domains.profile.dto.response.TeacherSimpleResponse;
 import com.newwave.student_management.domains.auth.repository.RoleRepository;
 import com.newwave.student_management.domains.auth.repository.UserRepository;
 import com.newwave.student_management.domains.auth.service.IAdminUserService;
@@ -66,8 +67,7 @@ public class AdminUserService implements IAdminUserService {
                 normalizedSearch,
                 status,
                 roleId,
-                pageable
-        );
+                pageable);
 
         List<AdminUserListItemResponse> items = pageResult.getContent().stream()
                 .map(user -> {
@@ -452,6 +452,19 @@ public class AdminUserService implements IAdminUserService {
         tokenRedisService.incrementTokenVersion(targetUserId);
     }
 
+    @Override
+    public List<TeacherSimpleResponse> getTeachersByDepartment(Integer departmentId) {
+        return teacherRepository.findByDepartment_DepartmentIdAndDeletedAtIsNull(departmentId).stream()
+                .map(t -> TeacherSimpleResponse.builder()
+                        .teacherId(t.getTeacherId())
+                        .teacherCode(t.getTeacherCode())
+                        .firstName(t.getFirstName())
+                        .lastName(t.getLastName())
+                        .fullName((t.getFirstName() + " " + t.getLastName()).trim())
+                        .build())
+                .toList();
+    }
+
     private static String generateRandomPassword() {
         SecureRandom r = new SecureRandom();
         StringBuilder sb = new StringBuilder(PASSWORD_LENGTH);
@@ -475,20 +488,25 @@ public class AdminUserService implements IAdminUserService {
     }
 
     private static String trimToNull(String s, int maxLen) {
-        if (s == null || s.isBlank()) return null;
+        if (s == null || s.isBlank())
+            return null;
         String t = s.trim();
         return t.length() > maxLen ? t.substring(0, maxLen) : t;
     }
 
     private static String buildDisplayNameFromEmail(String email) {
-        if (email == null || email.isBlank()) return "";
+        if (email == null || email.isBlank())
+            return "";
         String local = email.split("@", 2)[0];
-        if (local == null || local.isBlank()) return email;
+        if (local == null || local.isBlank())
+            return email;
         String[] parts = local.split("[._]");
         StringBuilder sb = new StringBuilder();
         for (String p : parts) {
-            if (p == null || p.isBlank()) continue;
-            if (sb.length() > 0) sb.append(' ');
+            if (p == null || p.isBlank())
+                continue;
+            if (sb.length() > 0)
+                sb.append(' ');
             sb.append(Character.toUpperCase(p.charAt(0)))
                     .append(p.substring(1));
         }
@@ -496,7 +514,8 @@ public class AdminUserService implements IAdminUserService {
     }
 
     private static String trimRequired(String s, int maxLen, String errorMessage) {
-        if (s == null) return null;
+        if (s == null)
+            return null;
         String t = s.trim();
         if (t.isBlank()) {
             throw new AppException(ErrorCode.VALIDATION_ERROR, errorMessage);
@@ -508,9 +527,9 @@ public class AdminUserService implements IAdminUserService {
         Department d = s.getDepartment();
         AdminUserDetailResponse.DepartmentSummary dept = d != null
                 ? AdminUserDetailResponse.DepartmentSummary.builder()
-                .departmentId(d.getDepartmentId())
-                .name(d.getName())
-                .build()
+                        .departmentId(d.getDepartmentId())
+                        .name(d.getName())
+                        .build()
                 : null;
         return AdminUserDetailResponse.StudentProfilePart.builder()
                 .studentId(s.getStudentId())
@@ -534,9 +553,9 @@ public class AdminUserService implements IAdminUserService {
         Department d = t.getDepartment();
         AdminUserDetailResponse.DepartmentSummary dept = d != null
                 ? AdminUserDetailResponse.DepartmentSummary.builder()
-                .departmentId(d.getDepartmentId())
-                .name(d.getName())
-                .build()
+                        .departmentId(d.getDepartmentId())
+                        .name(d.getName())
+                        .build()
                 : null;
         return AdminUserDetailResponse.TeacherProfilePart.builder()
                 .teacherId(t.getTeacherId())
@@ -553,5 +572,3 @@ public class AdminUserService implements IAdminUserService {
                 .build();
     }
 }
-
-

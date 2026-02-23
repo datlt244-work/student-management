@@ -11,6 +11,9 @@ export interface AdminClassListItem {
   semesterName: string;
   roomNumber: string;
   schedule: string;
+  dayOfWeek?: number;
+  startTime?: string;
+  endTime?: string;
   status: 'OPEN' | 'CLOSED' | 'CANCELLED';
   maxStudents: number;
   studentCount: number;
@@ -33,6 +36,17 @@ export interface GetAdminClassesParams {
   sort?: string;
 }
 
+export interface AdminCreateClassRequest {
+  courseId: number;
+  teacherId: string;
+  semesterId: number;
+  roomNumber: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  maxStudents: number;
+}
+
 /**
  * Lấy danh sách lớp học (Admin)
  */
@@ -52,4 +66,17 @@ export async function getAdminClasses(params: GetAdminClassesParams): Promise<Ad
   }
   const data = await response.json();
   return (data.result || data) as AdminClassListResponse;
+}
+
+export async function createAdminClass(request: AdminCreateClassRequest): Promise<AdminClassListItem> {
+  const response = await apiFetch('/admin/classes', {
+    method: 'POST',
+    body: JSON.stringify(request)
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    throw new Error(errorData?.message || `Failed to create class (${response.status})`);
+  }
+  const data = await response.json();
+  return (data.result || data) as AdminClassListItem;
 }

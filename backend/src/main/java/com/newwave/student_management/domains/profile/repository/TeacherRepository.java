@@ -26,4 +26,6 @@ public interface TeacherRepository extends JpaRepository<Teacher, UUID> {
     boolean existsByTeacherCodeAndDeletedAtIsNull(String teacherCode);
 
     long countByDepartment_DepartmentIdAndDeletedAtIsNull(Integer departmentId);
+
+    java.util.List<Teacher> findByDepartment_DepartmentIdAndDeletedAtIsNull(Integer departmentId);
 }

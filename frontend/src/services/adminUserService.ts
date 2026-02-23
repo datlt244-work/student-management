@@ -687,6 +687,14 @@ export interface AdminSemesterListResult {
   totalPages: number
 }
 
+export interface TeacherSimpleResponse {
+  teacherId: string;
+  teacherCode: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+}
+
 export interface AdminCreateSemesterRequest {
   name: SemesterName
   year: number
@@ -761,6 +769,16 @@ export async function updateAdminSemester(
   }
   const data = await response.json()
   return (data.result || data) as AdminSemesterListItem
+}
+
+export async function getAdminTeachersByDepartment(departmentId: number): Promise<TeacherSimpleResponse[]> {
+  const response = await apiFetch(`/admin/users/teachers?departmentId=${departmentId}`);
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    throw new Error(errorData?.message || `Failed to fetch teachers (${response.status})`);
+  }
+  const data = await response.json();
+  return (data.result || data) as TeacherSimpleResponse[];
 }
 
 export async function setCurrentAdminSemester(id: number): Promise<AdminSemesterListItem> {

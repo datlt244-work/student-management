@@ -12,6 +12,9 @@ import {
   type AdminDepartmentItem,
   type UserStatus,
 } from '@/services/adminUserService'
+import { useToast } from '@/composables/useToast'
+
+const { toast, showToast } = useToast()
 
 const router = useRouter()
 
@@ -32,14 +35,7 @@ const errorMessage = ref<string | null>(null)
 // Server data
 const users = ref<AdminUserListItem[]>([])
 
-// Toast
-const toast = ref<{ message: string; type: 'success' | 'error' } | null>(null)
-let toastTimer: ReturnType<typeof setTimeout> | null = null
-function showToast(message: string, type: 'success' | 'error' = 'success') {
-  if (toastTimer) clearTimeout(toastTimer)
-  toast.value = { message, type }
-  toastTimer = setTimeout(() => (toast.value = null), 3500)
-}
+// Mock stats (computed from actual elements in a real app)
 
 // Delete user modal state
 const showDeleteConfirmModal = ref(false)

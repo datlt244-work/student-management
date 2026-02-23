@@ -11,8 +11,9 @@ import {
   type AdminCreateSemesterRequest,
   type SemesterName,
 } from '@/services/adminUserService'
+import { useToast } from '@/composables/useToast'
 
-// ─── Filters & Pagination ─────────────────────────────────
+const { toast, showToast } = useToast()
 const yearFilter = ref<number | ''>('')
 const nameFilter = ref<SemesterName | ''>('')
 const isCurrentFilter = ref<boolean | ''>('')
@@ -30,14 +31,7 @@ const errorMessage = ref<string | null>(null)
 const currentSemester = computed(() => semesters.value.find((s) => s.isCurrent))
 const totalSemesters = computed(() => totalElements.value)
 
-// ─── Toast ────────────────────────────────────────────────
-const toast = ref<{ message: string; type: 'success' | 'error' } | null>(null)
-let toastTimer: ReturnType<typeof setTimeout> | null = null
-function showToast(message: string, type: 'success' | 'error' = 'success') {
-  if (toastTimer) clearTimeout(toastTimer)
-  toast.value = { message, type }
-  toastTimer = setTimeout(() => (toast.value = null), 3500)
-}
+// ─── Add Modal ────────────────────────────────────────────
 
 // ─── Add Modal ────────────────────────────────────────────
 const showAddModal = ref(false)

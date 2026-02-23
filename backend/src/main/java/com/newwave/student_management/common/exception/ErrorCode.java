@@ -54,6 +54,11 @@ public enum ErrorCode {
         NO_CURRENT_SEMESTER(1244, "No current semester configured", HttpStatus.NOT_FOUND),
         SEMESTER_DATE_OVERLAP(1245, "Semester dates overlap with another semester", HttpStatus.BAD_REQUEST),
         CLASS_NOT_FOUND(1260, "Class not found", HttpStatus.NOT_FOUND),
+        TEACHER_DEPARTMENT_MISMATCH(1261, "Teacher must belong to the same department as the course",
+                        HttpStatus.BAD_REQUEST),
+        TEACHER_SCHEDULE_CONFLICT(1262, "Teacher has another class at this time", HttpStatus.CONFLICT),
+        INVALID_MAX_STUDENTS(1263, "Max students cannot exceed 40", HttpStatus.BAD_REQUEST),
+        SEMESTER_NOT_CURRENT(1264, "Classes can only be created for the current semester", HttpStatus.BAD_REQUEST),
 
         // Business errors - Address (1250-1269)
         ADDRESS_NOT_FOUND(1250, "Address not found", HttpStatus.NOT_FOUND),

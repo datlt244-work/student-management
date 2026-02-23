@@ -1,18 +1,18 @@
 package com.newwave.student_management.domains.enrollment.controller;
 
 import com.newwave.student_management.common.dto.ApiResponse;
+import com.newwave.student_management.domains.enrollment.dto.request.AdminCreateClassRequest;
+import com.newwave.student_management.domains.enrollment.dto.response.AdminClassListItemResponse;
 import com.newwave.student_management.domains.enrollment.dto.response.AdminClassListResponse;
 import com.newwave.student_management.domains.enrollment.entity.ScheduledClassStatus;
 import com.newwave.student_management.domains.enrollment.service.IAdminClassService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/admin/classes")
@@ -30,5 +30,11 @@ public class AdminClassController {
             @RequestParam(required = false) Integer semesterId,
             @PageableDefault(size = 10, sort = "createdAt,desc") Pageable pageable) {
         return ApiResponse.success(adminClassService.getAdminClasses(search, status, semesterId, pageable));
+    }
+
+    @Operation(summary = "UC-14.2 - Tạo Lớp học mới (Admin)", description = "Tạo một lớp học mới với course, teacher, semester, room, schedule và maxStudents.")
+    @PostMapping
+    public ApiResponse<AdminClassListItemResponse> createClass(@RequestBody @Valid AdminCreateClassRequest request) {
+        return ApiResponse.success(adminClassService.createClass(request));
     }
 }

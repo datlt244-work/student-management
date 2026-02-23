@@ -1,7 +1,20 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from 'vue'
-import { getAdminClasses, type AdminClassListItem } from '@/services/adminClassService'
-import { getAdminSemesterList, type AdminSemesterListItem } from '@/services/adminUserService'
+import {
+  getAdminClasses,
+  createAdminClass,
+  type AdminClassListItem,
+} from '@/services/adminClassService'
+import {
+  getAdminSemesterList,
+  getAdminCourses,
+  getAdminTeachersByDepartment,
+  type AdminSemesterListItem,
+  type TeacherSimpleResponse,
+} from '@/services/adminUserService'
+import { useToast } from '@/composables/useToast'
+
+const { toast, showToast } = useToast()
 
 const stats = [
   { label: 'Total Classes', value: '124', icon: 'class', color: 'blue' },
@@ -29,27 +42,33 @@ const createLoading = ref(false)
 const createError = ref<string | null>(null)
 
 const newClass = ref({
-  courseId: '',
+  courseId: '' as string | number,
   teacherId: '',
-  semesterId: '',
-  room: '',
-  schedule: '',
+  semesterId: '' as string | number,
+  roomNumber: '',
+  dayOfWeek: 1,
+  startTime: '08:00',
+  endTime: '10:00',
   maxStudents: 40,
 })
 
+const days = [
+  { value: 1, label: 'Monday' },
+  { value: 2, label: 'Tuesday' },
+  { value: 3, label: 'Wednesday' },
+  { value: 4, label: 'Thursday' },
+  { value: 5, label: 'Friday' },
+  { value: 6, label: 'Saturday' },
+  { value: 7, label: 'Sunday' },
+]
+
+const courses = ref<any[]>([])
+const teachers = ref<TeacherSimpleResponse[]>([])
+const loadingTeachers = ref(false)
+
 const editingClass = ref<AdminClassListItem | null>(null)
 
-// Mock data for selects (until we implement these services)
-const mockCourses = [
-  { id: '1', name: 'Intro to Comp Sci' },
-  { id: '2', name: 'Advanced Literature' },
-  { id: '3', name: 'Quantum Physics' },
-]
-const mockTeachers = [
-  { id: '1', name: 'Prof. Wright' },
-  { id: '2', name: 'Dr. Chen' },
-  { id: '3', name: 'Prof. Ross' },
-]
+// Teachers will be loaded dynamically based on course department
 
 async function fetchClasses() {
   try {
@@ -76,14 +95,47 @@ async function loadSemesters() {
   try {
     const res = await getAdminSemesterList({ size: 100 })
     semesters.value = res.content
+    // Set default semester for new class to current semester if available
+    const current = semesters.value.find((s) => s.isCurrent)
+    if (current && !newClass.value.semesterId) {
+      newClass.value.semesterId = current.semesterId
+    }
   } catch (err) {
     console.error('Failed to load semesters:', err)
+  }
+}
+
+async function loadCourses() {
+  try {
+    const res = await getAdminCourses({ size: 200, status: 'ACTIVE' })
+    courses.value = res.content
+  } catch (err) {
+    console.error('Failed to load courses:', err)
+  }
+}
+
+async function handleCourseChange() {
+  const selectedCourse = courses.value.find((c) => c.courseId === newClass.value.courseId)
+  newClass.value.teacherId = ''
+  teachers.value = []
+
+  if (selectedCourse && selectedCourse.departmentId) {
+    try {
+      loadingTeachers.value = true
+      teachers.value = await getAdminTeachersByDepartment(selectedCourse.departmentId)
+    } catch (err) {
+      console.error('Failed to load teachers:', err)
+      showToast('Failed to load teachers for this department', 'error')
+    } finally {
+      loadingTeachers.value = false
+    }
   }
 }
 
 onMounted(() => {
   fetchClasses()
   loadSemesters()
+  loadCourses()
 })
 
 watch([searchQuery, filterStatus, filterSemester, pageSize], () => {
@@ -106,7 +158,11 @@ const paginationPages = computed(() => {
 })
 
 function goToPage(page: number) {
-  if (page >= 1 && page <= totalPages.value && page !== currentPage.value) {
+  if (
+    page >= 1 &&
+    (totalPages.value === 0 || page <= totalPages.value) &&
+    page !== currentPage.value
+  ) {
     currentPage.value = page
     fetchClasses()
   }
@@ -115,27 +171,27 @@ function goToPage(page: number) {
 function handleAddClass() {
   showAddClassModal.value = true
   createError.value = null
+
+  const currentSemester = semesters.value.find((s) => s.isCurrent)
+
   newClass.value = {
     courseId: '',
     teacherId: '',
-    semesterId: '',
-    room: '',
-    schedule: '',
+    semesterId: currentSemester ? currentSemester.semesterId : '',
+    roomNumber: '',
+    dayOfWeek: 1,
+    startTime: '08:00',
+    endTime: '10:00',
     maxStudents: 40,
   }
+  teachers.value = []
 }
 
 function handleEditClass(cls: AdminClassListItem) {
+  // Not fully implemented in this step, but setting basic fields
   editingClass.value = { ...cls }
-  // Mapping for edit - this will need adjustment once we have course/teacher sync
-  newClass.value = {
-    courseId: '', // Placeholder
-    teacherId: '', // Placeholder
-    semesterId: '', // Placeholder
-    room: cls.roomNumber,
-    schedule: cls.schedule,
-    maxStudents: cls.maxStudents,
-  }
+  // We'd need to fetch the course/teacher details to map correctly
+  // For now, focusing on Add Class
   showEditClassModal.value = true
   createError.value = null
 }
@@ -158,9 +214,29 @@ function closeEditClassModal() {
 }
 
 async function submitNewClass() {
-  // Logic remains similar but will call create API in next step
-  console.log('Submit new class:', newClass.value)
-  closeAddClassModal()
+  try {
+    createLoading.value = true
+    createError.value = null
+
+    await createAdminClass({
+      courseId: Number(newClass.value.courseId),
+      teacherId: newClass.value.teacherId,
+      semesterId: Number(newClass.value.semesterId),
+      roomNumber: newClass.value.roomNumber,
+      dayOfWeek: newClass.value.dayOfWeek,
+      startTime: newClass.value.startTime,
+      endTime: newClass.value.endTime,
+      maxStudents: newClass.value.maxStudents,
+    })
+
+    showToast('Class created successfully')
+    closeAddClassModal()
+    fetchClasses()
+  } catch (err: any) {
+    createError.value = err.message || 'Failed to create class'
+  } finally {
+    createLoading.value = false
+  }
 }
 
 async function submitEditClass() {
@@ -514,6 +590,24 @@ async function submitEditClass() {
 
   <!-- Add/Edit Class Modal (Shared Form) -->
   <Teleport to="body">
+    <!-- Toast Notification -->
+    <Transition name="toast">
+      <div
+        v-if="toast"
+        :class="[
+          'fixed top-6 right-6 z-[100] flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-2xl text-sm font-medium border backdrop-blur-sm',
+          toast.type === 'success'
+            ? 'bg-green-50 dark:bg-green-900/40 border-green-200 dark:border-green-700 text-green-800 dark:text-green-300'
+            : 'bg-red-50 dark:bg-red-900/40 border-red-200 dark:border-red-700 text-red-800 dark:text-red-300',
+        ]"
+      >
+        <span class="material-symbols-outlined text-[20px]">
+          {{ toast.type === 'success' ? 'check_circle' : 'error' }}
+        </span>
+        {{ toast.message }}
+      </div>
+    </Transition>
+
     <Transition name="fade">
       <div
         v-if="showAddClassModal || showEditClassModal"
@@ -567,40 +661,47 @@ async function submitEditClass() {
                 >
                 <select
                   v-model="newClass.courseId"
+                  @change="handleCourseChange"
                   required
                   class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary"
                 >
                   <option value="">Select Course</option>
-                  <option v-for="c in mockCourses" :key="c.id" :value="c.id">{{ c.name }}</option>
+                  <option v-for="c in courses" :key="c.courseId" :value="c.courseId">
+                    [{{ c.code }}] {{ c.name }}
+                  </option>
                 </select>
               </div>
               <div class="space-y-1.5">
                 <label class="text-xs font-bold text-slate-500 uppercase tracking-wider"
-                  >Semester <span class="text-red-500">*</span></label
+                  >Semester</label
                 >
-                <select
-                  v-model="newClass.semesterId"
-                  required
-                  class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary"
+                <div
+                  class="w-full px-3 py-2 border border-stone-100 dark:border-stone-800 rounded-lg bg-stone-50 dark:bg-stone-900/50 text-sm italic text-slate-500"
                 >
-                  <option value="">Select Semester</option>
-                  <option v-for="s in semesters" :key="s.semesterId" :value="s.semesterId">
-                    {{ s.displayName }}
-                  </option>
-                </select>
+                  {{
+                    semesters.find((s) => s.semesterId === newClass.semesterId)?.displayName ||
+                    'Current'
+                  }}
+                </div>
               </div>
             </div>
 
             <div class="space-y-1.5">
               <label class="text-xs font-bold text-slate-500 uppercase tracking-wider"
-                >Teacher</label
+                >Teacher <span class="text-red-500">*</span></label
               >
               <select
                 v-model="newClass.teacherId"
-                class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary"
+                required
+                :disabled="loadingTeachers || !newClass.courseId"
+                class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary disabled:opacity-50"
               >
-                <option value="">Select Teacher (Optional)</option>
-                <option v-for="t in mockTeachers" :key="t.id" :value="t.id">{{ t.name }}</option>
+                <option value="" disabled>
+                  {{ loadingTeachers ? 'Loading teachers...' : 'Select Teacher (Required)' }}
+                </option>
+                <option v-for="t in teachers" :key="t.teacherId" :value="t.teacherId">
+                  [{{ t.teacherCode }}] {{ t.fullName }}
+                </option>
               </select>
             </div>
 
@@ -610,7 +711,7 @@ async function submitEditClass() {
                   >Room <span class="text-red-500">*</span></label
                 >
                 <input
-                  v-model="newClass.room"
+                  v-model="newClass.roomNumber"
                   required
                   type="text"
                   placeholder="e.g. Rm 304"
@@ -630,17 +731,41 @@ async function submitEditClass() {
               </div>
             </div>
 
-            <div class="space-y-1.5">
-              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider"
-                >Schedule <span class="text-red-500">*</span></label
-              >
-              <input
-                v-model="newClass.schedule"
-                required
-                type="text"
-                placeholder="e.g. Mon, Wed 09:00 AM"
-                class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary"
-              />
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+              <div class="space-y-1.5">
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider"
+                  >Day <span class="text-red-500">*</span></label
+                >
+                <select
+                  v-model="newClass.dayOfWeek"
+                  required
+                  class="w-full px-2 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary"
+                >
+                  <option v-for="d in days" :key="d.value" :value="d.value">{{ d.label }}</option>
+                </select>
+              </div>
+              <div class="space-y-1.5">
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider"
+                  >Starts <span class="text-red-500">*</span></label
+                >
+                <input
+                  v-model="newClass.startTime"
+                  required
+                  type="time"
+                  class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary"
+                />
+              </div>
+              <div class="space-y-1.5">
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider"
+                  >Ends <span class="text-red-500">*</span></label
+                >
+                <input
+                  v-model="newClass.endTime"
+                  required
+                  type="time"
+                  class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary"
+                />
+              </div>
             </div>
 
             <!-- Footer -->
@@ -680,3 +805,29 @@ async function submitEditClass() {
     </Transition>
   </Teleport>
 </template>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.toast-enter-active {
+  transition: all 0.3s ease;
+}
+.toast-leave-active {
+  transition: all 0.25s ease;
+}
+.toast-enter-from {
+  opacity: 0;
+  transform: translateY(-12px) scale(0.95);
+}
+.toast-leave-to {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.97);
+}
+</style>

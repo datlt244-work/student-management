@@ -18,6 +18,9 @@ public class AdminClassListItemResponse {
     private String semesterName;
     private String roomNumber;
     private String schedule;
+    private Integer dayOfWeek;
+    private String startTime;
+    private String endTime;
     private ScheduledClassStatus status;
     private Integer maxStudents;
     private long studentCount;

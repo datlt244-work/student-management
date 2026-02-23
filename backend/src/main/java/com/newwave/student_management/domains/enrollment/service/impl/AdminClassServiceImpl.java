@@ -50,11 +50,11 @@ public class AdminClassServiceImpl implements IAdminClassService {
         Specification<ScheduledClass> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
+            Join<ScheduledClass, Course> courseJoin = root.join("course", JoinType.INNER);
+
             if (search != null && !search.isBlank()) {
                 String searchLower = "%" + search.toLowerCase() + "%";
 
-                // Join with Course
-                Join<ScheduledClass, Course> courseJoin = root.join("course", JoinType.INNER);
                 Predicate courseName = cb.like(cb.lower(courseJoin.get("name")), searchLower);
                 Predicate courseCode = cb.like(cb.lower(courseJoin.get("code")), searchLower);
 
@@ -73,6 +73,12 @@ public class AdminClassServiceImpl implements IAdminClassService {
             if (semesterId != null) {
                 predicates.add(cb.equal(root.get("semester").get("semesterId"), semesterId));
             }
+
+            // Always filter out deleted classes
+            predicates.add(cb.isNull(root.get("deletedAt")));
+
+            // Filter classes with ACTIVE courses only
+            predicates.add(cb.equal(courseJoin.get("status"), com.newwave.student_management.domains.curriculum.entity.CourseStatus.ACTIVE));
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };

@@ -17,6 +17,9 @@ import com.newwave.student_management.domains.profile.entity.DepartmentStatus;
 import com.newwave.student_management.domains.profile.repository.DepartmentRepository;
 import com.newwave.student_management.domains.profile.repository.SemesterRepository;
 import com.newwave.student_management.domains.profile.entity.Semester;
+import com.newwave.student_management.domains.enrollment.repository.ScheduledClassRepository;
+import com.newwave.student_management.domains.enrollment.repository.EnrollmentRepository;
+import com.newwave.student_management.domains.enrollment.entity.ScheduledClass;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -32,6 +35,8 @@ public class AdminCourseService implements IAdminCourseService {
     private final CourseRepository courseRepository;
     private final SemesterRepository semesterRepository;
     private final DepartmentRepository departmentRepository;
+    private final ScheduledClassRepository scheduledClassRepository;
+    private final EnrollmentRepository enrollmentRepository;
 
     @Override
     public AdminCourseListResponse getCourses(String search, CourseStatus status, Integer departmentId, Pageable pageable) {
@@ -63,6 +68,25 @@ public class AdminCourseService implements IAdminCourseService {
             && course.getDepartment() != null 
             && course.getDepartment().getStatus() == DepartmentStatus.INACTIVE) {
             throw new AppException(ErrorCode.DEPARTMENT_NOT_ACTIVE);
+        }
+
+        if (status == CourseStatus.INACTIVE) {
+            List<ScheduledClass> classes = scheduledClassRepository.findByCourseCourseIdAndDeletedAtIsNull(courseId);
+            
+            // Check if any class has enrolled students
+            for (ScheduledClass scheduledClass : classes) {
+                long studentCount = enrollmentRepository.countByScheduledClassClassId(scheduledClass.getClassId());
+                if (studentCount > 0) {
+                    throw new AppException(ErrorCode.COURSE_HAS_ENROLLED_STUDENTS);
+                }
+            }
+            
+            // If no students, soft delete all classes of this course
+            LocalDateTime now = LocalDateTime.now();
+            for (ScheduledClass scheduledClass : classes) {
+                scheduledClass.setDeletedAt(now);
+            }
+            scheduledClassRepository.saveAll(classes);
         }
 
         course.setStatus(status);

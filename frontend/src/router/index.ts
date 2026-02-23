@@ -148,7 +148,7 @@ const router = createRouter({
         {
           path: 'courses',
           name: 'student-courses',
-          component: () => import('@/views/student/DashboardView.vue'), // TODO: create Courses page
+          component: () => import('@/views/student/CourseRegistrationView.vue'),
         },
         {
           path: 'grades',

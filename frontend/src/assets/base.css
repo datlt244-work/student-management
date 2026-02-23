@@ -15,6 +15,9 @@
   --color-border-light: #e8ddce;
   --color-border-dark: #3e3223;
 
+  --color-input-bg-light: #f4eee7;
+  --color-input-bg-dark: #3a2e22;
+
   --font-display: "Lexend", sans-serif;
   --font-body: "Noto Sans", sans-serif;
 }

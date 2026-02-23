@@ -1,19 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-
-interface ScheduledClassItem {
-  id: string
-  name: string
-  course: string
-  teacher: string
-  teacherImg: string
-  schedule: string
-  room: string
-  students: number
-  capacity: number
-  progress: number
-  progressColor: string
-}
+import { ref, onMounted, watch, computed } from 'vue'
+import { getAdminClasses, type AdminClassListItem } from '@/services/adminClassService'
+import { getAdminSemesterList, type AdminSemesterListItem } from '@/services/adminUserService'
 
 const stats = [
   { label: 'Total Classes', value: '124', icon: 'class', color: 'blue' },
@@ -21,56 +9,18 @@ const stats = [
   { label: 'Active Students', value: '3,852', icon: 'groups', color: 'green' },
 ]
 
-const semesters = ['Fall 2023', 'Spring 2024', 'Summer 2024']
-const departments = ['Computer Science', 'English', 'Mathematics', 'Physics']
-const statuses = ['Active', 'Cancelled', 'Completed']
-
-const classes = ref<ScheduledClassItem[]>([
-  {
-    id: '#CL-1024',
-    name: 'CS101-A',
-    course: 'Intro to Comp Sci',
-    teacher: 'Prof. Wright',
-    teacherImg:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuA7s5uF2OqfXKzZUy2Gk0vFGgSzpTCYs3ujiRptcYm7AUCnxkkNnUWp5_r8X14NSPYtTrfm8LyDiitYO-e2DjIaFObvZO7rCQFn6MH0WAZecomHBLT6u9LdooK4RgWaVZUD-GhDVkk8_1XVugztLc91sGA3Kfyk76ELxew5ho_oUG4cIiJ50bwf-XT5M_ZErt8uRg80ximHfCpFtyIRjDj3XyMP4H-2ApQ1HeWVlZxumSH6XJawODA1chAYUq7e5wkEXTyUYctm1xk',
-    schedule: 'Mon, Wed 09:00 AM',
-    room: 'Rm 304',
-    students: 25,
-    capacity: 30,
-    progress: 83,
-    progressColor: 'bg-primary',
-  },
-  {
-    id: '#CL-1025',
-    name: 'ENG202-B',
-    course: 'Advanced Literature',
-    teacher: 'Dr. Chen',
-    teacherImg:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuBMBwAJx3-XV4d-gjhyxJozgYvifSOBHqdertmb8497BlDrr7CXMVmseYW3niej5h9e-XzAyQpQ3et72D1qgWzpz3NQ95Oq4hcjoI3q4FVwaQsKWLavzff2aTLg4W6M3_QcUcNTlPHgsUbteaUOKSEMdiwMmcRZteSC743RYii8m5JRwY1-YLZ7X0HWECKxkaQsw74wSRxJfNX0MTgdMzCHxlchYD46BmG49kvUChK_LqnyfXLGy-mMZY14WR_L9LjtLjnMNiK46-o',
-    schedule: 'Tue, Thu 14:00 PM',
-    room: 'Hall B',
-    students: 18,
-    capacity: 40,
-    progress: 45,
-    progressColor: 'bg-green-500',
-  },
-  {
-    id: '#CL-1026',
-    name: 'PHY301-A',
-    course: 'Quantum Physics',
-    teacher: 'Prof. Ross',
-    teacherImg:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuBDVVxA7UrKPxSoyjVtItFa9p4ajqomzKE45Y8WR2hW7RvgY99LgNgP9-IEJr-0-Q0irBy9733fFqYg-rlkSxhdPPaODQi5Ux82-Z3BPpsOHzBusf8KN9zYlpDSEjFYe-oypQeY7QeZFkDsSCdLFmj3KIG03iWBnjyS7nJENj9zZkqgk_xhkAdHeYJe-UpZ3tdgIROkw_kMGppdJLuKgexNYF7-33xxUTmbYpVlGYy-CbfKW5ALn18YhsBGzzCbucEM_X4zae42TZ8',
-    schedule: 'Mon, Fri 10:00 AM',
-    room: 'Lab 101',
-    students: 19,
-    capacity: 20,
-    progress: 95,
-    progressColor: 'bg-red-500',
-  },
-])
+const loading = ref(false)
+const classes = ref<AdminClassListItem[]>([])
+const semesters = ref<AdminSemesterListItem[]>([])
+const statuses = ['OPEN', 'CLOSED', 'CANCELLED']
 
 const searchQuery = ref('')
+const filterStatus = ref('')
+const filterSemester = ref<number | ''>('')
+const currentPage = ref(1)
+const pageSize = ref(10)
+const totalElements = ref(0)
+const totalPages = ref(0)
 
 // Modal state
 const showAddClassModal = ref(false)
@@ -87,9 +37,9 @@ const newClass = ref({
   maxStudents: 40,
 })
 
-const editingClass = ref<ScheduledClassItem | null>(null)
+const editingClass = ref<AdminClassListItem | null>(null)
 
-// Mock data for selects
+// Mock data for selects (until we implement these services)
 const mockCourses = [
   { id: '1', name: 'Intro to Comp Sci' },
   { id: '2', name: 'Advanced Literature' },
@@ -100,6 +50,67 @@ const mockTeachers = [
   { id: '2', name: 'Dr. Chen' },
   { id: '3', name: 'Prof. Ross' },
 ]
+
+async function fetchClasses() {
+  try {
+    loading.value = true
+    const response = await getAdminClasses({
+      search: searchQuery.value,
+      status: filterStatus.value || undefined,
+      semesterId: filterSemester.value || undefined,
+      page: currentPage.value - 1,
+      size: pageSize.value,
+      sort: 'createdAt,desc',
+    })
+    classes.value = response.content
+    totalElements.value = response.totalElements
+    totalPages.value = response.totalPages
+  } catch (err) {
+    console.error('Failed to fetch classes:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+async function loadSemesters() {
+  try {
+    const res = await getAdminSemesterList({ size: 100 })
+    semesters.value = res.content
+  } catch (err) {
+    console.error('Failed to load semesters:', err)
+  }
+}
+
+onMounted(() => {
+  fetchClasses()
+  loadSemesters()
+})
+
+watch([searchQuery, filterStatus, filterSemester, pageSize], () => {
+  currentPage.value = 1
+  fetchClasses()
+})
+
+watch(currentPage, () => {
+  fetchClasses()
+})
+
+const paginationPages = computed(() => {
+  const total = totalPages.value
+  const current = currentPage.value
+  const pages: number[] = []
+  const start = Math.max(1, current - 1)
+  const end = Math.min(total, current + 1)
+  for (let i = start; i <= end; i++) pages.push(i)
+  return pages
+})
+
+function goToPage(page: number) {
+  if (page >= 1 && page <= totalPages.value && page !== currentPage.value) {
+    currentPage.value = page
+    fetchClasses()
+  }
+}
 
 function handleAddClass() {
   showAddClassModal.value = true
@@ -114,21 +125,25 @@ function handleAddClass() {
   }
 }
 
-function handleEditClass(cls: ScheduledClassItem) {
+function handleEditClass(cls: AdminClassListItem) {
   editingClass.value = { ...cls }
-  const course = mockCourses.find((c) => c.name === cls.course)
-  const teacher = mockTeachers.find((t) => t.name === cls.teacher)
-
+  // Mapping for edit - this will need adjustment once we have course/teacher sync
   newClass.value = {
-    courseId: course?.id || '',
-    teacherId: teacher?.id || '',
-    semesterId: cls.id.includes('1024') ? 'Fall 2023' : 'Spring 2024',
-    room: cls.room,
+    courseId: '', // Placeholder
+    teacherId: '', // Placeholder
+    semesterId: '', // Placeholder
+    room: cls.roomNumber,
     schedule: cls.schedule,
-    maxStudents: cls.capacity,
+    maxStudents: cls.maxStudents,
   }
   showEditClassModal.value = true
   createError.value = null
+}
+
+function clearFilters() {
+  searchQuery.value = ''
+  filterStatus.value = ''
+  filterSemester.value = ''
 }
 
 function closeAddClassModal() {
@@ -143,87 +158,15 @@ function closeEditClassModal() {
 }
 
 async function submitNewClass() {
-  if (
-    !newClass.value.courseId ||
-    !newClass.value.semesterId ||
-    !newClass.value.room ||
-    !newClass.value.schedule
-  ) {
-    createError.value = 'Please fill in all required fields.'
-    return
-  }
-
-  try {
-    createLoading.value = true
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    const selectedCourse = mockCourses.find((c) => c.id === newClass.value.courseId)
-    const selectedTeacher = mockTeachers.find((t) => t.id === newClass.value.teacherId)
-
-    classes.value.unshift({
-      id: `#CL-${Math.floor(Math.random() * 10000)}`,
-      name: `${selectedCourse?.name || 'New Class'}-X`,
-      course: selectedCourse?.name || 'Unknown Course',
-      teacher: selectedTeacher?.name || 'Unassigned',
-      teacherImg:
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuBMBwAJx3-XV4d-gjhyxJozgYvifSOBHqdertmb8497BlDrr7CXMVmseYW3niej5h9e-XzAyQpQ3et72D1qgWzpz3NQ95Oq4hcjoI3q4FVwaQsKWLavzff2aTLg4W6M3_QcUcNTlPHgsUbteaUOKSEMdiwMmcRZteSC743RYii8m5JRwY1-YLZ7X0HWECKxkaQsw74wSRxJfNX0MTgdMzCHxlchYD46BmG49kvUChK_LqnyfXLGy-mMZY14WR_L9LjtLjnMNiK46-o',
-      schedule: newClass.value.schedule,
-      room: newClass.value.room,
-      students: 0,
-      capacity: newClass.value.maxStudents,
-      progress: 0,
-      progressColor: 'bg-primary',
-    })
-
-    closeAddClassModal()
-  } catch {
-    createError.value = 'Failed to create class. Please try again.'
-  } finally {
-    createLoading.value = false
-  }
+  // Logic remains similar but will call create API in next step
+  console.log('Submit new class:', newClass.value)
+  closeAddClassModal()
 }
 
 async function submitEditClass() {
-  if (
-    !editingClass.value ||
-    !newClass.value.courseId ||
-    !newClass.value.semesterId ||
-    !newClass.value.room ||
-    !newClass.value.schedule
-  ) {
-    createError.value = 'Please fill in all required fields.'
-    return
-  }
-
-  try {
-    createLoading.value = true
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    const index = classes.value.findIndex((c) => c.id === editingClass.value?.id)
-    if (index !== -1 && classes.value[index]) {
-      const originalClass = classes.value[index]!
-      const selectedCourse = mockCourses.find((c) => c.id === newClass.value.courseId)
-      const selectedTeacher = mockTeachers.find((t) => t.id === newClass.value.teacherId)
-
-      const updatedClass: ScheduledClassItem = {
-        ...originalClass,
-        course: selectedCourse?.name || originalClass.course,
-        teacher: selectedTeacher?.name || originalClass.teacher,
-        schedule: newClass.value.schedule,
-        room: newClass.value.room,
-        capacity: newClass.value.maxStudents,
-        progress: Math.floor((originalClass.students / newClass.value.maxStudents) * 100),
-      }
-
-      classes.value[index] = updatedClass
-    }
-
-    closeEditClassModal()
-  } catch {
-    createError.value = 'Failed to update class. Please try again.'
-  } finally {
-    createLoading.value = false
-  }
+  // Logic remains similar but will call update API in next step
+  console.log('Submit edit class:', newClass.value)
+  closeEditClassModal()
 }
 </script>
 
@@ -253,26 +196,42 @@ async function submitEditClass() {
     <!-- Stats Grid -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div
-        v-for="stat in stats"
-        :key="stat.label"
+        class="bg-surface-light dark:bg-surface-dark p-5 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm flex items-center gap-4"
+      >
+        <div class="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
+          <span class="material-symbols-outlined text-2xl">class</span>
+        </div>
+        <div>
+          <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Total Classes</p>
+          <h3 class="text-2xl font-bold text-slate-900 dark:text-white">
+            {{ loading ? '...' : totalElements }}
+          </h3>
+        </div>
+      </div>
+      <div
         class="bg-surface-light dark:bg-surface-dark p-5 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm flex items-center gap-4"
       >
         <div
-          class="p-3 rounded-lg"
-          :class="{
-            'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400':
-              stat.color === 'blue',
-            'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400':
-              stat.color === 'orange',
-            'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400':
-              stat.color === 'green',
-          }"
+          class="p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400"
         >
-          <span class="material-symbols-outlined text-2xl">{{ stat.icon }}</span>
+          <span class="material-symbols-outlined text-2xl">timelapse</span>
         </div>
         <div>
-          <p class="text-sm font-medium text-slate-500 dark:text-slate-400">{{ stat.label }}</p>
-          <h3 class="text-2xl font-bold text-slate-900 dark:text-white">{{ stat.value }}</h3>
+          <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Ongoing Classes</p>
+          <h3 class="text-2xl font-bold text-slate-900 dark:text-white">8</h3>
+        </div>
+      </div>
+      <div
+        class="bg-surface-light dark:bg-surface-dark p-5 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm flex items-center gap-4"
+      >
+        <div
+          class="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400"
+        >
+          <span class="material-symbols-outlined text-2xl">groups</span>
+        </div>
+        <div>
+          <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Active Students</p>
+          <h3 class="text-2xl font-bold text-slate-900 dark:text-white">3,852</h3>
         </div>
       </div>
     </div>
@@ -289,33 +248,32 @@ async function submitEditClass() {
         <input
           v-model="searchQuery"
           class="w-full pl-10 pr-4 h-11 bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-700 text-sm rounded-lg focus:ring-primary focus:border-primary transition-all text-slate-900 dark:text-white"
-          placeholder="Search by class name or ID..."
+          placeholder="Search by course name, code or teacher..."
           type="text"
         />
       </div>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <select
+          v-model="filterSemester"
           class="h-11 bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-700 text-sm rounded-lg focus:ring-primary focus:border-primary transition-all text-slate-900 dark:text-white"
         >
-          <option value="">Semester</option>
-          <option v-for="s in semesters" :key="s" :value="s">{{ s }}</option>
+          <option value="">All Semesters</option>
+          <option v-for="s in semesters" :key="s.semesterId" :value="s.semesterId">
+            {{ s.displayName }}
+          </option>
         </select>
         <select
+          v-model="filterStatus"
           class="h-11 bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-700 text-sm rounded-lg focus:ring-primary focus:border-primary transition-all text-slate-900 dark:text-white"
         >
-          <option value="">Department</option>
-          <option v-for="d in departments" :key="d" :value="d">{{ d }}</option>
-        </select>
-        <select
-          class="h-11 bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-700 text-sm rounded-lg focus:ring-primary focus:border-primary transition-all text-slate-900 dark:text-white"
-        >
-          <option value="">Status</option>
+          <option value="">All Statuses</option>
           <option v-for="st in statuses" :key="st" :value="st">{{ st }}</option>
         </select>
         <button
+          @click="clearFilters"
           class="flex items-center justify-center gap-2 h-11 px-4 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-slate-700 dark:text-slate-300 rounded-lg font-semibold transition-all"
         >
-          <span class="material-symbols-outlined text-[20px]">filter_list</span>
+          <span class="material-symbols-outlined text-[20px]">filter_list_off</span>
           Clear
         </button>
       </div>
@@ -374,35 +332,60 @@ async function submitEditClass() {
             </tr>
           </thead>
           <tbody class="divide-y divide-stone-200 dark:divide-stone-800">
+            <tr v-if="loading">
+              <td colspan="8" class="p-8 text-center">
+                <div class="flex flex-col items-center gap-2">
+                  <div
+                    class="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"
+                  ></div>
+                  <span class="text-sm text-slate-500 font-medium">Loading classes...</span>
+                </div>
+              </td>
+            </tr>
+            <tr v-else-if="classes.length === 0">
+              <td colspan="8" class="p-12 text-center">
+                <div class="flex flex-col items-center gap-3">
+                  <span class="material-symbols-outlined text-5xl text-slate-300">search_off</span>
+                  <p class="text-slate-500 font-medium">No classes found matching your criteria.</p>
+                </div>
+              </td>
+            </tr>
             <tr
+              v-else
               v-for="cls in classes"
-              :key="cls.id"
+              :key="cls.classId"
               class="hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors"
             >
-              <td class="p-4 text-sm font-medium text-slate-500 whitespace-nowrap">{{ cls.id }}</td>
+              <td class="p-4 text-sm font-medium text-slate-500 whitespace-nowrap">
+                #CL-{{ cls.classId }}
+              </td>
               <td class="p-4 whitespace-nowrap">
                 <span class="text-sm font-bold text-slate-900 dark:text-white leading-none">{{
-                  cls.name
+                  cls.courseCode
                 }}</span>
               </td>
               <td class="p-4 whitespace-nowrap">
-                <span class="text-sm text-slate-600 dark:text-slate-400">{{ cls.course }}</span>
+                <span class="text-sm text-slate-600 dark:text-slate-400">{{ cls.courseName }}</span>
               </td>
               <td class="p-4 whitespace-nowrap">
                 <div class="flex items-center gap-2">
                   <div
                     class="w-6 h-6 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center overflow-hidden"
                   >
-                    <img :src="cls.teacherImg" alt="Teacher" class="w-full h-full object-cover" />
+                    <span class="material-symbols-outlined text-[16px] text-orange-600"
+                      >person</span
+                    >
                   </div>
-                  <span class="text-sm text-slate-700 dark:text-slate-300">{{ cls.teacher }}</span>
+                  <span class="text-sm text-slate-700 dark:text-slate-300">{{
+                    cls.teacherName
+                  }}</span>
                 </div>
               </td>
               <td class="p-4 text-sm text-slate-600 dark:text-slate-400 whitespace-nowrap">
                 {{ cls.schedule }}
               </td>
               <td class="p-4 text-sm text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                {{ cls.room }}
+                {{ cls.roomNumber }}
               </td>
               <td class="p-4">
                 <div class="flex items-center gap-2 text-slate-900 dark:text-white">
@@ -411,21 +394,42 @@ async function submitEditClass() {
                   >
                     <div
                       class="h-1.5 rounded-full"
-                      :class="cls.progressColor"
-                      :style="{ width: cls.progress + '%' }"
+                      :class="{
+                        'bg-red-500': cls.studentCount / cls.maxStudents >= 0.9,
+                        'bg-amber-500':
+                          cls.studentCount / cls.maxStudents >= 0.7 &&
+                          cls.studentCount / cls.maxStudents < 0.9,
+                        'bg-primary': cls.studentCount / cls.maxStudents < 0.7,
+                      }"
+                      :style="{
+                        width: Math.min(100, (cls.studentCount / cls.maxStudents) * 100) + '%',
+                      }"
                     ></div>
                   </div>
                   <span class="text-xs font-medium text-slate-500 dark:text-slate-400"
-                    >{{ cls.students }}/{{ cls.capacity }}</span
+                    >{{ cls.studentCount }}/{{ cls.maxStudents }}</span
                   >
                 </div>
               </td>
               <td class="p-4 text-right whitespace-nowrap">
                 <div class="flex items-center justify-end gap-1">
+                  <span
+                    class="px-2 py-0.5 rounded text-[10px] font-bold uppercase mr-2"
+                    :class="{
+                      'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400':
+                        cls.status === 'OPEN',
+                      'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400':
+                        cls.status === 'CANCELLED',
+                      'bg-stone-100 text-stone-700 dark:bg-stone-900/30 dark:text-stone-400':
+                        cls.status === 'CLOSED',
+                    }"
+                  >
+                    {{ cls.status }}
+                  </span>
                   <router-link
                     :to="{
                       name: 'admin-class-detail',
-                      params: { classId: cls.id.replace('#', '') },
+                      params: { classId: cls.classId },
                     }"
                     class="p-2 text-slate-400 hover:text-blue-500 transition-colors"
                     title="View Students"
@@ -454,46 +458,51 @@ async function submitEditClass() {
 
       <!-- Pagination -->
       <div
-        class="p-4 border-t border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-900/30 flex items-center justify-between"
+        class="p-4 border-t border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-900/30 flex flex-col sm:flex-row items-center justify-between gap-4"
       >
         <div class="flex items-center gap-4">
           <span class="text-sm text-slate-500 dark:text-slate-400">Records per page:</span>
           <select
-            class="h-9 py-0 border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-sm rounded text-slate-900 dark:text-white"
+            v-model="pageSize"
+            class="h-9 py-0 pr-8 pl-3 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-sm"
           >
-            <option>20</option>
-            <option>50</option>
-            <option>100</option>
+            <option :value="10">10</option>
+            <option :value="20">20</option>
+            <option :value="50">50</option>
+            <option :value="100">100</option>
           </select>
         </div>
         <div class="flex items-center gap-2">
           <span class="text-sm font-medium text-slate-700 dark:text-slate-300 mr-2"
-            >Page 1 of 6</span
+            >Page {{ currentPage }} of {{ totalPages || 1 }}</span
           >
           <div class="flex gap-1">
             <button
-              class="w-9 h-9 flex items-center justify-center rounded border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-slate-400 hover:text-primary transition-colors disabled:opacity-50"
-              disabled
+              class="w-9 h-9 flex items-center justify-center rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-slate-400 hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              :disabled="currentPage <= 1 || loading"
+              aria-label="Previous page"
+              @click="goToPage(currentPage - 1)"
             >
               <span class="material-symbols-outlined text-[18px]">chevron_left</span>
             </button>
             <button
-              class="w-9 h-9 flex items-center justify-center rounded bg-primary text-white font-bold text-sm shadow-sm shadow-primary/20"
+              v-for="p in paginationPages"
+              :key="p"
+              :class="[
+                'w-9 h-9 flex items-center justify-center rounded-lg font-medium text-sm transition-colors',
+                currentPage === p
+                  ? 'bg-primary text-white shadow-sm shadow-primary/20'
+                  : 'border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-slate-600 dark:text-slate-400 hover:bg-stone-50 dark:hover:bg-stone-800',
+              ]"
+              @click="goToPage(p)"
             >
-              1
+              {{ p }}
             </button>
             <button
-              class="w-9 h-9 flex items-center justify-center rounded border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-slate-600 dark:text-slate-400 hover:bg-stone-50 dark:hover:bg-stone-800 font-medium text-sm transition-colors"
-            >
-              2
-            </button>
-            <button
-              class="w-9 h-9 flex items-center justify-center rounded border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-slate-600 dark:text-slate-400 hover:bg-stone-50 dark:hover:bg-stone-800 font-medium text-sm transition-colors"
-            >
-              3
-            </button>
-            <button
-              class="w-9 h-9 flex items-center justify-center rounded border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-slate-400 hover:text-primary transition-colors"
+              class="w-9 h-9 flex items-center justify-center rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-slate-400 hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              :disabled="currentPage >= totalPages || loading"
+              aria-label="Next page"
+              @click="goToPage(currentPage + 1)"
             >
               <span class="material-symbols-outlined text-[18px]">chevron_right</span>
             </button>
@@ -575,7 +584,9 @@ async function submitEditClass() {
                   class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary"
                 >
                   <option value="">Select Semester</option>
-                  <option v-for="s in semesters" :key="s" :value="s">{{ s }}</option>
+                  <option v-for="s in semesters" :key="s.semesterId" :value="s.semesterId">
+                    {{ s.displayName }}
+                  </option>
                 </select>
               </div>
             </div>

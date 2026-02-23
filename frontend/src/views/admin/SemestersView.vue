@@ -267,6 +267,11 @@ const getSemesterStatus = (startDate: string, endDate: string) => {
   return 'Active'
 }
 */
+function clearSemesterFilters() {
+  yearFilter.value = ''
+  nameFilter.value = ''
+  isCurrentFilter.value = ''
+}
 </script>
 
 <template>
@@ -388,11 +393,7 @@ const getSemesterStatus = (startDate: string, endDate: string) => {
         <button
           v-if="yearFilter !== '' || nameFilter !== '' || isCurrentFilter !== ''"
           class="flex items-center gap-1.5 px-3 py-2 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 bg-stone-100 dark:bg-stone-800 rounded-xl transition-colors whitespace-nowrap"
-          @click="
-            yearFilter = ''
-            nameFilter = ''
-            isCurrentFilter = ''
-          "
+          @click="clearSemesterFilters"
         >
           <span class="material-symbols-outlined text-[18px]">filter_list_off</span>
           Clear Filters

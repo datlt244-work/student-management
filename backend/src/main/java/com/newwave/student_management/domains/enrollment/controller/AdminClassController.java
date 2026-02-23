@@ -11,7 +11,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -24,16 +26,18 @@ public class AdminClassController {
 
     @Operation(summary = "UC-14.1 - Danh sách Lớp học (Admin)", description = "Trả về danh sách lớp học với phân trang, filter theo status, semesterId và search theo Course Name/Code hoặc Teacher Name.")
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<AdminClassListResponse> getClasses(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) ScheduledClassStatus status,
             @RequestParam(required = false) Integer semesterId,
-            @PageableDefault(size = 10, sort = "createdAt,desc") Pageable pageable) {
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         return ApiResponse.success(adminClassService.getAdminClasses(search, status, semesterId, pageable));
     }
 
     @Operation(summary = "UC-14.2 - Tạo Lớp học mới (Admin)", description = "Tạo một lớp học mới với course, teacher, semester, room, schedule và maxStudents.")
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<AdminClassListItemResponse> createClass(@RequestBody @Valid AdminCreateClassRequest request) {
         return ApiResponse.success(adminClassService.createClass(request));
     }

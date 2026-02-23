@@ -41,8 +41,8 @@ public class ScheduledClass extends JpaBaseEntity {
          * Giảng viên phụ trách. Optional — lớp có thể chưa assign teacher.
          * FK: ON DELETE SET NULL.
          */
-        @ManyToOne(fetch = FetchType.LAZY, optional = false)
-        @JoinColumn(name = "teacher_id", nullable = false)
+        @ManyToOne(fetch = FetchType.LAZY)
+        @JoinColumn(name = "teacher_id")
         private Teacher teacher;
 
         /**

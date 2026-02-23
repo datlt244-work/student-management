@@ -79,7 +79,7 @@ const router = createRouter({
         {
           path: 'classes',
           name: 'admin-classes',
-          component: () => import('@/views/admin/DashboardView.vue'), // TODO: create ClassManagement page
+          component: () => import('@/views/admin/ClassesView.vue'),
         },
         {
           path: 'logs',

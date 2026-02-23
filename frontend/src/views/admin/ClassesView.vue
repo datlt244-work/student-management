@@ -11,16 +11,12 @@ import {
   getAdminTeachersByDepartment,
   type AdminSemesterListItem,
   type TeacherSimpleResponse,
+  type AdminCourseListItem as AdminCourseListItemFromUser,
 } from '@/services/adminUserService'
 import { useToast } from '@/composables/useToast'
 
 const { toast, showToast } = useToast()
 
-const stats = [
-  { label: 'Total Classes', value: '124', icon: 'class', color: 'blue' },
-  { label: 'Ongoing Classes', value: '8', icon: 'timelapse', color: 'orange' },
-  { label: 'Active Students', value: '3,852', icon: 'groups', color: 'green' },
-]
 
 const loading = ref(false)
 const classes = ref<AdminClassListItem[]>([])
@@ -62,7 +58,7 @@ const days = [
   { value: 7, label: 'Sunday' },
 ]
 
-const courses = ref<any[]>([])
+const courses = ref<AdminCourseListItemFromUser[]>([])
 const teachers = ref<TeacherSimpleResponse[]>([])
 const loadingTeachers = ref(false)
 
@@ -232,8 +228,9 @@ async function submitNewClass() {
     showToast('Class created successfully')
     closeAddClassModal()
     fetchClasses()
-  } catch (err: any) {
-    createError.value = err.message || 'Failed to create class'
+
+  } catch (err) {
+    createError.value = err instanceof Error ? err.message : 'Failed to create class'
   } finally {
     createLoading.value = false
   }

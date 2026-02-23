@@ -8,6 +8,7 @@ export interface AdminClassListItem {
   courseName: string;
   courseCode: string;
   teacherName: string;
+  teacherId: string;
   semesterName: string;
   roomNumber: string;
   schedule: string;
@@ -79,4 +80,31 @@ export async function createAdminClass(request: AdminCreateClassRequest): Promis
   }
   const data = await response.json();
   return (data.result || data) as AdminClassListItem;
+}
+
+export interface AdminUpdateClassRequest extends AdminCreateClassRequest {
+  status: 'OPEN' | 'CLOSED' | 'CANCELLED';
+}
+
+export async function updateAdminClass(classId: number, request: AdminUpdateClassRequest): Promise<AdminClassListItem> {
+  const response = await apiFetch(`/admin/classes/${classId}`, {
+    method: 'PUT',
+    body: JSON.stringify(request)
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    throw new Error(errorData?.message || `Failed to update class (${response.status})`);
+  }
+  const data = await response.json();
+  return (data.result || data) as AdminClassListItem;
+}
+
+export async function deleteAdminClass(classId: number): Promise<void> {
+  const response = await apiFetch(`/admin/classes/${classId}`, {
+    method: 'DELETE'
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    throw new Error(errorData?.message || `Failed to delete class (${response.status})`);
+  }
 }

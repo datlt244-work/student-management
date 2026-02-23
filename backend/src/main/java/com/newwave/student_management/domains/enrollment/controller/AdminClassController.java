@@ -2,6 +2,7 @@ package com.newwave.student_management.domains.enrollment.controller;
 
 import com.newwave.student_management.common.dto.ApiResponse;
 import com.newwave.student_management.domains.enrollment.dto.request.AdminCreateClassRequest;
+import com.newwave.student_management.domains.enrollment.dto.request.AdminUpdateClassRequest;
 import com.newwave.student_management.domains.enrollment.dto.response.AdminClassListItemResponse;
 import com.newwave.student_management.domains.enrollment.dto.response.AdminClassListResponse;
 import com.newwave.student_management.domains.enrollment.entity.ScheduledClassStatus;
@@ -40,5 +41,22 @@ public class AdminClassController {
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<AdminClassListItemResponse> createClass(@RequestBody @Valid AdminCreateClassRequest request) {
         return ApiResponse.success(adminClassService.createClass(request));
+    }
+
+    @Operation(summary = "UC-14.3 - Chỉnh sửa Lớp học (Admin)", description = "Cập nhật thông tin lớp học hiện có.")
+    @PutMapping("/{classId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<AdminClassListItemResponse> updateClass(
+            @PathVariable Integer classId,
+            @RequestBody @Valid AdminUpdateClassRequest request) {
+        return ApiResponse.success(adminClassService.updateClass(classId, request));
+    }
+
+    @Operation(summary = "UC-14.4 - Xóa Lớp học (Admin)", description = "Xóa mềm lớp học nếu không có sinh viên.")
+    @DeleteMapping("/{classId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Void> deleteClass(@PathVariable Integer classId) {
+        adminClassService.deleteClass(classId);
+        return ApiResponse.success(null);
     }
 }

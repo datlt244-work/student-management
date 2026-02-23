@@ -1,3 +1,4 @@
+
 package com.newwave.student_management.domains.enrollment.repository;
 
 import com.newwave.student_management.domains.enrollment.entity.ScheduledClass;
@@ -18,7 +19,8 @@ public interface ScheduledClassRepository
 
     @Query("SELECT COUNT(sc) FROM ScheduledClass sc WHERE sc.teacher.teacherId = :teacherId AND " +
             "sc.semester.semesterId = :semesterId AND sc.dayOfWeek = :dayOfWeek AND " +
-            "((sc.startTime < :endTime AND sc.endTime > :startTime))")
+            "(:excludeClassId IS NULL OR sc.classId <> :excludeClassId) AND " +
+            "((sc.startTime < :endTime AND sc.endTime > :startTime)) AND sc.deletedAt IS NULL")
     long countOverlappingClasses(UUID teacherId, Integer semesterId, Integer dayOfWeek, LocalTime startTime,
-            LocalTime endTime);
+            LocalTime endTime, Integer excludeClassId);
 }

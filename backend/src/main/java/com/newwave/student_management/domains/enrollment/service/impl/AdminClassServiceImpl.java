@@ -6,6 +6,7 @@ import com.newwave.student_management.common.exception.ErrorCode;
 import com.newwave.student_management.domains.curriculum.entity.Course;
 import com.newwave.student_management.domains.curriculum.repository.CourseRepository;
 import com.newwave.student_management.domains.enrollment.dto.request.AdminCreateClassRequest;
+import com.newwave.student_management.domains.enrollment.dto.request.AdminUpdateClassRequest;
 import com.newwave.student_management.domains.enrollment.dto.response.AdminClassListItemResponse;
 import com.newwave.student_management.domains.enrollment.dto.response.AdminClassListResponse;
 import com.newwave.student_management.domains.enrollment.entity.ScheduledClass;
@@ -106,13 +107,13 @@ public class AdminClassServiceImpl implements IAdminClassService {
         Course course = courseRepository.findById(request.getCourseId())
                 .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
 
-        // Requirement: Kỳ học để là kỳ hiện tại không thể thay đổi
+        // Always use CURRENT semester for new classes
         Semester currentSemester = semesterRepository.findByIsCurrentTrue()
                 .orElseThrow(() -> new AppException(ErrorCode.NO_CURRENT_SEMESTER));
 
-        // Requirement: Giáo viên phải có (Mandatory Teacher)
+        // Conflict Check (Mandatory Teacher Check)
         if (request.getTeacherId() == null || request.getTeacherId().isBlank()) {
-            throw new AppException(ErrorCode.VALIDATION_ERROR); // Or specialized missing teacher error
+            throw new AppException(ErrorCode.VALIDATION_ERROR); 
         }
 
         Teacher teacher = teacherRepository.findById(UUID.fromString(request.getTeacherId()))
@@ -125,19 +126,18 @@ public class AdminClassServiceImpl implements IAdminClassService {
             }
         }
 
-        // Requirement: Max student default là 40 có thể giảm (Max limit 40)
+        // Requirement: Max student limit 40
         if (request.getMaxStudents() != null && request.getMaxStudents() > 40) {
             throw new AppException(ErrorCode.INVALID_MAX_STUDENTS);
         }
 
-        // Requirement: Khi đăng kỳ phải check có bị duplicate lịch của giáo viên không
-        // (Conflict Check)
         long conflicts = scheduledClassRepository.countOverlappingClasses(
                 teacher.getTeacherId(),
                 currentSemester.getSemesterId(),
                 request.getDayOfWeek(),
                 request.getStartTime(),
-                request.getEndTime());
+                request.getEndTime(),
+                null);
 
         if (conflicts > 0) {
             throw new AppException(ErrorCode.TEACHER_SCHEDULE_CONFLICT);
@@ -159,36 +159,109 @@ public class AdminClassServiceImpl implements IAdminClassService {
         return mapToListItemResponse(sc);
     }
 
-    private AdminClassListItemResponse mapToListItemResponse(ScheduledClass sc) {
-        String teacherName = "N/A";
-        if (sc.getTeacher() != null) {
-            teacherName = (sc.getTeacher().getFirstName() + " " + sc.getTeacher().getLastName()).trim();
+    @Override
+    @Transactional
+    public AdminClassListItemResponse updateClass(Integer classId, AdminUpdateClassRequest request) {
+        ScheduledClass scheduledClass = scheduledClassRepository.findById(classId)
+                .orElseThrow(() -> new AppException(ErrorCode.CLASS_NOT_FOUND));
+
+        // Constraint: Cannot change Course or Semester
+        // We ignore courseId and semesterId from request and keep existing ones
+
+        Teacher teacher = teacherRepository.findById(UUID.fromString(request.getTeacherId()))
+                .orElseThrow(() -> new AppException(ErrorCode.TEACHER_PROFILE_NOT_FOUND));
+
+        // Validation: Teacher must be in same department as CURRENT course
+        if (scheduledClass.getCourse().getDepartment() != null && teacher.getDepartment() != null) {
+            if (!scheduledClass.getCourse().getDepartment().getDepartmentId().equals(teacher.getDepartment().getDepartmentId())) {
+                throw new AppException(ErrorCode.TEACHER_DEPARTMENT_MISMATCH);
+            }
         }
 
-        long studentCount = enrollmentRepository.countByScheduledClassClassId(sc.getClassId());
+        // Constraint: Cannot cancel if class has students
+        if (request.getStatus() == ScheduledClassStatus.CANCELLED) {
+            long studentCount = enrollmentRepository.countByScheduledClassClassId(classId);
+            if (studentCount > 0) {
+                throw new AppException(ErrorCode.CLASS_HAS_ENROLLED_STUDENTS);
+            }
+        }
+
+        // Requirement: Max student limit 40
+        if (request.getMaxStudents() != null && request.getMaxStudents() > 40) {
+            throw new AppException(ErrorCode.INVALID_MAX_STUDENTS);
+        }
+
+        // Conflict Check (exclude current class)
+        long conflicts = scheduledClassRepository.countOverlappingClasses(
+                teacher.getTeacherId(),
+                scheduledClass.getSemester().getSemesterId(),
+                request.getDayOfWeek(),
+                request.getStartTime(),
+                request.getEndTime(),
+                classId);
+
+        if (conflicts > 0) {
+            throw new AppException(ErrorCode.TEACHER_SCHEDULE_CONFLICT);
+        }
+
+        scheduledClass.setTeacher(teacher);
+        scheduledClass.setRoomNumber(request.getRoomNumber());
+        scheduledClass.setDayOfWeek(request.getDayOfWeek());
+        scheduledClass.setStartTime(request.getStartTime());
+        scheduledClass.setEndTime(request.getEndTime());
+        scheduledClass.setMaxStudents(request.getMaxStudents());
+        scheduledClass.setStatus(request.getStatus());
+
+        scheduledClass = scheduledClassRepository.save(scheduledClass);
+        return mapToListItemResponse(scheduledClass);
+    }
+
+    @Override
+    @Transactional
+    public void deleteClass(Integer classId) {
+        ScheduledClass scheduledClass = scheduledClassRepository.findById(classId)
+                .orElseThrow(() -> new AppException(ErrorCode.CLASS_NOT_FOUND));
+
+        long studentCount = enrollmentRepository.countByScheduledClassClassId(classId);
+        if (studentCount > 0) {
+            throw new AppException(ErrorCode.CLASS_HAS_ENROLLED_STUDENTS);
+        }
+
+        scheduledClass.setDeletedAt(java.time.LocalDateTime.now());
+        scheduledClassRepository.save(scheduledClass);
+    }
+
+    private AdminClassListItemResponse mapToListItemResponse(ScheduledClass scheduledClass) {
+        String teacherName = "N/A";
+        if (scheduledClass.getTeacher() != null) {
+            teacherName = (scheduledClass.getTeacher().getFirstName() + " " + scheduledClass.getTeacher().getLastName()).trim();
+        }
+
+        long studentCount = enrollmentRepository.countByScheduledClassClassId(scheduledClass.getClassId());
 
         return AdminClassListItemResponse.builder()
-                .classId(sc.getClassId())
-                .courseName(sc.getCourse().getName())
-                .courseCode(sc.getCourse().getCode())
+                .classId(scheduledClass.getClassId())
+                .courseName(scheduledClass.getCourse().getName())
+                .courseCode(scheduledClass.getCourse().getCode())
                 .teacherName(teacherName)
-                .semesterName(sc.getSemester() != null ? sc.getSemester().getDisplayName() : "N/A")
-                .roomNumber(sc.getRoomNumber())
-                .schedule(formatSchedule(sc))
-                .dayOfWeek(sc.getDayOfWeek())
-                .startTime(sc.getStartTime() != null ? sc.getStartTime().toString() : null)
-                .endTime(sc.getEndTime() != null ? sc.getEndTime().toString() : null)
-                .status(sc.getStatus())
-                .maxStudents(sc.getMaxStudents())
+                .teacherId(scheduledClass.getTeacher() != null ? scheduledClass.getTeacher().getTeacherId().toString() : null)
+                .semesterName(scheduledClass.getSemester() != null ? scheduledClass.getSemester().getDisplayName() : "N/A")
+                .roomNumber(scheduledClass.getRoomNumber())
+                .schedule(formatSchedule(scheduledClass))
+                .dayOfWeek(scheduledClass.getDayOfWeek())
+                .startTime(scheduledClass.getStartTime() != null ? scheduledClass.getStartTime().toString() : null)
+                .endTime(scheduledClass.getEndTime() != null ? scheduledClass.getEndTime().toString() : null)
+                .status(scheduledClass.getStatus())
+                .maxStudents(scheduledClass.getMaxStudents())
                 .studentCount(studentCount)
                 .build();
     }
 
-    private String formatSchedule(ScheduledClass sc) {
-        if (sc.getDayOfWeek() == null || sc.getStartTime() == null || sc.getEndTime() == null) {
+    private String formatSchedule(ScheduledClass scheduledClass) {
+        if (scheduledClass.getDayOfWeek() == null || scheduledClass.getStartTime() == null || scheduledClass.getEndTime() == null) {
             return "N/A";
         }
-        String day = switch (sc.getDayOfWeek()) {
+        String day = switch (scheduledClass.getDayOfWeek()) {
             case 1 -> "Mon";
             case 2 -> "Tue";
             case 3 -> "Wed";
@@ -198,6 +271,6 @@ public class AdminClassServiceImpl implements IAdminClassService {
             case 7 -> "Sun";
             default -> "N/A";
         };
-        return String.format("%s %s-%s", day, sc.getStartTime(), sc.getEndTime());
+        return String.format("%s %s-%s", day, scheduledClass.getStartTime(), scheduledClass.getEndTime());
     }
 }

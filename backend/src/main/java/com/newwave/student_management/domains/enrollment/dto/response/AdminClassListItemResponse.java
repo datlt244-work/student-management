@@ -15,6 +15,7 @@ public class AdminClassListItemResponse {
     private String courseName;
     private String courseCode;
     private String teacherName;
+    private String teacherId;
     private String semesterName;
     private String roomNumber;
     private String schedule;

@@ -60,6 +60,7 @@ public enum ErrorCode {
         TEACHER_SCHEDULE_CONFLICT(1262, "Teacher has another class at this time", HttpStatus.CONFLICT),
         INVALID_MAX_STUDENTS(1263, "Max students cannot exceed 40", HttpStatus.BAD_REQUEST),
         SEMESTER_NOT_CURRENT(1264, "Classes can only be created for the current semester", HttpStatus.BAD_REQUEST),
+        CLASS_HAS_ENROLLED_STUDENTS(1265, "Cannot cancel class that has enrolled students", HttpStatus.BAD_REQUEST),
 
         // Business errors - Address (1250-1269)
         ADDRESS_NOT_FOUND(1250, "Address not found", HttpStatus.NOT_FOUND),

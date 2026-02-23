@@ -3,6 +3,8 @@ import { ref, onMounted, watch, computed } from 'vue'
 import {
   getAdminClasses,
   createAdminClass,
+  updateAdminClass,
+  deleteAdminClass,
   type AdminClassListItem,
 } from '@/services/adminClassService'
 import {
@@ -34,7 +36,9 @@ const totalPages = ref(0)
 // Modal state
 const showAddClassModal = ref(false)
 const showEditClassModal = ref(false)
+const showDeleteConfirmModal = ref(false)
 const createLoading = ref(false)
+const deleteLoading = ref(false)
 const createError = ref<string | null>(null)
 
 const newClass = ref({
@@ -46,6 +50,7 @@ const newClass = ref({
   startTime: '08:00',
   endTime: '10:00',
   maxStudents: 40,
+  status: 'OPEN' as 'OPEN' | 'CLOSED' | 'CANCELLED',
 })
 
 const days = [
@@ -63,6 +68,7 @@ const teachers = ref<TeacherSimpleResponse[]>([])
 const loadingTeachers = ref(false)
 
 const editingClass = ref<AdminClassListItem | null>(null)
+const deletingClass = ref<AdminClassListItem | null>(null)
 
 // Teachers will be loaded dynamically based on course department
 
@@ -103,10 +109,22 @@ async function loadSemesters() {
 
 async function loadCourses() {
   try {
-    const res = await getAdminCourses({ size: 200, status: 'ACTIVE' })
+    const res = await getAdminCourses({ size: 1000, status: 'ACTIVE' })
     courses.value = res.content
   } catch (err) {
     console.error('Failed to load courses:', err)
+  }
+}
+
+async function fetchTeachersForDepartment(departmentId: number) {
+  try {
+    loadingTeachers.value = true
+    teachers.value = await getAdminTeachersByDepartment(departmentId)
+  } catch (err) {
+    console.error('Failed to load teachers:', err)
+    showToast('Failed to load teachers for this department', 'error')
+  } finally {
+    loadingTeachers.value = false
   }
 }
 
@@ -116,15 +134,7 @@ async function handleCourseChange() {
   teachers.value = []
 
   if (selectedCourse && selectedCourse.departmentId) {
-    try {
-      loadingTeachers.value = true
-      teachers.value = await getAdminTeachersByDepartment(selectedCourse.departmentId)
-    } catch (err) {
-      console.error('Failed to load teachers:', err)
-      showToast('Failed to load teachers for this department', 'error')
-    } finally {
-      loadingTeachers.value = false
-    }
+    await fetchTeachersForDepartment(selectedCourse.departmentId)
   }
 }
 
@@ -179,17 +189,39 @@ function handleAddClass() {
     startTime: '08:00',
     endTime: '10:00',
     maxStudents: 40,
+    status: 'OPEN',
   }
   teachers.value = []
 }
 
-function handleEditClass(cls: AdminClassListItem) {
-  // Not fully implemented in this step, but setting basic fields
+async function handleEditClass(cls: AdminClassListItem) {
   editingClass.value = { ...cls }
-  // We'd need to fetch the course/teacher details to map correctly
-  // For now, focusing on Add Class
   showEditClassModal.value = true
   createError.value = null
+
+  // Map data to form
+  // We need current courses to find departmentId
+  const course = courses.value.find(c => c.courseId === cls.classId || c.code === cls.courseCode)
+  // Note: cls.classId is for the ScheduledClass, not the course. cls.courseCode should be used to find the courseId
+  const actualCourse = courses.value.find(c => c.code === cls.courseCode)
+
+  if (actualCourse) {
+    newClass.value = {
+      courseId: actualCourse.courseId,
+      teacherId: cls.teacherId || '',
+      semesterId: semesters.value.find(s => s.displayName === cls.semesterName)?.semesterId || '',
+      roomNumber: cls.roomNumber,
+      dayOfWeek: cls.dayOfWeek || 1,
+      startTime: cls.startTime?.slice(0, 5) || '08:00',
+      endTime: cls.endTime?.slice(0, 5) || '10:00',
+      maxStudents: cls.maxStudents,
+      status: cls.status,
+    }
+
+    if (actualCourse.departmentId) {
+      await fetchTeachersForDepartment(actualCourse.departmentId)
+    }
+  }
 }
 
 function clearFilters() {
@@ -237,9 +269,58 @@ async function submitNewClass() {
 }
 
 async function submitEditClass() {
-  // Logic remains similar but will call update API in next step
-  console.log('Submit edit class:', newClass.value)
-  closeEditClassModal()
+  if (!editingClass.value) return
+
+  try {
+    createLoading.value = true
+    createError.value = null
+
+    await updateAdminClass(editingClass.value.classId, {
+      courseId: Number(newClass.value.courseId),
+      teacherId: newClass.value.teacherId,
+      semesterId: Number(newClass.value.semesterId),
+      roomNumber: newClass.value.roomNumber,
+      dayOfWeek: newClass.value.dayOfWeek,
+      startTime: newClass.value.startTime,
+      endTime: newClass.value.endTime,
+      maxStudents: newClass.value.maxStudents,
+      status: newClass.value.status,
+    })
+
+    showToast('Class updated successfully')
+    closeEditClassModal()
+    fetchClasses()
+  } catch (err) {
+    createError.value = err instanceof Error ? err.message : 'Failed to update class'
+  } finally {
+    createLoading.value = false
+  }
+}
+
+async function handleDeleteClass(cls: AdminClassListItem) {
+  deletingClass.value = cls
+  showDeleteConfirmModal.value = true
+}
+
+function closeDeleteConfirmModal() {
+  showDeleteConfirmModal.value = false
+  deletingClass.value = null
+}
+
+async function confirmDeleteClass() {
+  if (!deletingClass.value) return
+
+  try {
+    deleteLoading.value = true
+    await deleteAdminClass(deletingClass.value.classId)
+    showToast('Class deleted successfully')
+    closeDeleteConfirmModal()
+    fetchClasses()
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : 'Failed to delete class', 'error')
+  } finally {
+    deleteLoading.value = false
+  }
 }
 </script>
 
@@ -517,6 +598,7 @@ async function submitEditClass() {
                     <span class="material-symbols-outlined text-[20px]">edit</span>
                   </button>
                   <button
+                    @click="handleDeleteClass(cls)"
                     class="p-2 text-slate-400 hover:text-red-500 transition-colors"
                     title="Delete"
                   >
@@ -656,7 +738,18 @@ async function submitEditClass() {
                 <label class="text-xs font-bold text-slate-500 uppercase tracking-wider"
                   >Course <span class="text-red-500">*</span></label
                 >
+                <div
+                  v-if="showEditClassModal"
+                  class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-stone-50 dark:bg-stone-900/50 text-sm italic text-slate-500"
+                >
+                  {{
+                    courses.find((c) => c.courseId === newClass.courseId)
+                      ? `[${courses.find((c) => c.courseId === newClass.courseId)?.code}] ${courses.find((c) => c.courseId === newClass.courseId)?.name}`
+                      : 'N/A'
+                  }}
+                </div>
                 <select
+                  v-else
                   v-model="newClass.courseId"
                   @change="handleCourseChange"
                   required
@@ -673,11 +766,11 @@ async function submitEditClass() {
                   >Semester</label
                 >
                 <div
-                  class="w-full px-3 py-2 border border-stone-100 dark:border-stone-800 rounded-lg bg-stone-50 dark:bg-stone-900/50 text-sm italic text-slate-500"
+                  class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-stone-50 dark:bg-stone-900/50 text-sm italic text-slate-500"
                 >
                   {{
                     semesters.find((s) => s.semesterId === newClass.semesterId)?.displayName ||
-                    'Current'
+                    'N/A'
                   }}
                 </div>
               </div>
@@ -725,6 +818,18 @@ async function submitEditClass() {
                   min="1"
                   class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary"
                 />
+              </div>
+              <div v-if="showEditClassModal" class="space-y-1.5">
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider"
+                  >Status <span class="text-red-500">*</span></label
+                >
+                <select
+                  v-model="newClass.status"
+                  required
+                  class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary"
+                >
+                  <option v-for="st in statuses" :key="st" :value="st">{{ st }}</option>
+                </select>
               </div>
             </div>
 
@@ -797,6 +902,68 @@ async function submitEditClass() {
               </button>
             </div>
           </form>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
+
+  <!-- Delete Confirmation Modal -->
+  <Teleport to="body">
+    <Transition name="fade">
+      <div
+        v-if="showDeleteConfirmModal"
+        class="fixed inset-0 z-[100] flex items-center justify-center p-4"
+        role="dialog"
+      >
+        <div
+          class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+          @click="closeDeleteConfirmModal"
+        ></div>
+        <div
+          class="relative w-full max-w-sm bg-white dark:bg-surface-dark rounded-2xl shadow-2xl p-6 flex flex-col gap-5"
+        >
+          <div class="flex flex-col items-center text-center gap-3">
+            <div class="p-3 rounded-full bg-red-100 dark:bg-red-900/20">
+              <span class="material-symbols-outlined text-3xl text-red-500">delete_forever</span>
+            </div>
+            <div>
+              <h2 class="text-lg font-bold text-slate-900 dark:text-white">Delete Class</h2>
+              <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                Are you sure you want to delete
+                <span class="font-semibold text-slate-700 dark:text-slate-200">#CL-{{ deletingClass?.classId }}</span>? This action cannot be undone.
+              </p>
+            </div>
+            <div
+              class="w-full flex items-start gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3"
+            >
+              <span class="material-symbols-outlined text-amber-500 text-[18px] mt-0.5">warning</span>
+              <p class="text-xs text-amber-700 dark:text-amber-300 text-left">
+                Cannot be deleted if it has enrolled students.
+              </p>
+            </div>
+          </div>
+          <div class="flex gap-3">
+            <button
+              type="button"
+              class="flex-1 px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-stone-100 dark:hover:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl transition-colors"
+              :disabled="deleteLoading"
+              @click="closeDeleteConfirmModal"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              :disabled="deleteLoading"
+              class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 disabled:opacity-60 text-white text-sm font-bold rounded-xl transition-all active:scale-95"
+              @click="confirmDeleteClass"
+            >
+              <span
+                v-if="deleteLoading"
+                class="material-symbols-outlined text-[18px] animate-spin"
+              >progress_activity</span>
+              Delete
+            </button>
+          </div>
         </div>
       </div>
     </Transition>

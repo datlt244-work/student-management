@@ -1,6 +1,7 @@
 package com.newwave.student_management.domains.enrollment.service;
 
 import com.newwave.student_management.domains.enrollment.dto.request.AdminCreateClassRequest;
+import com.newwave.student_management.domains.enrollment.dto.request.AdminUpdateClassRequest;
 import com.newwave.student_management.domains.enrollment.dto.response.AdminClassListItemResponse;
 import com.newwave.student_management.domains.enrollment.dto.response.AdminClassListResponse;
 import com.newwave.student_management.domains.enrollment.entity.ScheduledClassStatus;
@@ -14,4 +15,8 @@ public interface IAdminClassService {
             Pageable pageable);
 
     AdminClassListItemResponse createClass(AdminCreateClassRequest request);
+
+    AdminClassListItemResponse updateClass(Integer classId, AdminUpdateClassRequest request);
+
+    void deleteClass(Integer classId);
 }

@@ -7,8 +7,11 @@ import com.newwave.student_management.domains.curriculum.entity.Course;
 import com.newwave.student_management.domains.curriculum.repository.CourseRepository;
 import com.newwave.student_management.domains.enrollment.dto.request.AdminCreateClassRequest;
 import com.newwave.student_management.domains.enrollment.dto.request.AdminUpdateClassRequest;
+import com.newwave.student_management.domains.enrollment.dto.response.AdminClassDetailResponse;
 import com.newwave.student_management.domains.enrollment.dto.response.AdminClassListItemResponse;
 import com.newwave.student_management.domains.enrollment.dto.response.AdminClassListResponse;
+import com.newwave.student_management.domains.enrollment.dto.response.AdminClassStudentResponse;
+import com.newwave.student_management.domains.enrollment.entity.Enrollment;
 import com.newwave.student_management.domains.enrollment.entity.ScheduledClass;
 import com.newwave.student_management.domains.enrollment.entity.ScheduledClassStatus;
 import com.newwave.student_management.domains.enrollment.repository.EnrollmentRepository;
@@ -31,6 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -214,6 +218,49 @@ public class AdminClassServiceImpl implements IAdminClassService {
 
         scheduledClass = scheduledClassRepository.save(scheduledClass);
         return mapToListItemResponse(scheduledClass);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AdminClassDetailResponse getClassDetail(Integer classId) {
+        ScheduledClass scheduledClass = scheduledClassRepository.findById(classId)
+                .orElseThrow(() -> new AppException(ErrorCode.CLASS_NOT_FOUND));
+
+        List<Enrollment> enrollments = enrollmentRepository.findByScheduledClassClassId(classId);
+
+        List<AdminClassStudentResponse> studentResponses = enrollments.stream()
+                .map(e -> AdminClassStudentResponse.builder()
+                        .enrollmentId(e.getEnrollmentId())
+                        .studentId(e.getStudent().getStudentId().toString())
+                        .studentCode(e.getStudent().getStudentCode())
+                        .fullName((e.getStudent().getFirstName() + " " + e.getStudent().getLastName()).trim())
+                        .email(e.getStudent().getEmail())
+                        .enrollmentDate(e.getEnrollmentDate())
+                        .build())
+                .collect(Collectors.toList());
+
+        String teacherName = "N/A";
+        if (scheduledClass.getTeacher() != null) {
+            teacherName = (scheduledClass.getTeacher().getFirstName() + " " + scheduledClass.getTeacher().getLastName()).trim();
+        }
+
+        return AdminClassDetailResponse.builder()
+                .classId(scheduledClass.getClassId())
+                .courseName(scheduledClass.getCourse().getName())
+                .courseCode(scheduledClass.getCourse().getCode())
+                .teacherName(teacherName)
+                .teacherId(scheduledClass.getTeacher() != null ? scheduledClass.getTeacher().getTeacherId().toString() : null)
+                .semesterName(scheduledClass.getSemester() != null ? scheduledClass.getSemester().getDisplayName() : "N/A")
+                .roomNumber(scheduledClass.getRoomNumber())
+                .schedule(formatSchedule(scheduledClass))
+                .dayOfWeek(scheduledClass.getDayOfWeek())
+                .startTime(scheduledClass.getStartTime() != null ? scheduledClass.getStartTime().toString() : null)
+                .endTime(scheduledClass.getEndTime() != null ? scheduledClass.getEndTime().toString() : null)
+                .status(scheduledClass.getStatus())
+                .maxStudents(scheduledClass.getMaxStudents())
+                .studentCount(enrollments.size())
+                .students(studentResponses)
+                .build();
     }
 
     @Override

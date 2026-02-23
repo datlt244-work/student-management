@@ -108,3 +108,29 @@ export async function deleteAdminClass(classId: number): Promise<void> {
     throw new Error(errorData?.message || `Failed to delete class (${response.status})`);
   }
 }
+
+/**
+ * UC-14.4: Chi tiết Lớp học & Danh sách Sinh viên
+ */
+export interface AdminClassStudent {
+  enrollmentId: number;
+  studentId: string;
+  studentCode: string;
+  fullName: string;
+  email: string;
+  enrollmentDate: string;
+}
+
+export interface AdminClassDetail extends AdminClassListItem {
+  students: AdminClassStudent[];
+}
+
+export async function getAdminClassDetail(classId: number): Promise<AdminClassDetail> {
+  const response = await apiFetch(`/admin/classes/${classId}`);
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    throw new Error(errorData?.message || `Failed to fetch class detail (${response.status})`);
+  }
+  const data = await response.json();
+  return (data.result || data) as AdminClassDetail;
+}

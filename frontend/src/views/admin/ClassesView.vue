@@ -57,6 +57,94 @@ const classes = ref([
 ])
 
 const searchQuery = ref('')
+
+// Add New Class modal state
+const showAddClassModal = ref(false)
+const createLoading = ref(false)
+const createError = ref<string | null>(null)
+
+const newClass = ref({
+  courseId: '',
+  teacherId: '',
+  semesterId: '',
+  room: '',
+  schedule: '',
+  maxStudents: 40,
+})
+
+// Mock data for selects (in a real app, these would be fetched from API)
+const mockCourses = [
+  { id: '1', name: 'Intro to Comp Sci' },
+  { id: '2', name: 'Advanced Literature' },
+  { id: '3', name: 'Quantum Physics' },
+]
+const mockTeachers = [
+  { id: '1', name: 'Prof. Wright' },
+  { id: '2', name: 'Dr. Chen' },
+  { id: '3', name: 'Prof. Ross' },
+]
+
+function handleAddClass() {
+  showAddClassModal.value = true
+  createError.value = null
+  newClass.value = {
+    courseId: '',
+    teacherId: '',
+    semesterId: '',
+    room: '',
+    schedule: '',
+    maxStudents: 40,
+  }
+}
+
+function closeAddClassModal() {
+  showAddClassModal.value = false
+  createError.value = null
+}
+
+async function submitNewClass() {
+  if (
+    !newClass.value.courseId ||
+    !newClass.value.semesterId ||
+    !newClass.value.room ||
+    !newClass.value.schedule
+  ) {
+    createError.value = 'Please fill in all required fields.'
+    return
+  }
+
+  try {
+    createLoading.value = true
+    // Mock API call
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+    console.log('Creating class:', newClass.value)
+
+    // Add to list for demo purposes
+    const selectedCourse = mockCourses.find((c) => c.id === newClass.value.courseId)
+    const selectedTeacher = mockTeachers.find((t) => t.id === newClass.value.teacherId)
+
+    classes.value.unshift({
+      id: `#CL-${Math.floor(Math.random() * 10000)}`,
+      name: `${selectedCourse?.name || 'New Class'}-X`,
+      course: selectedCourse?.name || 'Unknown Course',
+      teacher: selectedTeacher?.name || 'Unassigned',
+      teacherImg:
+        'https://lh3.googleusercontent.com/aida-public/AB6AXuBMBwAJx3-XV4d-gjhyxJozgYvifSOBHqdertmb8497BlDrr7CXMVmseYW3niej5h9e-XzAyQpQ3et72D1qgWzpz3NQ95Oq4hcjoI3q4FVwaQsKWLavzff2aTLg4W6M3_QcUcNTlPHgsUbteaUOKSEMdiwMmcRZteSC743RYii8m5JRwY1-YLZ7X0HWECKxkaQsw74wSRxJfNX0MTgdMzCHxlchYD46BmG49kvUChK_LqnyfXLGy-mMZY14WR_L9LjtLjnMNiK46-o',
+      schedule: newClass.value.schedule,
+      room: newClass.value.room,
+      students: 0,
+      capacity: newClass.value.maxStudents,
+      progress: 0,
+      progressColor: 'bg-primary',
+    })
+
+    closeAddClassModal()
+  } catch {
+    createError.value = 'Failed to create class. Please try again.'
+  } finally {
+    createLoading.value = false
+  }
+}
 </script>
 
 <template>
@@ -73,6 +161,7 @@ const searchQuery = ref('')
       </div>
       <div class="flex items-center gap-3">
         <button
+          @click="handleAddClass"
           class="flex items-center gap-2 px-6 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-lg font-bold shadow-lg shadow-primary/20 transition-all active:scale-95"
         >
           <span class="material-symbols-outlined text-[20px]">add_circle</span>
@@ -332,4 +421,155 @@ const searchQuery = ref('')
       </div>
     </div>
   </div>
+
+  <!-- Add New Class Modal -->
+  <Teleport to="body">
+    <Transition name="fade">
+      <div
+        v-if="showAddClassModal"
+        class="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      >
+        <div
+          class="absolute inset-0 bg-black/50 backdrop-blur-md"
+          @click="closeAddClassModal"
+        ></div>
+        <div
+          class="relative bg-white dark:bg-surface-dark w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+        >
+          <!-- Header -->
+          <div
+            class="flex items-center justify-between px-6 py-5 border-b border-stone-100 dark:border-stone-800"
+          >
+            <div class="flex items-center gap-3">
+              <div class="p-2 rounded-xl bg-primary/10 text-primary">
+                <span class="material-symbols-outlined">add_circle</span>
+              </div>
+              <h2 class="text-xl font-bold text-slate-900 dark:text-white">Add New Class</h2>
+            </div>
+            <button
+              @click="closeAddClassModal"
+              class="p-1.5 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 text-slate-400 transition-colors"
+            >
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+
+          <!-- Form Content -->
+          <form @submit.prevent="submitNewClass" class="p-6 overflow-y-auto space-y-5">
+            <div
+              v-if="createError"
+              class="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm"
+            >
+              {{ createError }}
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div class="space-y-1.5">
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider"
+                  >Course <span class="text-red-500">*</span></label
+                >
+                <select
+                  v-model="newClass.courseId"
+                  required
+                  class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary"
+                >
+                  <option value="">Select Course</option>
+                  <option v-for="c in mockCourses" :key="c.id" :value="c.id">{{ c.name }}</option>
+                </select>
+              </div>
+              <div class="space-y-1.5">
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider"
+                  >Semester <span class="text-red-500">*</span></label
+                >
+                <select
+                  v-model="newClass.semesterId"
+                  required
+                  class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary"
+                >
+                  <option value="">Select Semester</option>
+                  <option v-for="s in semesters" :key="s" :value="s">{{ s }}</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider"
+                >Teacher</label
+              >
+              <select
+                v-model="newClass.teacherId"
+                class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary"
+              >
+                <option value="">Select Teacher (Optional)</option>
+                <option v-for="t in mockTeachers" :key="t.id" :value="t.id">{{ t.name }}</option>
+              </select>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div class="space-y-1.5">
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider"
+                  >Room <span class="text-red-500">*</span></label
+                >
+                <input
+                  v-model="newClass.room"
+                  required
+                  type="text"
+                  placeholder="e.g. Rm 304"
+                  class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary"
+                />
+              </div>
+              <div class="space-y-1.5">
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider"
+                  >Max Students</label
+                >
+                <input
+                  v-model="newClass.maxStudents"
+                  type="number"
+                  min="1"
+                  class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary"
+                />
+              </div>
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider"
+                >Schedule <span class="text-red-500">*</span></label
+              >
+              <input
+                v-model="newClass.schedule"
+                required
+                type="text"
+                placeholder="e.g. Mon, Wed 09:00 AM"
+                class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary"
+              />
+            </div>
+
+            <!-- Footer -->
+            <div
+              class="pt-4 flex items-center justify-end gap-3 border-t border-stone-100 dark:border-stone-800"
+            >
+              <button
+                type="button"
+                @click="closeAddClassModal"
+                class="px-5 py-2.5 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                :disabled="createLoading"
+                class="flex items-center gap-2 px-8 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-lg font-bold shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span
+                  v-if="createLoading"
+                  class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"
+                ></span>
+                <span>{{ createLoading ? 'Creating...' : 'Create Class' }}</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
 </template>

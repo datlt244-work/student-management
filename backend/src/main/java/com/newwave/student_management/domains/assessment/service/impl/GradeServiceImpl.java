@@ -71,7 +71,7 @@ public class GradeServiceImpl implements IGradeService {
                 .courseName(grade.getEnrollment().getScheduledClass().getCourse().getName())
                 .credits(grade.getEnrollment().getScheduledClass().getCourse().getCredits())
                 .grade(grade.getGradeValue())
-                .grade4(convertToScale4(grade.getGradeValue()))
+                .grade4(grade.getGradeValue() != null ? convertToScale4(grade.getGradeValue()) : null)
                 .feedback(grade.getFeedback())
                 .build();
     }

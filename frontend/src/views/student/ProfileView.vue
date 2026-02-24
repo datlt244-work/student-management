@@ -468,6 +468,7 @@ async function handleUpdatePassword() {
                   class="form-input rounded-lg border-border-light dark:border-border-dark bg-stone-50 dark:bg-stone-800 text-sm h-12 cursor-not-allowed"
                   type="email"
                   disabled
+                  autocomplete="username"
                 />
               </div>
               <div class="flex flex-col gap-2">
@@ -558,7 +559,7 @@ async function handleUpdatePassword() {
               </div>
 
               <!-- Password Fields -->
-              <div class="space-y-6">
+              <form @submit.prevent="handleUpdatePassword" class="space-y-6">
                 <!-- Current Password -->
                 <div class="flex flex-col gap-2">
                   <label class="text-sm font-bold">Current Password</label>
@@ -568,6 +569,8 @@ async function handleUpdatePassword() {
                       class="form-input w-full rounded-lg border-primary/50 dark:border-primary/50 focus:border-primary focus:ring-primary bg-transparent text-sm h-12 pr-10"
                       placeholder="••••••••"
                       :type="showCurrentPassword ? 'text' : 'password'"
+                      autocomplete="current-password"
+                      required
                     />
                     <button
                       class="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted-light dark:text-text-muted-dark hover:text-primary transition-colors"
@@ -590,6 +593,8 @@ async function handleUpdatePassword() {
                       class="form-input w-full rounded-lg border-primary/50 dark:border-primary/50 focus:border-primary focus:ring-primary bg-transparent text-sm h-12 pr-10"
                       placeholder="Enter new password"
                       :type="showNewPassword ? 'text' : 'password'"
+                      autocomplete="new-password"
+                      required
                     />
                     <button
                       class="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted-light dark:text-text-muted-dark hover:text-primary transition-colors"
@@ -639,6 +644,8 @@ async function handleUpdatePassword() {
                       class="form-input w-full rounded-lg border-primary/50 dark:border-primary/50 focus:border-primary focus:ring-primary bg-transparent text-sm h-12 pr-10"
                       placeholder="Confirm new password"
                       :type="showConfirmPassword ? 'text' : 'password'"
+                      autocomplete="new-password"
+                      required
                     />
                     <button
                       class="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted-light dark:text-text-muted-dark hover:text-primary transition-colors"
@@ -662,39 +669,39 @@ async function handleUpdatePassword() {
                     Passwords do not match.
                   </p>
                 </div>
-              </div>
 
-              <!-- Secure Action Bar -->
-              <div
-                class="mt-4 flex flex-col sm:flex-row items-center justify-between gap-6 p-6 rounded-xl bg-stone-50/50 dark:bg-stone-800/30 border border-border-light dark:border-border-dark"
-              >
-                <div class="flex gap-4 items-center">
-                  <div
-                    class="flex size-12 items-center justify-center rounded-full bg-primary/20 text-primary"
-                  >
-                    <span class="material-symbols-outlined">lock_reset</span>
-                  </div>
-                  <div>
-                    <p class="text-sm font-bold">Secure Action</p>
-                    <p class="text-xs text-text-muted-light dark:text-text-muted-dark">
-                      You will be logged out of other sessions.
-                    </p>
-                  </div>
-                </div>
-                <button
-                  class="w-full sm:w-auto min-w-[180px] bg-primary text-white py-3 px-8 rounded-lg font-bold text-sm shadow-md shadow-primary/20 hover:brightness-110 transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:pointer-events-none"
-                  :disabled="isChangingPassword"
-                  @click="handleUpdatePassword"
+                <!-- Secure Action Bar -->
+                <div
+                  class="mt-4 flex flex-col sm:flex-row items-center justify-between gap-6 p-6 rounded-xl bg-stone-50/50 dark:bg-stone-800/30 border border-border-light dark:border-border-dark"
                 >
-                  <span
-                    v-if="isChangingPassword"
-                    class="material-symbols-outlined text-sm animate-spin"
-                    >progress_activity</span
+                  <div class="flex gap-4 items-center">
+                    <div
+                      class="flex size-12 items-center justify-center rounded-full bg-primary/20 text-primary"
+                    >
+                      <span class="material-symbols-outlined">lock_reset</span>
+                    </div>
+                    <div>
+                      <p class="text-sm font-bold">Secure Action</p>
+                      <p class="text-xs text-text-muted-light dark:text-text-muted-dark">
+                        You will be logged out of other sessions.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    class="w-full sm:w-auto min-w-[180px] bg-primary text-white py-3 px-8 rounded-lg font-bold text-sm shadow-md shadow-primary/20 hover:brightness-110 transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:pointer-events-none"
+                    :disabled="isChangingPassword"
+                    type="submit"
                   >
-                  <span v-else class="material-symbols-outlined text-sm">check_circle</span>
-                  {{ isChangingPassword ? 'Updating...' : 'Update Password' }}
-                </button>
-              </div>
+                    <span
+                      v-if="isChangingPassword"
+                      class="material-symbols-outlined text-sm animate-spin"
+                      >progress_activity</span
+                    >
+                    <span v-else class="material-symbols-outlined text-sm">check_circle</span>
+                    {{ isChangingPassword ? 'Updating...' : 'Update Password' }}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
 

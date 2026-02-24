@@ -83,7 +83,8 @@ public class AdminClassServiceImpl implements IAdminClassService {
             predicates.add(cb.isNull(root.get("deletedAt")));
 
             // Filter classes with ACTIVE courses only
-            predicates.add(cb.equal(courseJoin.get("status"), com.newwave.student_management.domains.curriculum.entity.CourseStatus.ACTIVE));
+            predicates.add(cb.equal(courseJoin.get("status"),
+                    com.newwave.student_management.domains.curriculum.entity.CourseStatus.ACTIVE));
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };
@@ -117,7 +118,7 @@ public class AdminClassServiceImpl implements IAdminClassService {
 
         // Conflict Check (Mandatory Teacher Check)
         if (request.getTeacherId() == null || request.getTeacherId().isBlank()) {
-            throw new AppException(ErrorCode.VALIDATION_ERROR); 
+            throw new AppException(ErrorCode.VALIDATION_ERROR);
         }
 
         Teacher teacher = teacherRepository.findById(UUID.fromString(request.getTeacherId()))
@@ -166,7 +167,7 @@ public class AdminClassServiceImpl implements IAdminClassService {
     @Override
     @Transactional
     public AdminClassListItemResponse updateClass(Integer classId, AdminUpdateClassRequest request) {
-        ScheduledClass scheduledClass = scheduledClassRepository.findById(classId)
+        ScheduledClass scheduledClass = scheduledClassRepository.findByClassIdAndDeletedAtIsNull(classId)
                 .orElseThrow(() -> new AppException(ErrorCode.CLASS_NOT_FOUND));
 
         // Constraint: Cannot change Course or Semester
@@ -177,7 +178,8 @@ public class AdminClassServiceImpl implements IAdminClassService {
 
         // Validation: Teacher must be in same department as CURRENT course
         if (scheduledClass.getCourse().getDepartment() != null && teacher.getDepartment() != null) {
-            if (!scheduledClass.getCourse().getDepartment().getDepartmentId().equals(teacher.getDepartment().getDepartmentId())) {
+            if (!scheduledClass.getCourse().getDepartment().getDepartmentId()
+                    .equals(teacher.getDepartment().getDepartmentId())) {
                 throw new AppException(ErrorCode.TEACHER_DEPARTMENT_MISMATCH);
             }
         }
@@ -223,7 +225,7 @@ public class AdminClassServiceImpl implements IAdminClassService {
     @Override
     @Transactional(readOnly = true)
     public AdminClassDetailResponse getClassDetail(Integer classId) {
-        ScheduledClass scheduledClass = scheduledClassRepository.findById(classId)
+        ScheduledClass scheduledClass = scheduledClassRepository.findByClassIdAndDeletedAtIsNull(classId)
                 .orElseThrow(() -> new AppException(ErrorCode.CLASS_NOT_FOUND));
 
         List<Enrollment> enrollments = enrollmentRepository.findByScheduledClassClassId(classId);
@@ -241,7 +243,8 @@ public class AdminClassServiceImpl implements IAdminClassService {
 
         String teacherName = "N/A";
         if (scheduledClass.getTeacher() != null) {
-            teacherName = (scheduledClass.getTeacher().getFirstName() + " " + scheduledClass.getTeacher().getLastName()).trim();
+            teacherName = (scheduledClass.getTeacher().getFirstName() + " " + scheduledClass.getTeacher().getLastName())
+                    .trim();
         }
 
         return AdminClassDetailResponse.builder()
@@ -249,8 +252,10 @@ public class AdminClassServiceImpl implements IAdminClassService {
                 .courseName(scheduledClass.getCourse().getName())
                 .courseCode(scheduledClass.getCourse().getCode())
                 .teacherName(teacherName)
-                .teacherId(scheduledClass.getTeacher() != null ? scheduledClass.getTeacher().getTeacherId().toString() : null)
-                .semesterName(scheduledClass.getSemester() != null ? scheduledClass.getSemester().getDisplayName() : "N/A")
+                .teacherId(scheduledClass.getTeacher() != null ? scheduledClass.getTeacher().getTeacherId().toString()
+                        : null)
+                .semesterName(
+                        scheduledClass.getSemester() != null ? scheduledClass.getSemester().getDisplayName() : "N/A")
                 .roomNumber(scheduledClass.getRoomNumber())
                 .schedule(formatSchedule(scheduledClass))
                 .dayOfWeek(scheduledClass.getDayOfWeek())
@@ -266,7 +271,7 @@ public class AdminClassServiceImpl implements IAdminClassService {
     @Override
     @Transactional
     public void deleteClass(Integer classId) {
-        ScheduledClass scheduledClass = scheduledClassRepository.findById(classId)
+        ScheduledClass scheduledClass = scheduledClassRepository.findByClassIdAndDeletedAtIsNull(classId)
                 .orElseThrow(() -> new AppException(ErrorCode.CLASS_NOT_FOUND));
 
         long studentCount = enrollmentRepository.countByScheduledClassClassId(classId);
@@ -281,7 +286,8 @@ public class AdminClassServiceImpl implements IAdminClassService {
     private AdminClassListItemResponse mapToListItemResponse(ScheduledClass scheduledClass) {
         String teacherName = "N/A";
         if (scheduledClass.getTeacher() != null) {
-            teacherName = (scheduledClass.getTeacher().getFirstName() + " " + scheduledClass.getTeacher().getLastName()).trim();
+            teacherName = (scheduledClass.getTeacher().getFirstName() + " " + scheduledClass.getTeacher().getLastName())
+                    .trim();
         }
 
         long studentCount = enrollmentRepository.countByScheduledClassClassId(scheduledClass.getClassId());
@@ -291,8 +297,10 @@ public class AdminClassServiceImpl implements IAdminClassService {
                 .courseName(scheduledClass.getCourse().getName())
                 .courseCode(scheduledClass.getCourse().getCode())
                 .teacherName(teacherName)
-                .teacherId(scheduledClass.getTeacher() != null ? scheduledClass.getTeacher().getTeacherId().toString() : null)
-                .semesterName(scheduledClass.getSemester() != null ? scheduledClass.getSemester().getDisplayName() : "N/A")
+                .teacherId(scheduledClass.getTeacher() != null ? scheduledClass.getTeacher().getTeacherId().toString()
+                        : null)
+                .semesterName(
+                        scheduledClass.getSemester() != null ? scheduledClass.getSemester().getDisplayName() : "N/A")
                 .roomNumber(scheduledClass.getRoomNumber())
                 .schedule(formatSchedule(scheduledClass))
                 .dayOfWeek(scheduledClass.getDayOfWeek())
@@ -305,7 +313,8 @@ public class AdminClassServiceImpl implements IAdminClassService {
     }
 
     private String formatSchedule(ScheduledClass scheduledClass) {
-        if (scheduledClass.getDayOfWeek() == null || scheduledClass.getStartTime() == null || scheduledClass.getEndTime() == null) {
+        if (scheduledClass.getDayOfWeek() == null || scheduledClass.getStartTime() == null
+                || scheduledClass.getEndTime() == null) {
             return "N/A";
         }
         String day = switch (scheduledClass.getDayOfWeek()) {

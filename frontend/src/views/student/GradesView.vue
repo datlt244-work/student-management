@@ -26,7 +26,9 @@ async function fetchInitialData() {
     if (semesters.value.length > 0) {
       // Mặc định chọn học kỳ hiện tại hoặc học kỳ gần nhất
       const current = semesters.value.find((s) => s.isCurrent)
-      selectedSemesterId.value = current ? current.semesterId : semesters.value[0].semesterId
+      selectedSemesterId.value = current
+        ? current.semesterId
+        : semesters.value[0]?.semesterId || null
       await fetchGrades()
     }
   } catch (error) {
@@ -45,11 +47,6 @@ async function fetchGrades() {
   } catch (error) {
     console.error('Failed to fetch grades for semester', error)
   }
-}
-
-function handleSemesterChange(id: number) {
-  selectedSemesterId.value = id
-  fetchGrades()
 }
 
 onMounted(() => {

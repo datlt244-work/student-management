@@ -19,7 +19,6 @@ import { useToast } from '@/composables/useToast'
 
 const { toast, showToast } = useToast()
 
-
 const loading = ref(false)
 const classes = ref<AdminClassListItem[]>([])
 const semesters = ref<AdminSemesterListItem[]>([])
@@ -200,16 +199,14 @@ async function handleEditClass(cls: AdminClassListItem) {
   createError.value = null
 
   // Map data to form
-  // We need current courses to find departmentId
-  const course = courses.value.find(c => c.courseId === cls.classId || c.code === cls.courseCode)
-  // Note: cls.classId is for the ScheduledClass, not the course. cls.courseCode should be used to find the courseId
-  const actualCourse = courses.value.find(c => c.code === cls.courseCode)
+  // Use course code to find the course entity
+  const actualCourse = courses.value.find((c) => c.code === cls.courseCode)
 
   if (actualCourse) {
     newClass.value = {
       courseId: actualCourse.courseId,
       teacherId: cls.teacherId || '',
-      semesterId: semesters.value.find(s => s.displayName === cls.semesterName)?.semesterId || '',
+      semesterId: semesters.value.find((s) => s.displayName === cls.semesterName)?.semesterId || '',
       roomNumber: cls.roomNumber,
       dayOfWeek: cls.dayOfWeek || 1,
       startTime: cls.startTime?.slice(0, 5) || '08:00',
@@ -260,7 +257,6 @@ async function submitNewClass() {
     showToast('Class created successfully')
     closeAddClassModal()
     fetchClasses()
-
   } catch (err) {
     createError.value = err instanceof Error ? err.message : 'Failed to create class'
   } finally {
@@ -930,13 +926,17 @@ async function confirmDeleteClass() {
               <h2 class="text-lg font-bold text-slate-900 dark:text-white">Delete Class</h2>
               <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
                 Are you sure you want to delete
-                <span class="font-semibold text-slate-700 dark:text-slate-200">#CL-{{ deletingClass?.classId }}</span>? This action cannot be undone.
+                <span class="font-semibold text-slate-700 dark:text-slate-200"
+                  >#CL-{{ deletingClass?.classId }}</span
+                >? This action cannot be undone.
               </p>
             </div>
             <div
               class="w-full flex items-start gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3"
             >
-              <span class="material-symbols-outlined text-amber-500 text-[18px] mt-0.5">warning</span>
+              <span class="material-symbols-outlined text-amber-500 text-[18px] mt-0.5"
+                >warning</span
+              >
               <p class="text-xs text-amber-700 dark:text-amber-300 text-left">
                 Cannot be deleted if it has enrolled students.
               </p>
@@ -957,10 +957,9 @@ async function confirmDeleteClass() {
               class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 disabled:opacity-60 text-white text-sm font-bold rounded-xl transition-all active:scale-95"
               @click="confirmDeleteClass"
             >
-              <span
-                v-if="deleteLoading"
-                class="material-symbols-outlined text-[18px] animate-spin"
-              >progress_activity</span>
+              <span v-if="deleteLoading" class="material-symbols-outlined text-[18px] animate-spin"
+                >progress_activity</span
+              >
               Delete
             </button>
           </div>

@@ -181,3 +181,52 @@ Sinh viên tự cập nhật thông tin liên lạc và ảnh đại diện.
 
 - Thay đổi số điện thoại, địa chỉ thường trú.
 - Tải lên ảnh đại diện cá nhân.
+
+---
+
+## UC-20: Hệ thống Thông báo (Notification System)
+
+### 1. Mô tả
+
+Cung cấp khả năng gửi và nhận thông báo thời gian thực giữa Quản trị viên và Sinh viên/Giảng viên thông qua Firebase Cloud Messaging (FCM).
+
+### 2. Tác nhân
+
+- **Admin**: Gửi thông báo.
+- **Sinh viên/Giảng viên**: Nhận thông báo.
+- **Hệ thống**: Tự động gửi thông báo dựa trên sự kiện.
+
+### 3. Các luồng công việc
+
+#### UC-20.1: Đăng ký FCM Token
+- **Luồng chính**:
+  1. Người dùng đăng nhập vào hệ thống trên trình duyệt.
+  2. Frontend yêu cầu quyền nhận thông báo.
+  3. Nếu được cấp quyền, Frontend lấy FCM Token từ Firebase.
+  4. Frontend gửi Token này lên Backend để lưu trữ gắn liền với User ID.
+
+#### UC-20.2: Admin gửi thông báo (Broadcast)
+- **Luồng chính**:
+  1. Admin truy cập trang "Send Notifications".
+  2. Admin nhập Tiêu đề (Title) và Nội dung (Body).
+  3. Admin chọn đối tượng nhận: Toàn bộ hệ thống, Theo Khoa, hoặc Theo Lớp.
+  4. Admin nhấn "Send".
+  5. Backend lấy danh sách các FCM Token của đối tượng nhận và gọi Firebase API thông qua `FcmService`.
+
+#### UC-20.3: Thông báo tự động từ Hệ thống
+- **Các sự kiện kích hoạt**:
+  - Khi một Lớp học bị hủy (`CANCELLED`) -> Thông báo cho sinh viên trong lớp.
+  - Khi có điểm số mới được nhập -> Thông báo cho sinh viên tương ứng.
+  - Khi một Học kỳ mới bắt đầu đăng ký học phần.
+
+#### UC-20.4: Nhận và Hiển thị thông báo
+- **Luồng chính**:
+  1. Khi có thông báo được gửi đến, nếu trình duyệt đang mở (Foreground): Hiển thị thông báo dưới dạng Toast.
+  2. Nếu trình duyệt đang đóng (Background): Service Worker xử lý hiển thị thông báo hệ thống của trình duyệt.
+
+### 4. Quy tắc nghiệp vụ
+
+- Một người dùng có thể có nhiều Token FCM (nếu đăng nhập trên nhiều thiết bị/trình duyệt).
+- Thông báo phải được lưu lại trong cơ sở dữ liệu để người dùng có thể xem lại lịch sử.
+- Token FCM cần được cập nhật định kỳ hoặc xóa khi người dùng đăng xuất.
+

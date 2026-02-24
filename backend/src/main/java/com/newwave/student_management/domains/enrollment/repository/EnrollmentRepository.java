@@ -7,4 +7,5 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer> {
     long countByScheduledClassClassId(Integer classId);
+    java.util.List<Enrollment> findByScheduledClassClassId(Integer classId);
 }

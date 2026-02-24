@@ -17,10 +17,14 @@ import com.newwave.student_management.domains.profile.entity.DepartmentStatus;
 import com.newwave.student_management.domains.profile.repository.DepartmentRepository;
 import com.newwave.student_management.domains.profile.repository.SemesterRepository;
 import com.newwave.student_management.domains.profile.entity.Semester;
+import com.newwave.student_management.domains.enrollment.repository.ScheduledClassRepository;
+import com.newwave.student_management.domains.enrollment.repository.EnrollmentRepository;
+import com.newwave.student_management.domains.enrollment.entity.ScheduledClass;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -32,13 +36,16 @@ public class AdminCourseService implements IAdminCourseService {
     private final CourseRepository courseRepository;
     private final SemesterRepository semesterRepository;
     private final DepartmentRepository departmentRepository;
+    private final ScheduledClassRepository scheduledClassRepository;
+    private final EnrollmentRepository enrollmentRepository;
 
     @Override
-    public AdminCourseListResponse getCourses(String search, CourseStatus status, Integer departmentId, Pageable pageable) {
+    public AdminCourseListResponse getCourses(String search, CourseStatus status, Integer departmentId,
+            Pageable pageable) {
         String normalizedSearch = PaginationUtil.normalizeSearch(search);
-        
+
         Page<Course> page = courseRepository.searchAdminCourses(normalizedSearch, status, departmentId, pageable);
-        
+
         List<AdminCourseListItemResponse> items = page.getContent().stream()
                 .map(this::toListItem)
                 .toList();
@@ -55,14 +62,34 @@ public class AdminCourseService implements IAdminCourseService {
     }
 
     @Override
+    @Transactional
     public AdminCourseListItemResponse updateCourseStatus(Integer courseId, CourseStatus status) {
         Course course = courseRepository.findByCourseIdAndDeletedAtIsNull(courseId)
                 .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
 
-        if (status == CourseStatus.ACTIVE 
-            && course.getDepartment() != null 
-            && course.getDepartment().getStatus() == DepartmentStatus.INACTIVE) {
+        if (status == CourseStatus.ACTIVE
+                && course.getDepartment() != null
+                && course.getDepartment().getStatus() == DepartmentStatus.INACTIVE) {
             throw new AppException(ErrorCode.DEPARTMENT_NOT_ACTIVE);
+        }
+
+        if (status == CourseStatus.INACTIVE) {
+            List<ScheduledClass> classes = scheduledClassRepository.findByCourseCourseIdAndDeletedAtIsNull(courseId);
+
+            // Check if any class has enrolled students
+            for (ScheduledClass scheduledClass : classes) {
+                long studentCount = enrollmentRepository.countByScheduledClassClassId(scheduledClass.getClassId());
+                if (studentCount > 0) {
+                    throw new AppException(ErrorCode.COURSE_HAS_ENROLLED_STUDENTS);
+                }
+            }
+
+            // If no students, soft delete all classes of this course
+            LocalDateTime now = LocalDateTime.now();
+            for (ScheduledClass scheduledClass : classes) {
+                scheduledClass.setDeletedAt(now);
+            }
+            scheduledClassRepository.saveAll(classes);
         }
 
         course.setStatus(status);
@@ -76,7 +103,10 @@ public class AdminCourseService implements IAdminCourseService {
                 .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
 
         Semester currentSemester = semesterRepository.findByIsCurrentTrue().orElse(null);
-        String currentSemesterName = currentSemester != null ? (currentSemester.getDisplayName() != null ? currentSemester.getDisplayName() : currentSemester.getName() + " " + currentSemester.getYear()) : "N/A";
+        String currentSemesterName = currentSemester != null
+                ? (currentSemester.getDisplayName() != null ? currentSemester.getDisplayName()
+                        : currentSemester.getName() + " " + currentSemester.getYear())
+                : "N/A";
 
         return AdminCourseDetailResponse.builder()
                 .courseId(course.getCourseId())
@@ -95,6 +125,7 @@ public class AdminCourseService implements IAdminCourseService {
     }
 
     @Override
+    @Transactional
     public AdminCourseDetailResponse updateCourse(Integer courseId, AdminUpdateCourseRequest request) {
         Course course = courseRepository.findByCourseIdAndDeletedAtIsNull(courseId)
                 .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
@@ -113,9 +144,11 @@ public class AdminCourseService implements IAdminCourseService {
 
         // Update Department if changed
         if (request.getDepartmentId() != null) {
-            boolean isNewDept = course.getDepartment() == null || !course.getDepartment().getDepartmentId().equals(request.getDepartmentId());
+            boolean isNewDept = course.getDepartment() == null
+                    || !course.getDepartment().getDepartmentId().equals(request.getDepartmentId());
             if (isNewDept) {
-                Department department = departmentRepository.findByDepartmentIdAndDeletedAtIsNull(request.getDepartmentId())
+                Department department = departmentRepository
+                        .findByDepartmentIdAndDeletedAtIsNull(request.getDepartmentId())
                         .orElseThrow(() -> new AppException(ErrorCode.DEPARTMENT_NOT_FOUND));
                 course.setDepartment(department);
             }
@@ -126,6 +159,7 @@ public class AdminCourseService implements IAdminCourseService {
     }
 
     @Override
+    @Transactional
     public AdminCourseDetailResponse createCourse(AdminCreateCourseRequest request) {
         // Validate course code uniqueness
         if (courseRepository.existsByCodeAndDeletedAtIsNull(request.getCode())) {
@@ -153,6 +187,7 @@ public class AdminCourseService implements IAdminCourseService {
     }
 
     @Override
+    @Transactional
     public void deleteCourse(Integer courseId) {
         Course course = courseRepository.findByCourseIdAndDeletedAtIsNull(courseId)
                 .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));

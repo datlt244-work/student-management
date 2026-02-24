@@ -6,11 +6,13 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AdminClassListItemResponse {
+public class AdminClassDetailResponse {
     private Integer classId;
     private String courseName;
     private String courseCode;
@@ -25,4 +27,5 @@ public class AdminClassListItemResponse {
     private ScheduledClassStatus status;
     private Integer maxStudents;
     private long studentCount;
+    private List<AdminClassStudentResponse> students;
 }

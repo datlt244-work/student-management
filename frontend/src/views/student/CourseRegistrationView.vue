@@ -5,6 +5,8 @@ import { getAvailableClasses, type StudentAvailableClass } from '@/services/stud
 const searchQuery = ref('')
 const loading = ref(true)
 const availableClasses = ref<StudentAvailableClass[]>([])
+const selectedCredits = ref<number | null>(null)
+const selectedDay = ref<string | null>(null)
 
 // Default placeholder for courses
 const DEFAULT_COURSE_IMAGE =
@@ -21,15 +23,36 @@ onMounted(async () => {
 })
 
 const filteredClasses = computed(() => {
-  if (!searchQuery.value) return availableClasses.value
-  const query = searchQuery.value.toLowerCase()
-  return availableClasses.value.filter(
-    (c) =>
-      c.courseName.toLowerCase().includes(query) ||
-      c.courseCode.toLowerCase().includes(query) ||
-      c.teacherName.toLowerCase().includes(query),
-  )
+  return availableClasses.value.filter((c) => {
+    // Search filter
+    const matchesSearch =
+      !searchQuery.value ||
+      c.courseName.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+      c.courseCode.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+      c.teacherName.toLowerCase().includes(searchQuery.value.toLowerCase())
+
+    // Credits filter
+    const matchesCredits = selectedCredits.value === null || c.credits === selectedCredits.value
+
+    // Day filter
+    const matchesDay = !selectedDay.value || c.schedule.includes(selectedDay.value)
+
+    return matchesSearch && matchesCredits && matchesDay
+  })
 })
+
+const uniqueCredits = computed(() => {
+  const credits = availableClasses.value.map((c) => c.credits)
+  return [...new Set(credits)].sort((a, b) => a - b)
+})
+
+const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+function clearFilters() {
+  searchQuery.value = ''
+  selectedCredits.value = null
+  selectedDay.value = null
+}
 </script>
 
 <template>
@@ -79,33 +102,44 @@ const filteredClasses = computed(() => {
         </div>
         <!-- Chips/Dropdowns -->
         <div class="flex flex-wrap items-center gap-3">
-          <button
-            class="group flex h-10 items-center justify-between gap-x-3 rounded-lg bg-input-bg-light dark:bg-input-bg-dark px-4 hover:bg-primary/10 dark:hover:bg-primary/20 transition-colors"
-          >
-            <span class="text-text-main-light dark:text-text-main-dark text-sm font-medium"
-              >Credits</span
+          <!-- Credits Filter -->
+          <div class="relative">
+            <select
+              v-model="selectedCredits"
+              class="appearance-none h-10 pl-4 pr-10 rounded-lg bg-input-bg-light dark:bg-input-bg-dark text-text-main-light dark:text-text-main-dark text-sm font-medium border-none focus:ring-2 ring-primary/50 hover:bg-primary/10 dark:hover:bg-primary/20 transition-all cursor-pointer w-full sm:w-auto !bg-none"
             >
+              <option :value="null">All Credits</option>
+              <option v-for="c in uniqueCredits" :key="c" :value="c">{{ c }} Credits</option>
+            </select>
             <span
-              class="material-symbols-outlined text-text-muted-light dark:text-text-muted-dark !text-[20px] group-hover:text-primary transition-colors"
-              >expand_more</span
+              class="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted-light dark:text-text-muted-dark !text-[18px] pointer-events-none select-none"
+              >keyboard_arrow_down</span
             >
-          </button>
-          <button
-            class="group flex h-10 items-center justify-between gap-x-3 rounded-lg bg-input-bg-light dark:bg-input-bg-dark px-4 hover:bg-primary/10 dark:hover:bg-primary/20 transition-colors"
-          >
-            <span class="text-text-main-light dark:text-text-main-dark text-sm font-medium"
-              >Schedule</span
+          </div>
+
+          <!-- Day Filter -->
+          <div class="relative">
+            <select
+              v-model="selectedDay"
+              class="appearance-none h-10 pl-4 pr-10 rounded-lg bg-input-bg-light dark:bg-input-bg-dark text-text-main-light dark:text-text-main-dark text-sm font-medium border-none focus:ring-2 ring-primary/50 hover:bg-primary/10 dark:hover:bg-primary/20 transition-all cursor-pointer w-full sm:w-auto !bg-none"
             >
+              <option :value="null">All Days</option>
+              <option v-for="day in days" :key="day" :value="day">{{ day }}</option>
+            </select>
             <span
-              class="material-symbols-outlined text-text-muted-light dark:text-text-muted-dark !text-[20px] group-hover:text-primary transition-colors"
-              >expand_more</span
+              class="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted-light dark:text-text-muted-dark !text-[18px] pointer-events-none select-none"
+              >keyboard_arrow_down</span
             >
-          </button>
+          </div>
+
           <div class="h-8 w-px bg-border-light dark:bg-border-dark mx-1 hidden md:block"></div>
+
           <button
-            class="flex items-center justify-center size-10 rounded-lg bg-input-bg-light dark:bg-input-bg-dark text-text-main-light dark:text-text-main-dark hover:text-primary hover:bg-primary/10 transition-colors"
+            @click="clearFilters"
+            class="flex items-center justify-center size-10 rounded-lg bg-input-bg-light dark:bg-input-bg-dark text-text-main-light dark:text-text-main-dark hover:text-primary hover:bg-primary/10 transition-colors shadow-sm"
+            title="Clear all filters"
           >
-            <span class="material-symbols-outlined">filter_list</span>
+            <span class="material-symbols-outlined !text-[20px]">filter_alt_off</span>
           </button>
         </div>
       </div>
@@ -134,8 +168,8 @@ const filteredClasses = computed(() => {
             Try adjusting your search or filters to find what you're looking for.
           </p>
         </div>
-        <button @click="searchQuery = ''" class="text-primary font-bold hover:underline">
-          Clear search
+        <button @click="clearFilters" class="text-primary font-bold hover:underline">
+          Clear all filters
         </button>
       </div>
 

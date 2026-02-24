@@ -6,6 +6,8 @@ import com.newwave.student_management.domains.enrollment.service.IStudentClassSe
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,6 +21,7 @@ import java.util.UUID;
 @RequestMapping("/student/classes")
 @RequiredArgsConstructor
 @Tag(name = "Student Class", description = "API cho sinh viên đăng ký học phần")
+@PreAuthorize("hasRole('STUDENT')")
 public class StudentClassController {
 
     private final IStudentClassService studentClassService;

@@ -26,4 +26,10 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
             "e.scheduledClass.deletedAt IS NULL")
     long countStudentConflicts(UUID studentId, Integer semesterId, Integer dayOfWeek, LocalTime startTime,
             LocalTime endTime);
+
+    boolean existsByStudentStudentIdAndScheduledClassCourseCourseIdAndScheduledClassSemesterSemesterId(
+            UUID studentId, Integer courseId, Integer semesterId);
+
+    List<Enrollment> findByStudentStudentIdAndScheduledClassSemesterSemesterIdAndScheduledClassDeletedAtIsNull(
+            UUID studentId, Integer semesterId);
 }

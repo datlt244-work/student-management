@@ -3,6 +3,8 @@ package com.newwave.student_management.domains.enrollment.service.impl;
 import com.newwave.student_management.common.exception.AppException;
 import com.newwave.student_management.common.exception.ErrorCode;
 import com.newwave.student_management.domains.enrollment.dto.response.StudentAvailableClassResponse;
+import com.newwave.student_management.domains.enrollment.dto.response.StudentEnrolledClassResponse;
+import com.newwave.student_management.domains.enrollment.entity.Enrollment;
 import com.newwave.student_management.domains.enrollment.entity.ScheduledClass;
 import com.newwave.student_management.domains.enrollment.repository.EnrollmentRepository;
 import com.newwave.student_management.domains.enrollment.repository.ScheduledClassRepository;
@@ -52,6 +54,46 @@ public class StudentClassServiceImpl implements IStudentClassService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<StudentEnrolledClassResponse> getEnrolledClasses(UUID userId) {
+        Student student = studentRepository.findByUserIdWithDepartment(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.STUDENT_PROFILE_NOT_FOUND));
+
+        Semester currentSemester = semesterRepository.findByIsCurrentTrue()
+                .orElseThrow(() -> new AppException(ErrorCode.NO_CURRENT_SEMESTER));
+
+        List<Enrollment> enrollments = enrollmentRepository
+                .findByStudentStudentIdAndScheduledClassSemesterSemesterIdAndScheduledClassDeletedAtIsNull(
+                        student.getStudentId(),
+                        currentSemester.getSemesterId());
+
+        return enrollments.stream()
+                .map(this::mapToEnrolledClassResponse)
+                .collect(Collectors.toList());
+    }
+
+    private StudentEnrolledClassResponse mapToEnrolledClassResponse(Enrollment enrollment) {
+        ScheduledClass scheduledClass = enrollment.getScheduledClass();
+        String teacherName = "N/A";
+        if (scheduledClass.getTeacher() != null) {
+            teacherName = (scheduledClass.getTeacher().getFirstName() + " " + scheduledClass.getTeacher().getLastName())
+                    .trim();
+        }
+
+        return StudentEnrolledClassResponse.builder()
+                .enrollmentId(enrollment.getEnrollmentId())
+                .classId(scheduledClass.getClassId())
+                .courseCode(scheduledClass.getCourse().getCode())
+                .courseName(scheduledClass.getCourse().getName())
+                .credits(scheduledClass.getCourse().getCredits())
+                .teacherName(teacherName)
+                .schedule(formatSchedule(scheduledClass))
+                .roomNumber(scheduledClass.getRoomNumber())
+                .enrollmentDate(enrollment.getEnrollmentDate())
+                .build();
+    }
+
     private StudentAvailableClassResponse mapToAvailableClassResponse(ScheduledClass scheduledClass) {
         String teacherName = "N/A";
         if (scheduledClass.getTeacher() != null) {
@@ -73,6 +115,85 @@ public class StudentClassServiceImpl implements IStudentClassService {
                 .currentStudents((int) currentStudents)
                 .status(scheduledClass.getStatus())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public void enroll(UUID userId, Integer classId) {
+        Student student = studentRepository.findByUserIdWithDepartment(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.STUDENT_PROFILE_NOT_FOUND));
+
+        ScheduledClass scheduledClass = scheduledClassRepository.findById(classId)
+                .orElseThrow(() -> new AppException(ErrorCode.CLASS_NOT_FOUND));
+
+        // 1. Check if class is OPEN
+        if (scheduledClass
+                .getStatus() != com.newwave.student_management.domains.enrollment.entity.ScheduledClassStatus.OPEN) {
+            throw new AppException(ErrorCode.CLASS_HAS_ENROLLED_STUDENTS); // Or a more specific code if available
+        }
+
+        // 2. Check if already enrolled in THIS class
+        if (enrollmentRepository.existsByScheduledClassClassIdAndStudentStudentId(classId, student.getStudentId())) {
+            throw new AppException(ErrorCode.STUDENT_ALREADY_ENROLLED);
+        }
+
+        // 3. Check if already enrolled in another class of the SAME COURSE in the SAME
+        // SEMESTER
+        if (enrollmentRepository
+                .existsByStudentStudentIdAndScheduledClassCourseCourseIdAndScheduledClassSemesterSemesterId(
+                        student.getStudentId(), scheduledClass.getCourse().getCourseId(),
+                        scheduledClass.getSemester().getSemesterId())) {
+            throw new AppException(ErrorCode.COURSE_ALREADY_ENROLLED);
+        }
+
+        // 4. Check capacity
+        long currentEnrolled = enrollmentRepository.countByScheduledClassClassId(classId);
+        if (currentEnrolled >= scheduledClass.getMaxStudents()) {
+            throw new AppException(ErrorCode.CLASS_FULL);
+        }
+
+        // 5. Check schedule conflicts
+        long conflicts = enrollmentRepository.countStudentConflicts(
+                student.getStudentId(),
+                scheduledClass.getSemester().getSemesterId(),
+                scheduledClass.getDayOfWeek(),
+                scheduledClass.getStartTime(),
+                scheduledClass.getEndTime());
+
+        if (conflicts > 0) {
+            throw new AppException(ErrorCode.STUDENT_SCHEDULE_CONFLICT);
+        }
+
+        // 6. Create enrollment
+        com.newwave.student_management.domains.enrollment.entity.Enrollment enrollment = new com.newwave.student_management.domains.enrollment.entity.Enrollment();
+        enrollment.setStudent(student);
+        enrollment.setScheduledClass(scheduledClass);
+        enrollment.setEnrollmentDate(java.time.LocalDate.now());
+
+        enrollmentRepository.save(enrollment);
+    }
+
+    @Override
+    @Transactional
+    public void unenroll(UUID userId, Integer classId) {
+        Student student = studentRepository.findByUserIdWithDepartment(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.STUDENT_PROFILE_NOT_FOUND));
+
+        // Find the enrollment record
+        Enrollment enrollment = enrollmentRepository
+                .findByScheduledClassClassIdAndStudentStudentId(classId, student.getStudentId())
+                .orElseThrow(() -> new AppException(ErrorCode.ENROLLMENT_NOT_FOUND));
+
+        // Verify the class belongs to the current semester
+        Semester currentSemester = semesterRepository.findByIsCurrentTrue()
+                .orElseThrow(() -> new AppException(ErrorCode.NO_CURRENT_SEMESTER));
+
+        if (!enrollment.getScheduledClass().getSemester().getSemesterId()
+                .equals(currentSemester.getSemesterId())) {
+            throw new AppException(ErrorCode.SEMESTER_NOT_CURRENT);
+        }
+
+        enrollmentRepository.delete(enrollment);
     }
 
     private String formatSchedule(ScheduledClass scheduledClass) {

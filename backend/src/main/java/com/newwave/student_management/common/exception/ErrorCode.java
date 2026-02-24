@@ -63,6 +63,8 @@ public enum ErrorCode {
         SEMESTER_NOT_CURRENT(1264, "Classes can only be created for the current semester", HttpStatus.BAD_REQUEST),
         CLASS_HAS_ENROLLED_STUDENTS(1265, "Cannot cancel class that has enrolled students", HttpStatus.BAD_REQUEST),
         STUDENT_ALREADY_ENROLLED(1266, "Student is already enrolled in this class", HttpStatus.CONFLICT),
+        COURSE_ALREADY_ENROLLED(1271, "Student is already enrolled in another class of this course",
+                        HttpStatus.CONFLICT),
         CLASS_FULL(1267, "Class capacity reached", HttpStatus.BAD_REQUEST),
         STUDENT_SCHEDULE_CONFLICT(1268, "Student has another class at this time", HttpStatus.CONFLICT),
         STUDENT_DEPARTMENT_MISMATCH(1269, "Student must belong to the same department as the course",

@@ -1,8 +1,16 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { getMyProfile, updateMyProfile, uploadAvatar, type CombinedProfile } from '@/services/profileService'
+import {
+  getMyProfile,
+  updateMyProfile,
+  uploadAvatar,
+  type CombinedProfile,
+} from '@/services/profileService'
 import { changePassword } from '@/services/authService'
+import { useToast } from '@/composables/useToast'
+
+const { toast, showToast } = useToast()
 
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)
@@ -53,9 +61,24 @@ const formData = ref({
 
 // Summary info
 const summaryCards = computed(() => [
-  { label: 'Current Semester', value: profile.value?.studentProfile?.currentSemester?.displayName ?? 'N/A', isHighlight: false },
-  { label: 'Department', value: profile.value?.studentProfile?.department?.name ?? 'N/A', isHighlight: false },
-  { label: 'GPA', value: profile.value?.studentProfile?.gpa != null ? `${profile.value.studentProfile.gpa} / 4.0` : 'N/A', isHighlight: true },
+  {
+    label: 'Current Semester',
+    value: profile.value?.studentProfile?.currentSemester?.displayName ?? 'N/A',
+    isHighlight: false,
+  },
+  {
+    label: 'Department',
+    value: profile.value?.studentProfile?.department?.name ?? 'N/A',
+    isHighlight: false,
+  },
+  {
+    label: 'GPA',
+    value:
+      profile.value?.studentProfile?.gpa != null
+        ? `${profile.value.studentProfile.gpa} / 4.0`
+        : 'N/A',
+    isHighlight: true,
+  },
 ])
 
 // Fetch profile on mount
@@ -108,14 +131,17 @@ async function handleAvatarChange(event: Event) {
     // Update auth store so avatar updates in layout/navbar too
     if (authStore.user) {
       const rememberMe = localStorage.getItem('rememberMe') === 'true'
-      authStore.setAuth({
-        accessToken: authStore.accessToken!,
-        refreshToken: authStore.refreshToken!,
-        userId: authStore.user.userId,
-        email: authStore.user.email,
-        role: authStore.user.role,
-        profilePictureUrl: result.fullUrl,
-      }, rememberMe)
+      authStore.setAuth(
+        {
+          accessToken: authStore.accessToken!,
+          refreshToken: authStore.refreshToken!,
+          userId: authStore.user.userId,
+          email: authStore.user.email,
+          role: authStore.user.role,
+          profilePictureUrl: result.fullUrl,
+        },
+        rememberMe,
+      )
     }
   } catch (err: unknown) {
     alert(err instanceof Error ? err.message : 'Failed to upload avatar')
@@ -128,7 +154,6 @@ async function handleAvatarChange(event: Event) {
 // Profile update
 const isSaving = ref(false)
 const saveError = ref('')
-const saveSuccess = ref('')
 
 // Password change form
 const passwordData = ref({
@@ -141,7 +166,6 @@ const showCurrentPassword = ref(false)
 const showNewPassword = ref(false)
 const showConfirmPassword = ref(false)
 const passwordError = ref('')
-const passwordSuccess = ref('')
 const isChangingPassword = ref(false)
 
 const passwordStrength = computed(() => {
@@ -163,7 +187,6 @@ const passwordStrength = computed(() => {
 async function handleUpdateProfile() {
   isSaving.value = true
   saveError.value = ''
-  saveSuccess.value = ''
   try {
     const updated = await updateMyProfile({
       studentProfile: {
@@ -172,8 +195,7 @@ async function handleUpdateProfile() {
       },
     })
     profile.value = updated
-    saveSuccess.value = 'Profile updated successfully!'
-    setTimeout(() => { saveSuccess.value = '' }, 3000)
+    showToast('Profile updated successfully!')
   } catch (err: unknown) {
     saveError.value = err instanceof Error ? err.message : 'Failed to update profile'
   } finally {
@@ -183,7 +205,6 @@ async function handleUpdateProfile() {
 
 async function handleUpdatePassword() {
   passwordError.value = ''
-  passwordSuccess.value = ''
 
   if (!passwordData.value.currentPassword) {
     passwordError.value = 'Please enter your current password.'
@@ -210,13 +231,13 @@ async function handleUpdatePassword() {
       confirmPassword: passwordData.value.confirmPassword,
       logoutOtherDevices: true,
     })
-    passwordSuccess.value = result.message || 'Password changed successfully. Please login again.'
+    showToast(result.message || 'Password changed successfully. Redirecting...')
     passwordData.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
     // Sau khi đổi mật khẩu, bắt buộc user đăng nhập lại
     setTimeout(() => {
       authStore.clearAuth()
       window.location.href = '/login'
-    }, 1500)
+    }, 2000)
   } catch (err: unknown) {
     passwordError.value = err instanceof Error ? err.message : 'Failed to change password'
   } finally {
@@ -236,14 +257,19 @@ async function handleUpdatePassword() {
         >
           Dashboard
         </router-link>
-        <span class="material-symbols-outlined text-sm text-text-muted-light dark:text-text-muted-dark">chevron_right</span>
+        <span
+          class="material-symbols-outlined text-sm text-text-muted-light dark:text-text-muted-dark"
+          >chevron_right</span
+        >
         <span class="text-sm font-medium leading-normal">Personal Profile</span>
       </div>
 
       <!-- Loading State -->
       <div v-if="isLoading" class="flex items-center justify-center py-20">
         <div class="flex flex-col items-center gap-4">
-          <div class="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+          <div
+            class="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"
+          ></div>
           <p class="text-text-muted-light dark:text-text-muted-dark text-sm">Loading profile...</p>
         </div>
       </div>
@@ -253,7 +279,9 @@ async function handleUpdatePassword() {
         <div class="text-center">
           <span class="material-symbols-outlined text-5xl text-red-500 mb-4 block">error</span>
           <p class="text-lg font-bold text-red-500">Failed to load profile</p>
-          <p class="text-sm text-text-muted-light dark:text-text-muted-dark mt-2">{{ loadError }}</p>
+          <p class="text-sm text-text-muted-light dark:text-text-muted-dark mt-2">
+            {{ loadError }}
+          </p>
           <button
             class="mt-4 px-6 py-2 rounded-lg bg-primary text-white font-bold text-sm hover:brightness-110 transition-all"
             @click="fetchProfile"
@@ -267,7 +295,9 @@ async function handleUpdatePassword() {
       <div v-else class="flex flex-col lg:flex-row gap-8 items-start">
         <!-- Sidebar (Profile Summary) -->
         <aside class="w-full lg:w-1/3 flex flex-col gap-6">
-          <div class="bg-surface-light dark:bg-surface-dark p-8 rounded-xl shadow-sm border border-border-light dark:border-border-dark flex flex-col items-center">
+          <div
+            class="bg-surface-light dark:bg-surface-dark p-8 rounded-xl shadow-sm border border-border-light dark:border-border-dark flex flex-col items-center"
+          >
             <!-- Avatar -->
             <div class="relative group">
               <div
@@ -285,17 +315,34 @@ async function handleUpdatePassword() {
                 class="absolute bottom-2 right-2 bg-primary text-white p-1.5 rounded-full shadow-lg cursor-pointer hover:brightness-110 transition-all"
                 @click="triggerAvatarUpload"
               >
-                <span v-if="isUploadingAvatar" class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent block"></span>
+                <span
+                  v-if="isUploadingAvatar"
+                  class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent block"
+                ></span>
                 <span v-else class="material-symbols-outlined text-base">photo_camera</span>
               </div>
-              <input ref="avatarInput" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="handleAvatarChange" />
+              <input
+                ref="avatarInput"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                class="hidden"
+                @change="handleAvatarChange"
+              />
             </div>
 
             <!-- Name & Info -->
             <div class="mt-6 text-center">
               <h1 class="text-2xl font-bold leading-tight">{{ displayName }}</h1>
-              <p class="text-primary font-medium mt-1">{{ profile?.studentProfile?.major ?? profile?.studentProfile?.department?.name ?? 'No Department' }}</p>
-              <p class="text-text-muted-light dark:text-text-muted-dark text-sm font-normal mt-1">Student ID: {{ profile?.studentProfile?.studentCode ?? 'N/A' }}</p>
+              <p class="text-primary font-medium mt-1">
+                {{
+                  profile?.studentProfile?.major ??
+                  profile?.studentProfile?.department?.name ??
+                  'No Department'
+                }}
+              </p>
+              <p class="text-text-muted-light dark:text-text-muted-dark text-sm font-normal mt-1">
+                Student ID: {{ profile?.studentProfile?.studentCode ?? 'N/A' }}
+              </p>
             </div>
 
             <!-- Edit Photo Button -->
@@ -304,7 +351,10 @@ async function handleUpdatePassword() {
               :disabled="isUploadingAvatar"
               @click="triggerAvatarUpload"
             >
-              <span v-if="isUploadingAvatar" class="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent"></span>
+              <span
+                v-if="isUploadingAvatar"
+                class="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent"
+              ></span>
               <span v-else class="material-symbols-outlined text-sm">edit</span>
               <span>{{ isUploadingAvatar ? 'Uploading...' : 'Edit Photo' }}</span>
             </button>
@@ -325,7 +375,12 @@ async function handleUpdatePassword() {
                 ]"
               >
                 <span class="material-symbols-outlined">{{ item.icon }}</span>
-                <p :class="['text-sm', item.routeName === 'student-profile' ? 'font-bold' : 'font-medium']">
+                <p
+                  :class="[
+                    'text-sm',
+                    item.routeName === 'student-profile' ? 'font-bold' : 'font-medium',
+                  ]"
+                >
                   {{ item.label }}
                 </p>
               </router-link>
@@ -334,7 +389,9 @@ async function handleUpdatePassword() {
         </aside>
 
         <!-- Main Section (Tabbed Info) -->
-        <section class="flex-1 w-full bg-surface-light dark:bg-surface-dark rounded-xl shadow-sm border border-border-light dark:border-border-dark overflow-hidden">
+        <section
+          class="flex-1 w-full bg-surface-light dark:bg-surface-dark rounded-xl shadow-sm border border-border-light dark:border-border-dark overflow-hidden"
+        >
           <!-- Tabs Navigation -->
           <div class="border-b border-border-light dark:border-border-dark px-6 flex gap-8">
             <button
@@ -439,23 +496,22 @@ async function handleUpdatePassword() {
               <span class="material-symbols-outlined text-[18px]">error</span>
               <span>{{ saveError }}</span>
             </div>
-            <div
-              v-if="saveSuccess"
-              class="mt-6 flex items-center gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 text-sm"
-            >
-              <span class="material-symbols-outlined text-[18px]">check_circle</span>
-              <span>{{ saveSuccess }}</span>
-            </div>
 
             <!-- Profile Security & Save -->
-            <div class="mt-6 flex flex-col sm:flex-row items-center justify-between gap-6 p-6 rounded-xl bg-stone-50/50 dark:bg-stone-800/30 border border-border-light dark:border-border-dark">
+            <div
+              class="mt-6 flex flex-col sm:flex-row items-center justify-between gap-6 p-6 rounded-xl bg-stone-50/50 dark:bg-stone-800/30 border border-border-light dark:border-border-dark"
+            >
               <div class="flex gap-4 items-center">
-                <div class="flex size-12 items-center justify-center rounded-full bg-primary/20 text-primary">
+                <div
+                  class="flex size-12 items-center justify-center rounded-full bg-primary/20 text-primary"
+                >
                   <span class="material-symbols-outlined">verified_user</span>
                 </div>
                 <div>
                   <p class="text-sm font-bold">Profile Security</p>
-                  <p class="text-xs text-text-muted-light dark:text-text-muted-dark">Only phone and address can be updated.</p>
+                  <p class="text-xs text-text-muted-light dark:text-text-muted-dark">
+                    Only phone and address can be updated.
+                  </p>
                 </div>
               </div>
               <button
@@ -463,7 +519,10 @@ async function handleUpdatePassword() {
                 :disabled="isSaving"
                 @click="handleUpdateProfile"
               >
-                <span v-if="isSaving" class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></span>
+                <span
+                  v-if="isSaving"
+                  class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"
+                ></span>
                 <span v-else class="material-symbols-outlined text-sm">save</span>
                 {{ isSaving ? 'Saving...' : 'Update Profile' }}
               </button>
@@ -490,20 +549,12 @@ async function handleUpdatePassword() {
                 </p>
               </div>
 
-              <!-- Error / Success Messages -->
               <div
                 v-if="passwordError"
                 class="flex items-center gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm"
               >
                 <span class="material-symbols-outlined text-[18px]">error</span>
                 <span>{{ passwordError }}</span>
-              </div>
-              <div
-                v-if="passwordSuccess"
-                class="flex items-center gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 text-sm"
-              >
-                <span class="material-symbols-outlined text-[18px]">check_circle</span>
-                <span>{{ passwordSuccess }}</span>
               </div>
 
               <!-- Password Fields -->
@@ -523,7 +574,9 @@ async function handleUpdatePassword() {
                       type="button"
                       @click="showCurrentPassword = !showCurrentPassword"
                     >
-                      <span class="material-symbols-outlined text-lg">{{ showCurrentPassword ? 'visibility' : 'visibility_off' }}</span>
+                      <span class="material-symbols-outlined text-lg">{{
+                        showCurrentPassword ? 'visibility' : 'visibility_off'
+                      }}</span>
                     </button>
                   </div>
                 </div>
@@ -543,14 +596,21 @@ async function handleUpdatePassword() {
                       type="button"
                       @click="showNewPassword = !showNewPassword"
                     >
-                      <span class="material-symbols-outlined text-lg">{{ showNewPassword ? 'visibility' : 'visibility_off' }}</span>
+                      <span class="material-symbols-outlined text-lg">{{
+                        showNewPassword ? 'visibility' : 'visibility_off'
+                      }}</span>
                     </button>
                   </div>
                   <!-- Strength Indicator -->
                   <div v-if="passwordData.newPassword" class="mt-2">
                     <div class="flex justify-between items-center mb-1">
-                      <span class="text-xs font-medium text-text-muted-light dark:text-text-muted-dark">Password strength:</span>
-                      <span :class="['text-xs font-bold', passwordStrength.color]">{{ passwordStrength.label }}</span>
+                      <span
+                        class="text-xs font-medium text-text-muted-light dark:text-text-muted-dark"
+                        >Password strength:</span
+                      >
+                      <span :class="['text-xs font-bold', passwordStrength.color]">{{
+                        passwordStrength.label
+                      }}</span>
                     </div>
                     <div class="flex gap-1 h-1.5 w-full">
                       <div
@@ -558,7 +618,9 @@ async function handleUpdatePassword() {
                         :key="i"
                         :class="[
                           'flex-1 rounded-full transition-colors',
-                          i <= passwordStrength.level ? 'bg-primary' : 'bg-border-light dark:bg-border-dark',
+                          i <= passwordStrength.level
+                            ? 'bg-primary'
+                            : 'bg-border-light dark:bg-border-dark',
                         ]"
                       ></div>
                     </div>
@@ -583,12 +645,17 @@ async function handleUpdatePassword() {
                       type="button"
                       @click="showConfirmPassword = !showConfirmPassword"
                     >
-                      <span class="material-symbols-outlined text-lg">{{ showConfirmPassword ? 'visibility' : 'visibility_off' }}</span>
+                      <span class="material-symbols-outlined text-lg">{{
+                        showConfirmPassword ? 'visibility' : 'visibility_off'
+                      }}</span>
                     </button>
                   </div>
                   <!-- Mismatch warning -->
                   <p
-                    v-if="passwordData.confirmPassword && passwordData.newPassword !== passwordData.confirmPassword"
+                    v-if="
+                      passwordData.confirmPassword &&
+                      passwordData.newPassword !== passwordData.confirmPassword
+                    "
                     class="text-xs text-red-500 mt-1 flex items-center gap-1"
                   >
                     <span class="material-symbols-outlined text-[14px]">error</span>
@@ -598,14 +665,20 @@ async function handleUpdatePassword() {
               </div>
 
               <!-- Secure Action Bar -->
-              <div class="mt-4 flex flex-col sm:flex-row items-center justify-between gap-6 p-6 rounded-xl bg-stone-50/50 dark:bg-stone-800/30 border border-border-light dark:border-border-dark">
+              <div
+                class="mt-4 flex flex-col sm:flex-row items-center justify-between gap-6 p-6 rounded-xl bg-stone-50/50 dark:bg-stone-800/30 border border-border-light dark:border-border-dark"
+              >
                 <div class="flex gap-4 items-center">
-                  <div class="flex size-12 items-center justify-center rounded-full bg-primary/20 text-primary">
+                  <div
+                    class="flex size-12 items-center justify-center rounded-full bg-primary/20 text-primary"
+                  >
                     <span class="material-symbols-outlined">lock_reset</span>
                   </div>
                   <div>
                     <p class="text-sm font-bold">Secure Action</p>
-                    <p class="text-xs text-text-muted-light dark:text-text-muted-dark">You will be logged out of other sessions.</p>
+                    <p class="text-xs text-text-muted-light dark:text-text-muted-dark">
+                      You will be logged out of other sessions.
+                    </p>
                   </div>
                 </div>
                 <button
@@ -613,7 +686,11 @@ async function handleUpdatePassword() {
                   :disabled="isChangingPassword"
                   @click="handleUpdatePassword"
                 >
-                  <span v-if="isChangingPassword" class="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                  <span
+                    v-if="isChangingPassword"
+                    class="material-symbols-outlined text-sm animate-spin"
+                    >progress_activity</span
+                  >
                   <span v-else class="material-symbols-outlined text-sm">check_circle</span>
                   {{ isChangingPassword ? 'Updating...' : 'Update Password' }}
                 </button>
@@ -628,8 +705,13 @@ async function handleUpdatePassword() {
               :key="card.label"
               class="bg-background-light dark:bg-stone-800 p-4 rounded-lg flex flex-col gap-1 border border-border-light dark:border-border-dark"
             >
-              <span class="text-text-muted-light dark:text-text-muted-dark text-xs font-bold uppercase tracking-wider">{{ card.label }}</span>
-              <span :class="['font-bold', card.isHighlight ? 'text-primary' : '']">{{ card.value }}</span>
+              <span
+                class="text-text-muted-light dark:text-text-muted-dark text-xs font-bold uppercase tracking-wider"
+                >{{ card.label }}</span
+              >
+              <span :class="['font-bold', card.isHighlight ? 'text-primary' : '']">{{
+                card.value
+              }}</span>
             </div>
           </div>
         </section>
@@ -637,8 +719,49 @@ async function handleUpdatePassword() {
     </div>
 
     <!-- Footer -->
-    <footer class="w-full max-w-[1200px] py-8 border-t border-border-light dark:border-border-dark text-center mt-12">
-      <p class="text-text-muted-light dark:text-text-muted-dark text-xs">&copy; 2024 University Student Management System. All rights reserved.</p>
+    <footer
+      class="w-full max-w-[1200px] py-8 border-t border-border-light dark:border-border-dark text-center mt-12"
+    >
+      <p class="text-text-muted-light dark:text-text-muted-dark text-xs">
+        &copy; 2024 University Student Management System. All rights reserved.
+      </p>
     </footer>
+
+    <!-- Toast Notification -->
+    <Teleport to="body">
+      <Transition name="toast">
+        <div
+          v-if="toast"
+          :class="[
+            'fixed top-6 right-6 z-[200] flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-2xl text-sm font-medium border backdrop-blur-sm',
+            toast.type === 'success'
+              ? 'bg-green-50 dark:bg-green-900/40 border-green-200 dark:border-green-700 text-green-800 dark:text-green-300'
+              : 'bg-red-50 dark:bg-red-900/40 border-red-200 dark:border-red-700 text-red-800 dark:text-red-300',
+          ]"
+        >
+          <span class="material-symbols-outlined text-[20px]">
+            {{ toast.type === 'success' ? 'check_circle' : 'error' }}
+          </span>
+          {{ toast.message }}
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
+
+<style scoped>
+.toast-enter-active {
+  transition: all 0.3s ease;
+}
+.toast-leave-active {
+  transition: all 0.25s ease;
+}
+.toast-enter-from {
+  opacity: 0;
+  transform: translateY(-12px) scale(0.95);
+}
+.toast-leave-to {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.97);
+}
+</style>

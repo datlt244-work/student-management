@@ -114,7 +114,7 @@ public class AdminClassServiceImpl implements IAdminClassService {
     @Override
     @Transactional
     public AdminClassListItemResponse createClass(AdminCreateClassRequest request) {
-        Course course = courseRepository.findById(request.getCourseId())
+        Course course = courseRepository.findByCourseIdAndDeletedAtIsNull(request.getCourseId())
                 .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_FOUND));
 
         // Always use CURRENT semester for new classes

@@ -134,3 +134,45 @@ export async function getAdminClassDetail(classId: number): Promise<AdminClassDe
   const data = await response.json();
   return (data.result || data) as AdminClassDetail;
 }
+
+export interface AdminEnrollStudentRequest {
+  classId: number;
+  studentId: string;
+}
+
+export async function enrollStudent(request: AdminEnrollStudentRequest): Promise<void> {
+  const response = await apiFetch('/admin/classes/enroll', {
+    method: 'POST',
+    body: JSON.stringify(request)
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    throw new Error(errorData?.message || `Failed to enroll student (${response.status})`);
+  }
+}
+export interface AdminEligibleStudent {
+  userId: string;
+  studentCode: string;
+  fullName: string;
+  email: string;
+}
+
+export async function getEligibleStudents(classId: number): Promise<AdminEligibleStudent[]> {
+  const response = await apiFetch(`/admin/classes/${classId}/eligible-students`);
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    throw new Error(errorData?.message || `Failed to fetch eligible students (${response.status})`);
+  }
+  const data = await response.json();
+  return (data.result || data) as AdminEligibleStudent[];
+}
+
+export async function unenrollStudent(classId: number, studentId: string): Promise<void> {
+  const response = await apiFetch(`/admin/classes/${classId}/unenroll/${studentId}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    throw new Error(errorData?.message || `Failed to unenroll student (${response.status})`);
+  }
+}

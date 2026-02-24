@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -20,6 +21,8 @@ public interface StudentRepository extends JpaRepository<Student, UUID> {
     Optional<Student> findByUser_UserId(UUID userId);
 
     Optional<Student> findByUser_UserIdAndDeletedAtIsNull(UUID userId);
+
+    List<Student> findByDepartment_DepartmentIdAndDeletedAtIsNull(Integer departmentId);
 
     boolean existsByStudentCode(String studentCode);
 

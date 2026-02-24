@@ -2,10 +2,12 @@ package com.newwave.student_management.domains.enrollment.controller;
 
 import com.newwave.student_management.common.dto.ApiResponse;
 import com.newwave.student_management.domains.enrollment.dto.request.AdminCreateClassRequest;
+import com.newwave.student_management.domains.enrollment.dto.request.AdminEnrollStudentRequest;
 import com.newwave.student_management.domains.enrollment.dto.request.AdminUpdateClassRequest;
 import com.newwave.student_management.domains.enrollment.dto.response.AdminClassDetailResponse;
 import com.newwave.student_management.domains.enrollment.dto.response.AdminClassListItemResponse;
 import com.newwave.student_management.domains.enrollment.dto.response.AdminClassListResponse;
+import com.newwave.student_management.domains.enrollment.dto.response.AdminEligibleStudentResponse;
 import com.newwave.student_management.domains.enrollment.entity.ScheduledClassStatus;
 import com.newwave.student_management.domains.enrollment.service.IAdminClassService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -17,6 +19,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/admin/classes")
@@ -65,6 +70,29 @@ public class AdminClassController {
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> deleteClass(@PathVariable Integer classId) {
         adminClassService.deleteClass(classId);
+        return ApiResponse.success(null);
+    }
+
+    @Operation(summary = "Danh sách Sinh viên đủ điều kiện đăng ký", description = "Lấy danh sách sinh viên cùng phòng ban và không trùng lịch.")
+    @GetMapping("/{classId}/eligible-students")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<List<AdminEligibleStudentResponse>> getEligibleStudents(@PathVariable Integer classId) {
+        return ApiResponse.success(adminClassService.getEligibleStudents(classId));
+    }
+
+    @Operation(summary = "UC-14.7 - Thêm Sinh viên vào Lớp (Admin)", description = "Thêm một sinh viên vào lớp học với kiểm tra lịch học, sức chứa và trùng lặp.")
+    @PostMapping("/enroll")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Void> enrollStudent(@RequestBody @Valid AdminEnrollStudentRequest request) {
+        adminClassService.enrollStudent(request);
+        return ApiResponse.success(null);
+    }
+
+    @Operation(summary = "Xóa Sinh viên khỏi Lớp (Admin)", description = "Xóa đăng ký của một sinh viên khỏi lớp học.")
+    @DeleteMapping("/{classId}/unenroll/{studentId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Void> unenrollStudent(@PathVariable Integer classId, @PathVariable UUID studentId) {
+        adminClassService.unenrollStudent(classId, studentId);
         return ApiResponse.success(null);
     }
 }

@@ -5,6 +5,7 @@ import com.newwave.student_management.domains.auth.entity.User;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
@@ -17,6 +18,7 @@ import java.util.UUID;
         @Index(name = "idx_students_student_code", columnList = "student_code")
 })
 @Data
+@EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 @AllArgsConstructor
 public class Student extends JpaBaseEntity {
@@ -85,4 +87,3 @@ public class Student extends JpaBaseEntity {
     @Column(name = "manage_class", length = 50)
     private String manageClass;
 }
-

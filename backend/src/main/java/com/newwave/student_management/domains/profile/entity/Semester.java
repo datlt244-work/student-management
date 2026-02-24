@@ -4,15 +4,17 @@ import com.newwave.student_management.common.entity.JpaBaseEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 
 @Entity
 @Table(name = "semesters", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"name", "year"})
+        @UniqueConstraint(columnNames = { "name", "year" })
 })
 @Data
+@EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 @AllArgsConstructor
 public class Semester extends JpaBaseEntity {

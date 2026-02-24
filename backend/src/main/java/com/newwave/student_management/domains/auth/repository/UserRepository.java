@@ -15,25 +15,24 @@ import java.util.UUID;
 @Repository
 public interface UserRepository extends JpaRepository<User, UUID> {
 
-    Optional<User> findByEmail(String email);
+  Optional<User> findByEmail(String email);
 
-    Optional<User> findByUserIdAndDeletedAtIsNull(UUID userId);
+  Optional<User> findByUserIdAndDeletedAtIsNull(UUID userId);
 
-    boolean existsByEmail(String email);
+  boolean existsByEmail(String email);
 
-    @Query("""
-            SELECT u
-            FROM User u
-            WHERE u.deletedAt IS NULL
-              AND (:search IS NULL OR LOWER(u.email) LIKE :search)
-              AND (:status IS NULL OR u.status = :status)
-              AND (:roleId IS NULL OR u.role.roleId = :roleId)
-            """)
-    Page<User> searchAdminUsers(
-            @Param("search") String search,
-            @Param("status") UserStatus status,
-            @Param("roleId") Integer roleId,
-            Pageable pageable
-    );
+  @Query("""
+      SELECT u
+      FROM User u
+      WHERE u.deletedAt IS NULL
+        AND (:search IS NULL OR LOWER(u.email) LIKE :search)
+        AND (:status IS NULL OR u.status = :status)
+        AND (:roleId IS NULL OR u.role.roleId = :roleId)
+      """)
+  Page<User> searchAdminUsers(
+      @Param("search") String search,
+      @Param("status") UserStatus status,
+      @Param("roleId") Integer roleId,
+      Pageable pageable);
 
 }

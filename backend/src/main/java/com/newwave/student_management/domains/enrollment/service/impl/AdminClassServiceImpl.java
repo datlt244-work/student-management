@@ -126,7 +126,7 @@ public class AdminClassServiceImpl implements IAdminClassService {
             throw new AppException(ErrorCode.VALIDATION_ERROR);
         }
 
-        Teacher teacher = teacherRepository.findById(UUID.fromString(request.getTeacherId()))
+        Teacher teacher = teacherRepository.findByTeacherIdAndDeletedAtIsNull(UUID.fromString(request.getTeacherId()))
                 .orElseThrow(() -> new AppException(ErrorCode.TEACHER_PROFILE_NOT_FOUND));
 
         // Validation: Teacher must be in the same department as the course
@@ -178,7 +178,7 @@ public class AdminClassServiceImpl implements IAdminClassService {
         // Constraint: Cannot change Course or Semester
         // We ignore courseId and semesterId from request and keep existing ones
 
-        Teacher teacher = teacherRepository.findById(UUID.fromString(request.getTeacherId()))
+        Teacher teacher = teacherRepository.findByTeacherIdAndDeletedAtIsNull(UUID.fromString(request.getTeacherId()))
                 .orElseThrow(() -> new AppException(ErrorCode.TEACHER_PROFILE_NOT_FOUND));
 
         // Validation: Teacher must be in same department as CURRENT course

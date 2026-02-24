@@ -132,8 +132,7 @@ public class StudentClassServiceImpl implements IStudentClassService {
                 // 1. Check if class is OPEN
                 if (scheduledClass
                                 .getStatus() != com.newwave.student_management.domains.enrollment.entity.ScheduledClassStatus.OPEN) {
-                        throw new AppException(ErrorCode.CLASS_HAS_ENROLLED_STUDENTS); // Or a more specific code if
-                                                                                       // available
+                        throw new AppException(ErrorCode.CLASS_NOT_OPEN);
                 }
 
                 // 2. Check if already enrolled in THIS class

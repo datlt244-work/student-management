@@ -69,6 +69,7 @@ public enum ErrorCode {
         STUDENT_SCHEDULE_CONFLICT(1268, "Student has another class at this time", HttpStatus.CONFLICT),
         STUDENT_DEPARTMENT_MISMATCH(1269, "Student must belong to the same department as the course",
                         HttpStatus.BAD_REQUEST),
+        CLASS_NOT_OPEN(1272, "Class is not open for enrollment", HttpStatus.BAD_REQUEST),
         ENROLLMENT_NOT_FOUND(1270, "Enrollment record not found", HttpStatus.NOT_FOUND),
 
         // Business errors - Address (1250-1269)

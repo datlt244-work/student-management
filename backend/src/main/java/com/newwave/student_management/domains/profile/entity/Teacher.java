@@ -5,6 +5,7 @@ import com.newwave.student_management.domains.auth.entity.User;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 import java.util.UUID;
@@ -15,6 +16,7 @@ import java.util.UUID;
         @Index(name = "idx_teachers_teacher_code", columnList = "teacher_code")
 })
 @Data
+@EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 @AllArgsConstructor
 public class Teacher extends JpaBaseEntity {
@@ -63,9 +65,9 @@ public class Teacher extends JpaBaseEntity {
     private String officeRoom;
 
     /**
-     * Degrees / qualifications (free text, e.g. "Ph.D. Mathematics - Stanford; M.Sc. Statistics - MIT").
+     * Degrees / qualifications (free text, e.g. "Ph.D. Mathematics - Stanford;
+     * M.Sc. Statistics - MIT").
      */
     @Column(name = "degrees_qualification", columnDefinition = "TEXT")
     private String degreesQualification;
 }
-

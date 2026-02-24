@@ -5,6 +5,7 @@ import com.newwave.student_management.domains.enrollment.entity.Enrollment;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
@@ -12,6 +13,7 @@ import java.math.BigDecimal;
 @Entity
 @Table(name = "grades")
 @Data
+@EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 @AllArgsConstructor
 public class Grade extends JpaBaseEntity {
@@ -31,4 +33,3 @@ public class Grade extends JpaBaseEntity {
     @Column(name = "feedback", columnDefinition = "TEXT")
     private String feedback;
 }
-

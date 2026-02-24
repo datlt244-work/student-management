@@ -5,43 +5,37 @@ import com.newwave.student_management.domains.profile.entity.Student;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 
 @Entity
-@Table(
-        name = "enrollments",
-        uniqueConstraints = {
-                @UniqueConstraint(
-                        name = "uk_enrollments_student_class",
-                        columnNames = {"student_id", "class_id"}
-                )
-        },
-        indexes = {
+@Table(name = "enrollments", uniqueConstraints = {
+                @UniqueConstraint(name = "uk_enrollments_student_class", columnNames = { "student_id", "class_id" })
+}, indexes = {
                 @Index(name = "idx_enrollments_student_id", columnList = "student_id"),
                 @Index(name = "idx_enrollments_class_id", columnList = "class_id")
-        }
-)
+})
 @Data
+@EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 @AllArgsConstructor
 public class Enrollment extends JpaBaseEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "enrollment_id")
-    private Integer enrollmentId;
+        @Id
+        @GeneratedValue(strategy = GenerationType.IDENTITY)
+        @Column(name = "enrollment_id")
+        private Integer enrollmentId;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "student_id", nullable = false)
-    private Student student;
+        @ManyToOne(fetch = FetchType.LAZY, optional = false)
+        @JoinColumn(name = "student_id", nullable = false)
+        private Student student;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "class_id", nullable = false)
-    private ScheduledClass scheduledClass;
+        @ManyToOne(fetch = FetchType.LAZY, optional = false)
+        @JoinColumn(name = "class_id", nullable = false)
+        private ScheduledClass scheduledClass;
 
-    @Column(name = "enrollment_date", nullable = false)
-    private LocalDate enrollmentDate;
+        @Column(name = "enrollment_date", nullable = false)
+        private LocalDate enrollmentDate;
 }
-

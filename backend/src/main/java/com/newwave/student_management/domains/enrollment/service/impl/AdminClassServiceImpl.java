@@ -6,20 +6,24 @@ import com.newwave.student_management.common.exception.ErrorCode;
 import com.newwave.student_management.domains.curriculum.entity.Course;
 import com.newwave.student_management.domains.curriculum.repository.CourseRepository;
 import com.newwave.student_management.domains.enrollment.dto.request.AdminCreateClassRequest;
+import com.newwave.student_management.domains.enrollment.dto.request.AdminEnrollStudentRequest;
 import com.newwave.student_management.domains.enrollment.dto.request.AdminUpdateClassRequest;
 import com.newwave.student_management.domains.enrollment.dto.response.AdminClassDetailResponse;
 import com.newwave.student_management.domains.enrollment.dto.response.AdminClassListItemResponse;
 import com.newwave.student_management.domains.enrollment.dto.response.AdminClassListResponse;
 import com.newwave.student_management.domains.enrollment.dto.response.AdminClassStudentResponse;
+import com.newwave.student_management.domains.enrollment.dto.response.AdminEligibleStudentResponse;
 import com.newwave.student_management.domains.enrollment.entity.Enrollment;
 import com.newwave.student_management.domains.enrollment.entity.ScheduledClass;
 import com.newwave.student_management.domains.enrollment.entity.ScheduledClassStatus;
+import com.newwave.student_management.domains.profile.entity.Student;
 import com.newwave.student_management.domains.enrollment.repository.EnrollmentRepository;
 import com.newwave.student_management.domains.enrollment.repository.ScheduledClassRepository;
 import com.newwave.student_management.domains.enrollment.service.IAdminClassService;
 import com.newwave.student_management.domains.profile.entity.Semester;
 import com.newwave.student_management.domains.profile.entity.Teacher;
 import com.newwave.student_management.domains.profile.repository.SemesterRepository;
+import com.newwave.student_management.domains.profile.repository.StudentRepository;
 import com.newwave.student_management.domains.profile.repository.TeacherRepository;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
@@ -44,6 +48,7 @@ public class AdminClassServiceImpl implements IAdminClassService {
     private final EnrollmentRepository enrollmentRepository;
     private final CourseRepository courseRepository;
     private final TeacherRepository teacherRepository;
+    private final StudentRepository studentRepository;
     private final SemesterRepository semesterRepository;
 
     @Override
@@ -148,20 +153,20 @@ public class AdminClassServiceImpl implements IAdminClassService {
             throw new AppException(ErrorCode.TEACHER_SCHEDULE_CONFLICT);
         }
 
-        ScheduledClass sc = new ScheduledClass();
-        sc.setCourse(course);
-        sc.setTeacher(teacher);
-        sc.setSemester(currentSemester);
-        sc.setRoomNumber(request.getRoomNumber());
-        sc.setDayOfWeek(request.getDayOfWeek());
-        sc.setStartTime(request.getStartTime());
-        sc.setEndTime(request.getEndTime());
-        sc.setMaxStudents(request.getMaxStudents() != null ? request.getMaxStudents() : 40);
-        sc.setStatus(ScheduledClassStatus.OPEN);
+        ScheduledClass scheduledClass = new ScheduledClass();
+        scheduledClass.setCourse(course);
+        scheduledClass.setTeacher(teacher);
+        scheduledClass.setSemester(currentSemester);
+        scheduledClass.setRoomNumber(request.getRoomNumber());
+        scheduledClass.setDayOfWeek(request.getDayOfWeek());
+        scheduledClass.setStartTime(request.getStartTime());
+        scheduledClass.setEndTime(request.getEndTime());
+        scheduledClass.setMaxStudents(request.getMaxStudents() != null ? request.getMaxStudents() : 40);
+        scheduledClass.setStatus(ScheduledClassStatus.OPEN);
 
-        sc = scheduledClassRepository.save(sc);
+        scheduledClass = scheduledClassRepository.save(scheduledClass);
 
-        return mapToListItemResponse(sc);
+        return mapToListItemResponse(scheduledClass);
     }
 
     @Override
@@ -281,6 +286,110 @@ public class AdminClassServiceImpl implements IAdminClassService {
 
         scheduledClass.setDeletedAt(java.time.LocalDateTime.now());
         scheduledClassRepository.save(scheduledClass);
+    }
+
+    @Override
+    @Transactional
+    public void enrollStudent(AdminEnrollStudentRequest request) {
+        ScheduledClass scheduledClass = scheduledClassRepository.findByClassIdAndDeletedAtIsNull(request.getClassId())
+                .orElseThrow(() -> new AppException(ErrorCode.CLASS_NOT_FOUND));
+
+        Student student = studentRepository.findByUser_UserIdAndDeletedAtIsNull(UUID.fromString(request.getStudentId()))
+                .orElseThrow(() -> new AppException(ErrorCode.STUDENT_PROFILE_NOT_FOUND));
+
+        // 1. Check if already enrolled
+        if (enrollmentRepository.existsByScheduledClassClassIdAndStudentStudentId(scheduledClass.getClassId(),
+                student.getStudentId())) {
+            throw new AppException(ErrorCode.STUDENT_ALREADY_ENROLLED);
+        }
+
+        // 1.1 Check Department Mismatch
+        if (scheduledClass.getCourse().getDepartment() != null && student.getDepartment() != null) {
+            if (!scheduledClass.getCourse().getDepartment().getDepartmentId()
+                    .equals(student.getDepartment().getDepartmentId())) {
+                throw new AppException(ErrorCode.STUDENT_DEPARTMENT_MISMATCH);
+            }
+        }
+
+        // 2. Check Capacity
+        long currentEnrolled = enrollmentRepository.countByScheduledClassClassId(scheduledClass.getClassId());
+        if (currentEnrolled >= scheduledClass.getMaxStudents()) {
+            throw new AppException(ErrorCode.CLASS_FULL);
+        }
+
+        // 3. Check Student Schedule Conflict
+        long conflicts = enrollmentRepository.countStudentConflicts(
+                student.getStudentId(),
+                scheduledClass.getSemester().getSemesterId(),
+                scheduledClass.getDayOfWeek(),
+                scheduledClass.getStartTime(),
+                scheduledClass.getEndTime());
+
+        if (conflicts > 0) {
+            throw new AppException(ErrorCode.STUDENT_SCHEDULE_CONFLICT);
+        }
+
+        // 4. Create Enrollment
+        Enrollment enrollment = new Enrollment();
+        enrollment.setStudent(student);
+        enrollment.setScheduledClass(scheduledClass);
+        enrollment.setEnrollmentDate(java.time.LocalDate.now());
+
+        enrollmentRepository.save(enrollment);
+    }
+
+    @Override
+    @Transactional
+    public void unenrollStudent(Integer classId, UUID studentId) {
+        Enrollment enrollment = enrollmentRepository
+                .findByScheduledClassClassIdAndStudentStudentId(classId, studentId)
+                .orElseThrow(() -> new AppException(ErrorCode.ENROLLMENT_NOT_FOUND));
+
+        enrollmentRepository.delete(enrollment);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AdminEligibleStudentResponse> getEligibleStudents(Integer classId) {
+        ScheduledClass scheduledClass = scheduledClassRepository.findByClassIdAndDeletedAtIsNull(classId)
+                .orElseThrow(() -> new AppException(ErrorCode.CLASS_NOT_FOUND));
+
+        // Get department from course
+        Integer departmentId = (scheduledClass.getCourse().getDepartment() != null)
+                ? scheduledClass.getCourse().getDepartment().getDepartmentId()
+                : null;
+
+        if (departmentId == null) {
+            return new ArrayList<>();
+        }
+
+        // Find students in the same department
+        List<Student> departmentStudents = studentRepository
+                .findByDepartment_DepartmentIdAndDeletedAtIsNull(departmentId);
+
+        return departmentStudents.stream()
+                .filter(student -> {
+                    // Check if already enrolled in this SPECIFIC class
+                    if (enrollmentRepository.existsByScheduledClassClassIdAndStudentStudentId(classId,
+                            student.getStudentId())) {
+                        return false;
+                    }
+                    // Check schedule conflicts in the SAME semester
+                    long conflicts = enrollmentRepository.countStudentConflicts(
+                            student.getStudentId(),
+                            scheduledClass.getSemester().getSemesterId(),
+                            scheduledClass.getDayOfWeek(),
+                            scheduledClass.getStartTime(),
+                            scheduledClass.getEndTime());
+                    return conflicts == 0;
+                })
+                .map(student -> AdminEligibleStudentResponse.builder()
+                        .userId(student.getUser().getUserId().toString())
+                        .studentCode(student.getStudentCode())
+                        .fullName((student.getFirstName() + " " + student.getLastName()).trim())
+                        .email(student.getEmail())
+                        .build())
+                .collect(Collectors.toList());
     }
 
     private AdminClassListItemResponse mapToListItemResponse(ScheduledClass scheduledClass) {

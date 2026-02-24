@@ -45,7 +45,8 @@ public enum ErrorCode {
         DEPARTMENT_NOT_ACTIVE(1225, "Department is not active", HttpStatus.BAD_REQUEST),
         COURSE_NOT_FOUND(1230, "Course not found", HttpStatus.NOT_FOUND),
         COURSE_CODE_EXISTED(1231, "Course code already exists", HttpStatus.CONFLICT),
-        COURSE_HAS_ENROLLED_STUDENTS(1232, "Cannot inactive course that has classes with enrolled students", HttpStatus.BAD_REQUEST),
+        COURSE_HAS_ENROLLED_STUDENTS(1232, "Cannot inactive course that has classes with enrolled students",
+                        HttpStatus.BAD_REQUEST),
 
         // Business errors - Semester (1240-1249)
         SEMESTER_EXISTED(1240, "Semester already exists for this name and year", HttpStatus.CONFLICT),
@@ -61,6 +62,12 @@ public enum ErrorCode {
         INVALID_MAX_STUDENTS(1263, "Max students cannot exceed 40", HttpStatus.BAD_REQUEST),
         SEMESTER_NOT_CURRENT(1264, "Classes can only be created for the current semester", HttpStatus.BAD_REQUEST),
         CLASS_HAS_ENROLLED_STUDENTS(1265, "Cannot cancel class that has enrolled students", HttpStatus.BAD_REQUEST),
+        STUDENT_ALREADY_ENROLLED(1266, "Student is already enrolled in this class", HttpStatus.CONFLICT),
+        CLASS_FULL(1267, "Class capacity reached", HttpStatus.BAD_REQUEST),
+        STUDENT_SCHEDULE_CONFLICT(1268, "Student has another class at this time", HttpStatus.CONFLICT),
+        STUDENT_DEPARTMENT_MISMATCH(1269, "Student must belong to the same department as the course",
+                        HttpStatus.BAD_REQUEST),
+        ENROLLMENT_NOT_FOUND(1270, "Enrollment record not found", HttpStatus.NOT_FOUND),
 
         // Business errors - Address (1250-1269)
         ADDRESS_NOT_FOUND(1250, "Address not found", HttpStatus.NOT_FOUND),

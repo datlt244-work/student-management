@@ -27,5 +27,7 @@ public interface TeacherRepository extends JpaRepository<Teacher, UUID> {
 
     long countByDepartment_DepartmentIdAndDeletedAtIsNull(Integer departmentId);
 
+    Optional<Teacher> findByTeacherIdAndDeletedAtIsNull(UUID teacherId);
+
     java.util.List<Teacher> findByDepartment_DepartmentIdAndDeletedAtIsNull(Integer departmentId);
 }

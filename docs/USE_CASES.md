@@ -79,3 +79,105 @@ Cho phép Quản trị viên (Admin) quản lý các lớp học được mở t
 - Soft Delete: Khi xóa lớp học, hệ thống sẽ ẩn lớp đó khỏi danh sách hiển thị nhưng vẫn giữ lại thông tin lịch sử trong cơ sở dữ liệu nếu đã có sinh viên đăng ký.
 
 ---
+
+---
+
+## UC-15: Bảng điều khiển Sinh viên (Student Dashboard)
+
+### 1. Mô tả
+
+Cung cấp cái nhìn tổng quan về tình hình học tập và các hoạt động sắp tới của sinh viên.
+
+### 2. Tác nhân
+
+- Sinh viên (Student)
+
+### 3. Thông tin hiển thị
+
+- **Số liệu thống kê**: GPA hiện tại, Tổng số tín chỉ đã tích lũy, Tỷ lệ chuyên cần.
+- **Lịch học hôm nay**: Danh sách các tiết học trong ngày hiện tại (Thời gian, Môn, Phòng).
+- **Hạn chót sắp tới**: Các bài tập hoặc thông báo cần chú ý.
+- **Tiến độ tốt nghiệp**: Biểu đồ phần trăm hoàn thành chương trình học.
+
+---
+
+## UC-16: Đăng ký Học phần (Course Registration)
+
+### 1. Mô tả
+
+Cho phép sinh viên chủ động đăng ký các lớp học được mở trong học kỳ hiện tại.
+
+### 2. Tác nhân
+
+- Sinh viên (Student)
+
+### 3. Các luồng công việc
+
+#### UC-16.1: Xem danh sách lớp có thể đăng ký
+
+- Hệ thống lọc danh sách lớp dựa trên Khoa của sinh viên và trạng thái lớp (`OPEN`).
+- Hiển thị: Tên môn, Số tín chỉ, Giảng viên, Lịch học, Sĩ số còn lại.
+
+#### UC-16.2: Thực hiện đăng ký
+
+- Sinh viên nhấn "Enroll" cho lớp mong muốn.
+- Hệ thống kiểm tra:
+  - Sinh viên đã đăng ký môn này chưa?
+  - Lớp còn chỗ không?
+  - Có bị trùng lịch với các lớp đã đăng ký không?
+- Thông báo kết quả đăng ký thành công hoặc lý do thất bại.
+
+#### UC-16.3: Hủy đăng ký (Drop Class)
+
+- Sinh viên có thể rút khỏi lớp đã đăng ký nếu vẫn trong thời hạn cho phép.
+
+---
+
+## UC-17: Kết quả Học tập (Academic Records)
+
+### 1. Mô tả
+
+Xem điểm số và quá trình tích lũy học tập của sinh viên.
+
+### 2. Tác nhân
+
+- Sinh viên (Student)
+
+### 3. Các luồng công việc
+
+- **Xem điểm theo kỳ**: Hiển thị bảng điểm chi tiết của từng môn trong học kỳ được chọn.
+- **Xem bảng điểm tổng hợp (Transcript)**: Xem toàn bộ quá trình học từ lúc nhập học.
+
+---
+
+## UC-18: Lịch học Cá nhân (Student Schedule)
+
+### 1. Mô tả
+
+Cung cấp lịch học chi tiết cho toàn bộ học kỳ.
+
+### 2. Tác nhân
+
+- Sinh viên (Student)
+
+### 3. Tính năng
+
+- Chế độ xem theo Tuần hoặc theo Tháng.
+- Hiển thị đầy đủ thông tin lớp, phòng học và giảng viên.
+
+---
+
+## UC-19: Quản lý Thông tin cá nhân (Profile Management)
+
+### 1. Mô tả
+
+Sinh viên tự cập nhật thông tin liên lạc và ảnh đại diện.
+
+### 2. Tác nhân
+
+- Sinh viên (Student)
+
+### 3. Tính năng
+
+- Thay đổi số điện thoại, địa chỉ thường trú.
+- Tải lên ảnh đại diện cá nhân.

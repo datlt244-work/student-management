@@ -27,4 +27,12 @@ public interface ScheduledClassRepository
             "((sc.startTime < :endTime AND sc.endTime > :startTime)) AND sc.deletedAt IS NULL")
     long countOverlappingClasses(UUID teacherId, Integer semesterId, Integer dayOfWeek, LocalTime startTime,
             LocalTime endTime, Integer excludeClassId);
+
+    @Query("SELECT sc FROM ScheduledClass sc " +
+            "WHERE sc.course.department.departmentId = :departmentId " +
+            "AND sc.semester.semesterId = :semesterId " +
+            "AND sc.status = 'OPEN' " +
+            "AND sc.deletedAt IS NULL " +
+            "AND sc.classId NOT IN (SELECT e.scheduledClass.classId FROM Enrollment e WHERE e.student.studentId = :studentId)")
+    List<ScheduledClass> findAvailableClassesForStudent(Integer departmentId, Integer semesterId, UUID studentId);
 }

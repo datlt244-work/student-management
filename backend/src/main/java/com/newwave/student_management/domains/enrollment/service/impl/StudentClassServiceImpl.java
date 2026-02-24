@@ -144,7 +144,7 @@ public class StudentClassServiceImpl implements IStudentClassService {
                 // 3. Check if already enrolled in another class of the SAME COURSE in the SAME
                 // SEMESTER
                 if (enrollmentRepository
-                                .existsByStudentStudentIdAndScheduledClassCourseCourseIdAndScheduledClassSemesterSemesterId(
+                                .existsByStudentStudentIdAndScheduledClassCourseCourseIdAndScheduledClassSemesterSemesterIdAndScheduledClassDeletedAtIsNull(
                                                 student.getStudentId(), scheduledClass.getCourse().getCourseId(),
                                                 scheduledClass.getSemester().getSemesterId())) {
                         throw new AppException(ErrorCode.COURSE_ALREADY_ENROLLED);

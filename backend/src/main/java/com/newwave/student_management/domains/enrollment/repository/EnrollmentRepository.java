@@ -27,7 +27,7 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
     long countStudentConflicts(UUID studentId, Integer semesterId, Integer dayOfWeek, LocalTime startTime,
             LocalTime endTime);
 
-    boolean existsByStudentStudentIdAndScheduledClassCourseCourseIdAndScheduledClassSemesterSemesterId(
+    boolean existsByStudentStudentIdAndScheduledClassCourseCourseIdAndScheduledClassSemesterSemesterIdAndScheduledClassDeletedAtIsNull(
             UUID studentId, Integer courseId, Integer semesterId);
 
     List<Enrollment> findByStudentStudentIdAndScheduledClassSemesterSemesterIdAndScheduledClassDeletedAtIsNull(

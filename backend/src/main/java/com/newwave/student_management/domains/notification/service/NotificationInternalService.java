@@ -310,21 +310,27 @@ public class NotificationInternalService {
 
     @Transactional
     public void processScheduledNotification(SentNotification notif) {
+        // Re-read from DB to check current status (guard against cancellation race)
+        SentNotification fresh = sentNotificationRepository.findById(notif.getSentId()).orElse(null);
+        if (fresh == null || !"PENDING".equals(fresh.getStatus())) {
+            return; // Already cancelled or deleted
+        }
+
         try {
-            if ("BROADCAST".equals(notif.getNotificationType())) {
-                sendBroadcastImmediate(notif);
-            } else if ("TARGETED".equals(notif.getNotificationType())) {
-                sendTargetedImmediate(notif);
-            } else if ("PERSONAL".equals(notif.getNotificationType())) {
-                sendPersonalImmediate(notif);
+            if ("BROADCAST".equals(fresh.getNotificationType())) {
+                sendBroadcastImmediate(fresh);
+            } else if ("TARGETED".equals(fresh.getNotificationType())) {
+                sendTargetedImmediate(fresh);
+            } else if ("PERSONAL".equals(fresh.getNotificationType())) {
+                sendPersonalImmediate(fresh);
             }
 
-            notif.setStatus("SENT");
-            notif.setSentAt(java.time.LocalDateTime.now());
-            sentNotificationRepository.save(notif);
+            fresh.setStatus("SENT");
+            fresh.setSentAt(java.time.LocalDateTime.now());
+            sentNotificationRepository.save(fresh);
         } catch (Exception e) {
-            notif.setStatus("FAILED");
-            sentNotificationRepository.save(notif);
+            fresh.setStatus("FAILED");
+            sentNotificationRepository.save(fresh);
         }
     }
 }

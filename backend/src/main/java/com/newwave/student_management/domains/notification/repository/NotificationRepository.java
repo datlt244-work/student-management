@@ -11,5 +11,19 @@ import java.util.UUID;
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, UUID> {
     Page<Notification> findByUser_UserIdOrderByCreatedAtDesc(UUID userId, Pageable pageable);
+
     long countByUser_UserIdAndIsReadFalse(UUID userId);
+
+    @org.springframework.data.jpa.repository.Query("SELECT n FROM Notification n WHERE n.user.userId = :userId AND n.isRead = false")
+    java.util.List<Notification> findAllByUserIdAndIsReadFalse(
+            @org.springframework.data.repository.query.Param("userId") UUID userId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("UPDATE Notification n SET n.isRead = true WHERE n.user.userId = :userId AND n.notificationId = :notificationId")
+    void markAsRead(@org.springframework.data.repository.query.Param("userId") UUID userId,
+            @org.springframework.data.repository.query.Param("notificationId") UUID notificationId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("UPDATE Notification n SET n.isRead = true WHERE n.user.userId = :userId AND n.isRead = false")
+    void markAllAsRead(@org.springframework.data.repository.query.Param("userId") UUID userId);
 }

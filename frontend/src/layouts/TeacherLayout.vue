@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { apiFetch } from '@/utils/api'
 import { useNotificationSetup } from '@/composables/useNotificationSetup'
+import NotificationPopover from '@/components/NotificationPopover.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -92,14 +93,7 @@ function getInitials(email: string | undefined): string {
         </div>
       </div>
       <div class="flex items-center gap-4">
-        <button
-          class="relative p-2 text-text-muted-light dark:text-text-muted-dark hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-colors"
-        >
-          <span class="material-symbols-outlined">notifications</span>
-          <span
-            class="absolute top-1.5 right-1.5 size-2 bg-red-500 rounded-full border-2 border-surface-light dark:border-surface-dark"
-          ></span>
-        </button>
+        <NotificationPopover />
         <button
           class="p-2 text-text-muted-light dark:text-text-muted-dark hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-colors"
         >

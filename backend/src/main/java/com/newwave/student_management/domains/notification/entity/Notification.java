@@ -21,6 +21,7 @@ public class Notification extends JpaBaseEntity {
     @Column(name = "notification_id")
     private UUID notificationId;
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
@@ -31,6 +32,7 @@ public class Notification extends JpaBaseEntity {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String body;
 
+    @Builder.Default
     @Column(name = "is_read")
     private boolean isRead = false;
 

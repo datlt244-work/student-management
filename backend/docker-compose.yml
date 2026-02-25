@@ -37,6 +37,7 @@ services:
       MAIL_FROM: ${MAIL_FROM:-${MAIL_USERNAME}}
       APP_FRONTEND_URL: ${APP_FRONTEND_URL:-http://localhost:5173}
       APP_BACKEND_URL: ${APP_BACKEND_URL:-http://localhost:6868/api/v1}
+      FIREBASE_CONFIG_JSON: ${FIREBASE_CONFIG_JSON}
     depends_on:
       db:
         condition: service_healthy
@@ -118,4 +119,3 @@ networks:
   app-network:
     name: student-management-network
     driver: bridge
-

@@ -973,7 +973,7 @@ function clearFilters() {
                             {{ form.title || 'Notification Subject' }}
                           </h4>
                           <p
-                            class="text-[10px] text-slate-600 dark:text-slate-400 leading-normal line-clamp-3"
+                            class="text-[10px] text-slate-600 dark:text-slate-400 leading-normal line-clamp-3 break-words"
                           >
                             {{ form.body || 'Your message will appear here exactly as sent...' }}
                           </p>

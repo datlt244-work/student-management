@@ -79,7 +79,7 @@ public class NotificationInternalService {
                 .title(title)
                 .body(body)
                 .actionUrl(actionUrl)
-                .isRead(false)
+                .read(false)
                 .notificationType("SYSTEM")
                 .build();
         notificationRepository.save(notification);
@@ -132,6 +132,18 @@ public class NotificationInternalService {
                 System.err.println("Failed to send FCM: " + e.getMessage());
             }
         }
+
+        // Save to per-user notification table
+        List<User> users = userRepository.findAllByRoleNameNot("ADMIN");
+        List<Notification> items = users.stream().map(u -> Notification.builder()
+                .user(u)
+                .title(notif.getTitle())
+                .body(notif.getBody())
+                .actionUrl(notif.getActionUrl())
+                .read(false)
+                .notificationType(notif.getNotificationType())
+                .build()).collect(Collectors.toList());
+        notificationRepository.saveAll(items);
     }
 
     @Transactional
@@ -199,6 +211,19 @@ public class NotificationInternalService {
                 System.err.println("Failed to send FCM: " + e.getMessage());
             }
         }
+
+        // Save to per-user notification table
+        List<User> recipients = userRepository.findUsersByCriteria(roleParam, notif.getTargetDepartmentId(),
+                classCodeParam);
+        List<Notification> items = recipients.stream().map(u -> Notification.builder()
+                .user(u)
+                .title(notif.getTitle())
+                .body(notif.getBody())
+                .actionUrl(notif.getActionUrl())
+                .read(false)
+                .notificationType(notif.getNotificationType())
+                .build()).collect(Collectors.toList());
+        notificationRepository.saveAll(items);
     }
 
     @Transactional(readOnly = true)
@@ -332,5 +357,25 @@ public class NotificationInternalService {
             fresh.setStatus("FAILED");
             sentNotificationRepository.save(fresh);
         }
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Notification> getUserNotifications(java.util.UUID userId, Pageable pageable) {
+        return notificationRepository.findByUser_UserIdOrderByCreatedAtDesc(userId, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public long getUnreadCount(java.util.UUID userId) {
+        return notificationRepository.countByUser_UserIdAndReadFalse(userId);
+    }
+
+    @Transactional
+    public void markAsRead(java.util.UUID userId, java.util.UUID notificationId) {
+        notificationRepository.markAsRead(userId, notificationId);
+    }
+
+    @Transactional
+    public void markAllAsRead(java.util.UUID userId) {
+        notificationRepository.markAllAsRead(userId);
     }
 }

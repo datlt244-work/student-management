@@ -21,6 +21,7 @@ public class Notification extends JpaBaseEntity {
     @Column(name = "notification_id")
     private UUID notificationId;
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
@@ -31,8 +32,9 @@ public class Notification extends JpaBaseEntity {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String body;
 
+    @com.fasterxml.jackson.annotation.JsonProperty("isRead")
     @Column(name = "is_read")
-    private boolean isRead = false;
+    private boolean read = false;
 
     @Column(name = "action_url")
     private String actionUrl; // URL to redirect when clicked

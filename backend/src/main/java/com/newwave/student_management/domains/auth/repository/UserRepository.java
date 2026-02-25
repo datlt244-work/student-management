@@ -35,4 +35,19 @@ public interface UserRepository extends JpaRepository<User, UUID> {
       @Param("roleId") Integer roleId,
       Pageable pageable);
 
+  @Query("SELECT u FROM User u WHERE u.role.roleName <> :roleName AND u.deletedAt IS NULL")
+  java.util.List<User> findAllByRoleNameNot(@Param("roleName") String roleName);
+
+  @Query("SELECT u FROM User u " +
+      "LEFT JOIN Student s ON s.user = u " +
+      "LEFT JOIN Teacher t ON t.user = u " +
+      "WHERE u.deletedAt IS NULL " +
+      "AND (:roleName IS NULL OR u.role.roleName = :roleName) " +
+      "AND (:departmentId IS NULL OR s.department.departmentId = :departmentId OR t.department.departmentId = :departmentId) "
+      +
+      "AND (:classCode IS NULL OR s.manageClass = :classCode)")
+  java.util.List<User> findUsersByCriteria(
+      @Param("roleName") String roleName,
+      @Param("departmentId") Long departmentId,
+      @Param("classCode") String classCode);
 }

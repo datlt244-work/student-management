@@ -33,7 +33,7 @@ public class NotificationController {
             @AuthenticationPrincipal Jwt jwt,
             @RequestBody @Valid FcmTokenRequest request) {
 
-        String userIdStr = jwt.getClaim("userId").toString();
+        String userIdStr = jwt.getClaimAsString("userId");
         notificationService.registerToken(UUID.fromString(userIdStr), request.getToken(),
                 request.getDeviceType());
         return ResponseEntity.ok().build();
@@ -98,5 +98,35 @@ public class NotificationController {
     public ResponseEntity<Void> deleteHistory(@PathVariable("id") UUID id) {
         notificationService.deleteSentNotification(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/my")
+    public ResponseEntity<org.springframework.data.domain.Page<com.newwave.student_management.domains.notification.entity.Notification>> getMyNotifications(
+            @AuthenticationPrincipal Jwt jwt,
+            @org.springframework.data.web.PageableDefault(size = 20, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC) org.springframework.data.domain.Pageable pageable) {
+        String userIdStr = jwt.getClaimAsString("userId");
+        return ResponseEntity.ok(notificationService.getUserNotifications(UUID.fromString(userIdStr), pageable));
+    }
+
+    @GetMapping("/unread-count")
+    public ResponseEntity<Long> getUnreadCount(@AuthenticationPrincipal Jwt jwt) {
+        String userIdStr = jwt.getClaimAsString("userId");
+        return ResponseEntity.ok(notificationService.getUnreadCount(UUID.fromString(userIdStr)));
+    }
+
+    @PatchMapping("/{id}/read")
+    public ResponseEntity<Void> markAsRead(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable("id") UUID notificationId) {
+        String userIdStr = jwt.getClaimAsString("userId");
+        notificationService.markAsRead(UUID.fromString(userIdStr), notificationId);
+        return ResponseEntity.ok().build();
+    }
+
+    @PatchMapping("/read-all")
+    public ResponseEntity<Void> markAllAsRead(@AuthenticationPrincipal Jwt jwt) {
+        String userIdStr = jwt.getClaimAsString("userId");
+        notificationService.markAllAsRead(UUID.fromString(userIdStr));
+        return ResponseEntity.ok().build();
     }
 }

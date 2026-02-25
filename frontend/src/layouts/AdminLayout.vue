@@ -3,10 +3,12 @@ import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { apiFetch } from '@/utils/api'
+import { useNotificationSetup } from '@/composables/useNotificationSetup'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+useNotificationSetup()
 
 const user = computed(() => authStore.user)
 const mobileMenuOpen = ref(false)
@@ -22,6 +24,7 @@ const navItems = [
   { name: 'Course Management', icon: 'menu_book', routeName: 'admin-courses' },
   { name: 'Semester Management', icon: 'calendar_month', routeName: 'admin-semesters' },
   { name: 'Class Management', icon: 'school', routeName: 'admin-classes' },
+  { name: 'Notifications', icon: 'notifications', routeName: 'admin-notifications' },
   { name: 'System Logs', icon: 'description', routeName: 'admin-logs' },
 ]
 
@@ -52,7 +55,9 @@ function getInitials(email: string | undefined): string {
 </script>
 
 <template>
-  <div class="flex h-screen w-full bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display antialiased overflow-hidden selection:bg-primary selection:text-white">
+  <div
+    class="flex h-screen w-full bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display antialiased overflow-hidden selection:bg-primary selection:text-white"
+  >
     <!-- Mobile menu button -->
     <button
       class="md:hidden fixed top-4 left-4 z-50 size-10 flex items-center justify-center rounded-lg bg-surface-light dark:bg-surface-dark border border-stone-200 dark:border-stone-800 shadow-md"
@@ -69,7 +74,9 @@ function getInitials(email: string | undefined): string {
           v-if="mobileMenuOpen"
           class="fixed inset-0 z-[100] flex flex-col bg-surface-light dark:bg-surface-dark md:hidden"
         >
-          <div class="flex items-center justify-between p-4 border-b border-stone-200 dark:border-stone-800">
+          <div
+            class="flex items-center justify-between p-4 border-b border-stone-200 dark:border-stone-800"
+          >
             <div class="flex items-center gap-3">
               <div
                 v-if="user?.profilePictureUrl"
@@ -84,7 +91,9 @@ function getInitials(email: string | undefined): string {
               </div>
               <div>
                 <h1 class="text-slate-900 dark:text-white text-base font-bold">Admin Portal</h1>
-                <p class="text-primary text-sm truncate max-w-[180px]">{{ user?.email || 'Administrator' }}</p>
+                <p class="text-primary text-sm truncate max-w-[180px]">
+                  {{ user?.email || 'Administrator' }}
+                </p>
               </div>
             </div>
             <button
@@ -108,8 +117,17 @@ function getInitials(email: string | undefined): string {
               ]"
               @click="closeMobileMenu"
             >
-              <span class="material-symbols-outlined" :class="isActive(item.routeName) ? 'text-primary' : ''">{{ item.icon }}</span>
-              <p class="text-sm font-medium" :class="isActive(item.routeName) ? 'text-slate-900 dark:text-white' : ''">{{ item.name }}</p>
+              <span
+                class="material-symbols-outlined"
+                :class="isActive(item.routeName) ? 'text-primary' : ''"
+                >{{ item.icon }}</span
+              >
+              <p
+                class="text-sm font-medium"
+                :class="isActive(item.routeName) ? 'text-slate-900 dark:text-white' : ''"
+              >
+                {{ item.name }}
+              </p>
             </router-link>
           </nav>
           <div class="p-4 border-t border-stone-200 dark:border-stone-800">
@@ -126,7 +144,9 @@ function getInitials(email: string | undefined): string {
     </Teleport>
 
     <!-- Side Navigation (desktop) -->
-    <aside class="hidden md:flex w-72 h-full flex-col border-r border-stone-200 dark:border-stone-800 bg-surface-light dark:bg-surface-dark shrink-0">
+    <aside
+      class="hidden md:flex w-72 h-full flex-col border-r border-stone-200 dark:border-stone-800 bg-surface-light dark:bg-surface-dark shrink-0"
+    >
       <div class="p-6 flex flex-col h-full justify-between">
         <!-- Header / User Info -->
         <div class="flex flex-col gap-8">
@@ -143,8 +163,12 @@ function getInitials(email: string | undefined): string {
               {{ getInitials(user?.email) }}
             </div>
             <div class="flex flex-col">
-              <h1 class="text-slate-900 dark:text-white text-base font-bold leading-tight">Admin Portal</h1>
-              <p class="text-primary text-sm font-normal truncate max-w-[170px]">{{ user?.email || 'Administrator' }}</p>
+              <h1 class="text-slate-900 dark:text-white text-base font-bold leading-tight">
+                Admin Portal
+              </h1>
+              <p class="text-primary text-sm font-normal truncate max-w-[170px]">
+                {{ user?.email || 'Administrator' }}
+              </p>
             </div>
           </div>
 
@@ -195,7 +219,9 @@ function getInitials(email: string | undefined): string {
     </aside>
 
     <!-- Main Content -->
-    <main class="flex-1 flex flex-col h-full overflow-y-auto bg-background-light dark:bg-background-dark scroll-smooth pt-16 md:pt-0">
+    <main
+      class="flex-1 flex flex-col h-full overflow-y-auto bg-background-light dark:bg-background-dark scroll-smooth pt-16 md:pt-0"
+    >
       <router-view />
     </main>
   </div>
@@ -211,4 +237,3 @@ function getInitials(email: string | undefined): string {
   opacity: 0;
 }
 </style>
-

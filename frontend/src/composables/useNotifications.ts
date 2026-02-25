@@ -3,6 +3,11 @@ import { apiFetch } from '@/utils/api';
 
 export function useNotifications() {
     const requestPermission = async () => {
+        if (!('Notification' in window)) {
+            console.log('This browser does not support desktop notification');
+            return;
+        }
+
         try {
             const permission = await Notification.requestPermission();
             if (permission === 'granted') {
@@ -11,14 +16,16 @@ export function useNotifications() {
                 });
 
                 if (token) {
-                    console.log('FCM Token:', token);
-                    // Gửi token lên server dùng apiFetch để có Auth Header
+                    console.log('FCM Token registered successfully');
+                    // Gửi token lên server dùng apiFetch để có Auth Header (nếu đã login)
                     await apiFetch('/notifications/tokens', {
                         method: 'POST',
                         body: JSON.stringify({
                             token: token,
                             deviceType: 'web'
                         })
+                    }).catch(err => {
+                        console.warn('Could not register token on server. User might not be logged in.', err);
                     });
                 }
             }

@@ -42,7 +42,8 @@ public class NotificationController {
     @PostMapping("/broadcast")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> broadcast(@RequestBody @Valid NotificationRequest request) {
-        notificationService.broadcast(request.getTitle(), request.getBody(), request.getActionUrl());
+        notificationService.broadcast(request.getTitle(), request.getBody(), request.getActionUrl(),
+                request.getScheduledAt());
         return ResponseEntity.ok().build();
     }
 
@@ -56,7 +57,8 @@ public class NotificationController {
                 request.getActionUrl(),
                 request.getRole(),
                 request.getDepartmentId(),
-                request.getClassCode());
+                request.getClassCode(),
+                request.getScheduledAt());
         return ResponseEntity.ok().build();
     }
 
@@ -68,7 +70,8 @@ public class NotificationController {
                 request.getTitle(),
                 request.getBody(),
                 request.getActionUrl(),
-                request.getRecipientId()); // Reusing DTO, using recipientId for identifier
+                request.getRecipientId(),
+                request.getScheduledAt()); // Reusing DTO, using recipientId for identifier
         return ResponseEntity.ok().build();
     }
 

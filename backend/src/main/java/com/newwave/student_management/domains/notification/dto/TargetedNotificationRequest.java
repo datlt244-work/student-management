@@ -18,4 +18,5 @@ public class TargetedNotificationRequest {
     private Long departmentId;
     private String classCode;
     private String recipientId; // For personal notifications
+    private java.time.LocalDateTime scheduledAt;
 }

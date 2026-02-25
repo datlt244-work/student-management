@@ -27,4 +27,6 @@ public interface SentNotificationRepository extends JpaRepository<SentNotificati
                         Pageable pageable);
 
         long countByCreatedAtAfter(java.time.LocalDateTime date);
+
+        java.util.List<SentNotification> findByStatusAndScheduledAtBefore(String status, java.time.LocalDateTime now);
 }

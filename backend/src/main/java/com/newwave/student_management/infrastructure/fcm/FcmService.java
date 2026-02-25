@@ -10,16 +10,23 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class FcmService {
 
-    public void sendNotification(String token, String title, String body) {
+    public void sendNotification(String token, String title, String body, String actionUrl) {
         try {
-            Message message = Message.builder()
+            com.google.firebase.messaging.Message.Builder builder = Message.builder()
                     .setToken(token)
                     .setNotification(Notification.builder()
                             .setTitle(title)
                             .setBody(body)
-                            .build())
-                    .build();
+                            .build());
 
+            if (actionUrl != null && !actionUrl.isBlank()) {
+                builder.putData("url", actionUrl);
+                builder.setWebpushConfig(com.google.firebase.messaging.WebpushConfig.builder()
+                        .setFcmOptions(com.google.firebase.messaging.WebpushFcmOptions.withLink(actionUrl))
+                        .build());
+            }
+
+            Message message = builder.build();
             String response = FirebaseMessaging.getInstance().send(message);
             log.info("Successfully sent message: " + response);
         } catch (Exception e) {

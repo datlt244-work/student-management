@@ -6,10 +6,13 @@ export interface AdminNotificationListItem {
   body: string
   type: 'Broadcast' | 'Targeted' | 'Personal'
   recipients: string | number
-  status: 'Sent' | 'Delivered' | 'Failed'
+  status: 'Pending' | 'Sent' | 'Failed' | 'Cancelled'
   date: string
   time: string
   createdAt: string
+  scheduledAt?: string
+  sentAt?: string
+  actionUrl?: string
 }
 
 export interface SendNotificationRequest {
@@ -21,6 +24,7 @@ export interface SendNotificationRequest {
   departmentId?: number
   classId?: string
   recipientId?: string
+  scheduledAt?: string
 }
 
 export interface AdminNotificationListResult {
@@ -68,22 +72,28 @@ export async function getNotificationHistory(params: {
   const list = (raw.content || []) as any[]
 
   return {
-    content: list.map((item: any) => ({
-      id: item.sentId,
-      title: item.title,
-      body: item.body,
-      type:
-        item.notificationType === 'BROADCAST'
-          ? 'Broadcast'
-          : item.notificationType === 'TARGETED'
-            ? 'Targeted'
-            : 'Personal',
-      recipients: item.recipientCount,
-      status: 'Sent',
-      date: new Date(item.createdAt).toLocaleDateString(),
-      time: new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      createdAt: item.createdAt,
-    })),
+    content: list.map((item: any) => {
+      const displayDate = item.status === 'PENDING' ? item.scheduledAt : (item.sentAt || item.createdAt);
+      return {
+        id: item.sentId,
+        title: item.title,
+        body: item.body,
+        type:
+          item.notificationType === 'BROADCAST'
+            ? 'Broadcast'
+            : item.notificationType === 'TARGETED'
+              ? 'Targeted'
+              : 'Personal',
+        recipients: item.recipientCount,
+        status: item.status.charAt(0) + item.status.slice(1).toLowerCase(),
+        date: new Date(displayDate).toLocaleDateString(),
+        time: new Date(displayDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        createdAt: item.createdAt,
+        scheduledAt: item.scheduledAt,
+        sentAt: item.sentAt,
+        actionUrl: item.actionUrl
+      }
+    }),
     page: raw.number ?? 0,
     size: raw.size ?? 20,
     totalElements: raw.totalElements ?? 0,
@@ -99,6 +109,7 @@ export async function sendAdminNotification(request: SendNotificationRequest) {
         title: request.title,
         body: request.body,
         actionUrl: request.actionUrl,
+        scheduledAt: request.scheduledAt
       }),
     })
 
@@ -118,7 +129,8 @@ export async function sendAdminNotification(request: SendNotificationRequest) {
         actionUrl: request.actionUrl,
         role: request.role,
         departmentId: request.departmentId,
-        classCode: request.classId, // Mapping classId to classCode for targeted
+        classCode: request.classId,
+        scheduledAt: request.scheduledAt
       }),
     })
 
@@ -137,6 +149,7 @@ export async function sendAdminNotification(request: SendNotificationRequest) {
         body: request.body,
         actionUrl: request.actionUrl,
         recipientId: request.recipientId,
+        scheduledAt: request.scheduledAt
       }),
     })
 

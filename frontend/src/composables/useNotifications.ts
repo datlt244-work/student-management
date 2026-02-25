@@ -17,6 +17,9 @@ export function useNotifications() {
                     scope: '/'
                 });
                 
+                // Ensure the service worker is active before subscribing
+                await navigator.serviceWorker.ready;
+                
                 const token = await getToken(messaging, {
                     vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
                     serviceWorkerRegistration: registration

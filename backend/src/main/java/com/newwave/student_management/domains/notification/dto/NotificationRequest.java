@@ -10,4 +10,5 @@ public class NotificationRequest {
     @NotBlank
     private String body;
     private String actionUrl;
+    private java.time.LocalDateTime scheduledAt;
 }

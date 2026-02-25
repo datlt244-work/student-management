@@ -37,13 +37,22 @@ const selectedNotification = ref<AdminNotificationListItem | null>(null)
 // Form states
 const activeTab = ref('broadcast') // 'broadcast', 'targeted', 'personal'
 const form = ref({
-  title: 'Exam Schedule Update',
-  body: 'Please be advised that the final exam schedule for the Fall 2023 semester has been updated. Check your portal for details.',
+  title: '',
+  body: '',
   actionUrl: '',
   role: 'All Roles',
   departmentId: undefined as number | undefined,
   classId: 'All Classes',
   recipientId: '',
+})
+
+// Schedule states
+const isScheduled = ref(false)
+const scheduledDate = ref('')
+const minScheduleDate = computed(() => {
+  const now = new Date()
+  now.setMinutes(now.getMinutes() + 5) // Min 5 minutes from now
+  return now.toISOString().slice(0, 16)
 })
 
 const departments = ref<AdminDepartmentItem[]>([])
@@ -171,13 +180,21 @@ async function handleSend() {
     await sendAdminNotification({
       ...form.value,
       type: activeTab.value,
+      scheduledAt:
+        isScheduled.value && scheduledDate.value
+          ? new Date(scheduledDate.value).toISOString()
+          : undefined,
     })
-    showToast('Notification sent successfully')
+    showToast(
+      isScheduled.value ? 'Notification scheduled successfully' : 'Notification sent successfully',
+    )
     showCreateModal.value = false
     clearSelectedRecipient()
     form.value.title = ''
     form.value.body = ''
     form.value.actionUrl = ''
+    isScheduled.value = false
+    scheduledDate.value = ''
     await fetchNotifications()
     await fetchStats()
   } catch (error) {
@@ -455,6 +472,11 @@ function clearFilters() {
               class="hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors"
             >
               <td class="p-4 text-sm text-slate-500 whitespace-nowrap">
+                <span
+                  class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-0.5"
+                >
+                  {{ notif.status === 'Pending' ? 'Scheduled' : 'Sent' }}
+                </span>
                 {{ notif.date }}<br /><span class="text-xs">{{ notif.time }}</span>
               </td>
               <td class="p-4 whitespace-nowrap">
@@ -475,22 +497,24 @@ function clearFilters() {
               </td>
               <td class="p-4 whitespace-nowrap">
                 <span class="text-sm text-slate-700 dark:text-slate-300 font-medium">{{
-                  notif.recipients
+                  notif.status === 'Pending' ? '-' : notif.recipients
                 }}</span>
               </td>
               <td class="p-4 whitespace-nowrap">
-                <div class="flex items-center gap-1.5">
-                  <span
-                    v-if="notif.status === 'Sent'"
-                    class="w-2 h-2 rounded-full bg-green-500"
-                  ></span>
-                  <span v-else class="material-symbols-outlined text-green-500 text-[18px]"
-                    >done_all</span
-                  >
-                  <span class="text-sm text-slate-600 dark:text-slate-400 font-medium">{{
-                    notif.status
-                  }}</span>
-                </div>
+                <span
+                  :class="[
+                    'px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider',
+                    notif.status === 'Sent'
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
+                      : notif.status === 'Pending'
+                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400'
+                        : notif.status === 'Cancelled'
+                          ? 'bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-400'
+                          : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400',
+                  ]"
+                >
+                  {{ notif.status }}
+                </span>
               </td>
               <td class="p-4 text-right whitespace-nowrap">
                 <div class="flex items-center justify-end gap-1">
@@ -837,6 +861,49 @@ function clearFilters() {
                         />
                       </div>
                     </div>
+
+                    <!-- Schedule Feature -->
+                    <div class="pt-4 border-t border-stone-100 dark:border-stone-800">
+                      <label class="flex items-center gap-3 cursor-pointer group">
+                        <div class="relative flex items-center">
+                          <input
+                            v-model="isScheduled"
+                            type="checkbox"
+                            class="w-5 h-5 rounded-md border-stone-300 text-primary focus:ring-primary/20 transition-all cursor-pointer"
+                          />
+                        </div>
+                        <div class="flex flex-col">
+                          <span
+                            class="text-sm font-bold text-slate-700 dark:text-slate-200 group-hover:text-primary transition-colors"
+                          >
+                            Schedule for later
+                          </span>
+                          <span class="text-[10px] text-slate-400 font-medium">
+                            Notifications will be sent automatically at the chosen time
+                          </span>
+                        </div>
+                      </label>
+
+                      <Transition name="fade">
+                        <div
+                          v-if="isScheduled"
+                          class="mt-4 animate-in fade-in slide-in-from-top-2 duration-300"
+                        >
+                          <div class="relative">
+                            <span
+                              class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-primary text-lg"
+                              >event</span
+                            >
+                            <input
+                              v-model="scheduledDate"
+                              type="datetime-local"
+                              class="w-full pl-10 bg-primary/5 border-primary/20 focus:border-primary focus:ring-primary/10"
+                              :min="minScheduleDate"
+                            />
+                          </div>
+                        </div>
+                      </Transition>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1081,7 +1148,7 @@ function clearFilters() {
               >
                 <div>
                   <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                    Sent Date
+                    {{ selectedNotification?.status === 'Pending' ? 'Scheduled For' : 'Sent Date' }}
                   </div>
                   <div class="text-sm font-medium text-slate-900 dark:text-slate-100">
                     {{ selectedNotification?.date }}
@@ -1090,19 +1157,41 @@ function clearFilters() {
                 </div>
                 <div>
                   <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                    Recipients
+                    Status
                   </div>
-                  <div class="text-sm font-medium text-slate-900 dark:text-slate-100">
-                    {{ selectedNotification?.recipients }} devices
+                  <div
+                    class="flex items-center gap-1.5 text-sm font-bold"
+                    :class="[
+                      selectedNotification?.status === 'Sent'
+                        ? 'text-green-600'
+                        : selectedNotification?.status === 'Pending'
+                          ? 'text-blue-600'
+                          : 'text-slate-600',
+                    ]"
+                  >
+                    <span
+                      v-if="selectedNotification?.status === 'Sent'"
+                      class="material-symbols-outlined text-[18px]"
+                      >check_circle</span
+                    >
+                    <span
+                      v-if="selectedNotification?.status === 'Pending'"
+                      class="material-symbols-outlined text-[18px]"
+                      >schedule</span
+                    >
+                    {{ selectedNotification?.status }}
                   </div>
                 </div>
                 <div>
                   <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                    Status
+                    Recipients
                   </div>
-                  <div class="flex items-center gap-1.5 text-sm font-medium text-green-600">
-                    <span class="material-symbols-outlined text-[18px]">check_circle</span>
-                    Delivered
+                  <div class="text-sm font-medium text-slate-900 dark:text-slate-100">
+                    {{
+                      selectedNotification?.status === 'Pending'
+                        ? '-'
+                        : selectedNotification?.recipients
+                    }}
                   </div>
                 </div>
               </div>

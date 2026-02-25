@@ -181,3 +181,104 @@ Sinh viên tự cập nhật thông tin liên lạc và ảnh đại diện.
 
 - Thay đổi số điện thoại, địa chỉ thường trú.
 - Tải lên ảnh đại diện cá nhân.
+
+---
+
+## UC-20: Hệ thống Thông báo (Notification System)
+
+### 1. Mô tả (Description)
+
+Cung cấp khả năng gửi và nhận thông báo thời gian thực giúp cải thiện tương tác giữa Nhà trường (Admin), Giảng viên (Teacher) và Sinh viên (Student). Hệ thống sử dụng Firebase Cloud Messaging (FCM) để đẩy thông báo ngay lập tức.
+
+### 2. Tác nhân (Actors)
+
+- **Admin**: Người gửi thông báo chung toàn trường hoặc theo nhóm.
+- **Teacher**: Người kích hoạt các thông báo liên quan đến lớp học và điểm số.
+- **Student**: Người nhận thông báo.
+- **Hệ thống (System)**: Tự động gửi các thông báo nhắc lịch, cập nhật hệ thống.
+
+> **Xem chi tiết tài liệu thiết kế dành riêng cho Admin tại: [ADMIN_NOTIFICATION_MANAGEMENT_UC.md](./ADMIN_NOTIFICATION_MANAGEMENT_UC.md)**
+
+---
+
+### 3. Các luồng công việc chi tiết (Detailed Flows)
+
+#### UC-20.1: Đăng ký thiết bị và Token (Device & Token Registration)
+
+- **Mục tiêu**: Liên kết trình duyệt của người dùng với hệ thống thông báo.
+- **Luồng chính**:
+  1. Người dùng đăng nhập vào Portal (hoặc Admin Dashboard).
+  2. Frontend kiểm tra quyền thông báo của trình duyệt:
+     - Nếu chưa hỏi: Hiển thị popup yêu cầu quyền.
+     - Nếu bị chặn: Hiển thị hướng dẫn mở quyền trong phần cài đặt.
+  3. Trình duyệt cấp quyền -> Frontend lấy **FCM Token** từ Firebase.
+  4. Frontend gọi API `POST /notifications/tokens` gửi Token và loại thiết bị (`web`).
+  5. Backend kiểm tra:
+     - Nếu Token đã tồn tại: Cập nhật User ID và thời gian cập nhật mới nhất.
+     - Nếu Token chưa có: Tạo mới bản ghi trong bảng `fcm_tokens`.
+- **Kết quả**: Hệ thống biết gửi thông báo đến máy tính/trình duyệt nào khi cần liên hệ với User.
+
+#### UC-20.2: [Admin] Gửi thông báo diện rộng (Global Broadcast)
+
+- **Mục tiêu**: Admin gửi thông tin quan trọng cho toàn bộ thành viên hệ thống (ví dụ: Thông báo nghỉ lễ, bảo trì).
+- **Luồng chính**:
+  1. Admin vào menu **System Management** -> **Notifications**.
+  2. Admin nhấn **"Create Broadcast"**.
+  3. Admin nhập:
+     - **Tiêu đề**: Ví dụ "Thông báo nghỉ Tết Nguyên Đán".
+     - **Nội dung**: Chi tiết lịch nghỉ và ngày quay lại.
+     - **Action URL**: Link đến file văn bản/quyết định (tùy chọn).
+  4. Admin nhấn **"Send Notification"**.
+  5. **Hệ thống xử lý**:
+     - Lưu dữ liệu thông báo vào bảng `notifications`.
+     - Truy vấn tất cả Token đang hoạt động trong bảng `fcm_tokens`.
+     - Gửi yêu cầu đẩy tin nhắn hàng loạt đến Firebase API.
+- **Kết quả**: Tất cả người dùng đang online (hoặc có đăng ký token) sẽ nhận được popup thông báo.
+
+#### UC-20.3: [Teacher/Admin] Thông báo theo Lớp/Môn học (Targeted Class Notification)
+
+- **Mục tiêu**: Giảng viên hoặc Admin thông báo riêng cho sinh viên của một lớp cụ thể (ví dụ: Dời lịch học, Hủy lớp).
+- **Luồng chính**:
+  1. Giảng viên vào trang **Class Management** -> Chọn một lớp đang giảng dạy.
+  2. Nhấn nút **"Notify Class"**.
+  3. Nhập nội dung: "Lớp chiều nay nghỉ do giảng viên họp đột xuất, lịch bù sẽ thông báo sau".
+  4. Nhấn **"Submit"**.
+  5. **Hệ thống xử lý**:
+     - Xác định danh sách Sinh viên đang đăng ký lớp này.
+     - Với mỗi Sinh viên:
+       - Lưu một bản ghi thông báo cá nhân vào DB.
+       - Tìm các thiết bị (tokens) của sinh viên đó và gửi qua FCM.
+- **Kết quả**: Chỉ các sinh viên trong lớp đó nhận được thông báo.
+
+#### UC-20.4: [System] Thông báo kết quả học tập (Academic Notifications)
+
+- **Mục tiêu**: Tự động báo cho sinh viên khi có điểm mới.
+- **Luồng chính**:
+  1. Giảng viên hoàn tất nhập điểm và nhấn **"Publish Grades"**.
+  2. Hệ thống (Backend) thực hiện cập nhật trạng thái điểm.
+  3. Sau khi lưu thành công, hệ thống tự động gọi `NotificationService`:
+     - Tạo thông báo: "Môn [Tên Môn] đã có điểm chính thức. Click để xem chi tiết."
+     - Gửi thông báo đến trang cá nhân của từng sinh viên tương ứng qua FCM.
+- **Kết quả**: Sinh viên biết ngay khi có điểm mà không cần vào kiểm tra thủ công.
+
+#### UC-20.5: [Người dùng] Xem và Quản lý thông báo (View & Manage Notifications)
+
+- **Luồng chính**:
+  1. Người dùng thấy icon hình quả chuông có số lượng thông báo chưa đọc.
+  2. Người dùng nhấn vào icon để mở danh sách nhanh (Dropdown).
+  3. Nhấn vào một thông báo cụ thể:
+     - Chuyển hướng đến **Action URL** (nếu có).
+     - Gọi API `PATCH /notifications/{id}/read` để đánh dấu đã đọc.
+     - Giảm số lượng thông báo chưa đọc trên icon.
+  4. Người dùng có thể nhấn **"View All"** để vào trang lịch sử thông báo đầy đủ.
+
+---
+
+### 4. Các Quy tắc nghiệp vụ (Business Rules)
+
+1. **Đa thiết bị**: Một người dùng nhận được thông báo trên tất cả các trình duyệt đã dùng để đăng nhập (Chrome trên PC, Safari trên Mobile...).
+2. **Offline**: Nếu người dùng không mở trình duyệt, thông báo sẽ được lưu trong DB và hiển thị khi họ quay lại. Nếu họ dùng trình duyệt hỗ trợ Service Worker, họ vẫn nhận được thông báo hệ thống ngay cả khi không mở tab ứng dụng.
+3. **Phân quyền**:
+   - Teacher chỉ được gửi thông báo cho các lớp mình phụ trách.
+   - Admin được quyền gửi cho mọi đối tượng.
+4. **Bảo mật**: Token FCM phải được gắn chặt với Security Context của phiên đăng nhập đó. Khi Logout, hệ thống nên vô hiệu hóa token tương ứng.

@@ -13,6 +13,7 @@
 .env
 .env.local
 **/backend/.env
+firebase-service-account.json
 
 # 3. Loại bỏ cấu hình của các IDE (Dùng dấu **/ để áp dụng cho cả root và backend)
 ### IntelliJ IDEA ###

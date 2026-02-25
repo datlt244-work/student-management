@@ -91,6 +91,11 @@ const router = createRouter({
           name: 'admin-logs',
           component: () => import('@/views/admin/DashboardView.vue'), // TODO: create SystemLogs page
         },
+        {
+          path: 'notifications',
+          name: 'admin-notifications',
+          component: () => import('@/views/admin/NotificationsView.vue'),
+        },
       ],
     },
     // Teacher routes

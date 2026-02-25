@@ -3,10 +3,12 @@ import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { apiFetch } from '@/utils/api'
+import { useNotificationSetup } from '@/composables/useNotificationSetup'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+useNotificationSetup()
 
 const user = computed(() => authStore.user)
 const mobileMenuOpen = ref(false)

@@ -29,4 +29,13 @@ public interface StudentRepository extends JpaRepository<Student, UUID> {
     boolean existsByStudentCodeAndDeletedAtIsNull(String studentCode);
 
     long countByDepartment_DepartmentIdAndDeletedAtIsNull(Integer departmentId);
+
+    Optional<Student> findByStudentCodeAndDeletedAtIsNull(String studentCode);
+
+    @Query("SELECT s FROM Student s WHERE s.deletedAt IS NULL AND " +
+            "(LOWER(s.firstName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+            "LOWER(s.lastName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+            "LOWER(s.email) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+            "LOWER(s.studentCode) LIKE LOWER(CONCAT('%', :query, '%')))")
+    List<Student> searchRecipients(@Param("query") String query, org.springframework.data.domain.Pageable pageable);
 }

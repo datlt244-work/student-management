@@ -79,7 +79,7 @@ public class NotificationInternalService {
                 .title(title)
                 .body(body)
                 .actionUrl(actionUrl)
-                .isRead(false)
+                .read(false)
                 .notificationType("SYSTEM")
                 .build();
         notificationRepository.save(notification);
@@ -140,6 +140,7 @@ public class NotificationInternalService {
                 .title(notif.getTitle())
                 .body(notif.getBody())
                 .actionUrl(notif.getActionUrl())
+                .read(false)
                 .notificationType(notif.getNotificationType())
                 .build()).collect(Collectors.toList());
         notificationRepository.saveAll(items);
@@ -219,6 +220,7 @@ public class NotificationInternalService {
                 .title(notif.getTitle())
                 .body(notif.getBody())
                 .actionUrl(notif.getActionUrl())
+                .read(false)
                 .notificationType(notif.getNotificationType())
                 .build()).collect(Collectors.toList());
         notificationRepository.saveAll(items);
@@ -364,7 +366,7 @@ public class NotificationInternalService {
 
     @Transactional(readOnly = true)
     public long getUnreadCount(java.util.UUID userId) {
-        return notificationRepository.countByUser_UserIdAndIsReadFalse(userId);
+        return notificationRepository.countByUser_UserIdAndReadFalse(userId);
     }
 
     @Transactional

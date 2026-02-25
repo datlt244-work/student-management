@@ -32,9 +32,9 @@ public class Notification extends JpaBaseEntity {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String body;
 
-    @Builder.Default
+    @com.fasterxml.jackson.annotation.JsonProperty("isRead")
     @Column(name = "is_read")
-    private boolean isRead = false;
+    private boolean read = false;
 
     @Column(name = "action_url")
     private String actionUrl; // URL to redirect when clicked

@@ -112,7 +112,7 @@ function getInitials(email: string | undefined): string {
         </label>
 
         <!-- Notifications -->
-        <NotificationPopover />
+        <NotificationPopover portal="student" />
 
         <!-- Profile dropdown -->
         <div class="relative flex items-center gap-3">

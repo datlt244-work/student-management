@@ -93,7 +93,7 @@ function getInitials(email: string | undefined): string {
         </div>
       </div>
       <div class="flex items-center gap-4">
-        <NotificationPopover />
+        <NotificationPopover portal="teacher" />
         <button
           class="p-2 text-text-muted-light dark:text-text-muted-dark hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-colors"
         >

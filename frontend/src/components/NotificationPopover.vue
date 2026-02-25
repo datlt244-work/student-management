@@ -10,7 +10,7 @@ import {
 } from '@/services/portalNotificationService'
 
 const props = defineProps<{
-  // portal prop removed as we don't need to link to a separate view
+  portal: string
 }>()
 
 const router = useRouter()

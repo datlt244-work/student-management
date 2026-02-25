@@ -33,7 +33,6 @@ jobs:
         working-directory: backend
         run: |
           echo "${{ secrets.ENV_FILE }}" > .env
-          echo "FIREBASE_CONFIG_JSON='${{ secrets.FIREBASE_CONFIG_JSON }}'" >> .env
 
       - name: Stop and remove existing containers
         run: |
@@ -48,6 +47,8 @@ jobs:
 
       - name: Deploy with Docker Compose
         working-directory: backend
+        env:
+          FIREBASE_CONFIG_JSON: ${{ secrets.FIREBASE_CONFIG_JSON }}
         run: |
           docker compose up -d --build
           docker image prune -f

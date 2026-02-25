@@ -224,6 +224,19 @@ onMounted(() => {
             </div>
           </div>
         </div>
+
+        <!-- Footer -->
+        <div
+          v-if="notifications.length > 0"
+          class="px-4 py-2 bg-stone-50 dark:bg-stone-900/50 border-t border-border-light dark:border-border-dark text-center"
+        >
+          <button
+            @click="viewAll"
+            class="text-xs font-bold text-primary hover:text-primary-dark transition-colors"
+          >
+            View all notifications
+          </button>
+        </div>
       </div>
     </Transition>
 

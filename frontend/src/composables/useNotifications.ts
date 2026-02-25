@@ -11,8 +11,15 @@ export function useNotifications() {
         try {
             const permission = await Notification.requestPermission();
             if (permission === 'granted') {
+
+                // Register Service Worker explicitly to avoid 401 issues
+                const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+                    scope: '/'
+                });
+                
                 const token = await getToken(messaging, {
-                    vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY
+                    vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
+                    serviceWorkerRegistration: registration
                 });
 
                 if (token) {

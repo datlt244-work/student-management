@@ -31,6 +31,14 @@ export interface AdminNotificationListResult {
   totalPages: number
 }
 
+export interface NotificationStatsResult {
+  totalSent: number
+  broadcast: number
+  targeted: number
+  personal: number
+  failed: number
+}
+
 export async function getNotificationHistory(params: {
   page?: number
   size?: number
@@ -64,7 +72,12 @@ export async function getNotificationHistory(params: {
       id: item.sentId,
       title: item.title,
       body: item.body,
-      type: item.notificationType === 'BROADCAST' ? 'Broadcast' : 'Targeted',
+      type:
+        item.notificationType === 'BROADCAST'
+          ? 'Broadcast'
+          : item.notificationType === 'TARGETED'
+            ? 'Targeted'
+            : 'Personal',
       recipients: item.recipientCount,
       status: 'Sent',
       date: new Date(item.createdAt).toLocaleDateString(),
@@ -96,13 +109,73 @@ export async function sendAdminNotification(request: SendNotificationRequest) {
     return
   }
 
+  if (request.type === 'targeted') {
+    const response = await apiFetch('/notifications/send-targeted', {
+      method: 'POST',
+      body: JSON.stringify({
+        title: request.title,
+        body: request.body,
+        actionUrl: request.actionUrl,
+        role: request.role,
+        departmentId: request.departmentId,
+        classCode: request.classId, // Mapping classId to classCode for targeted
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null)
+      throw new Error(errorData?.message || `Failed to send targeted notification (${response.status})`)
+    }
+    return
+  }
+
+  if (request.type === 'personal') {
+    const response = await apiFetch('/notifications/send-personal', {
+      method: 'POST',
+      body: JSON.stringify({
+        title: request.title,
+        body: request.body,
+        actionUrl: request.actionUrl,
+        recipientId: request.recipientId,
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null)
+      throw new Error(errorData?.message || `Failed to send personal notification (${response.status})`)
+    }
+    return
+  }
+
   // Targeted and Personal would go to other endpoints or shared endpoint with filters
   console.log('Sending targeted/personal notification', request)
   return Promise.resolve()
 }
 
+export interface RecipientSearchResponse {
+  name: string
+  identifier: string
+  role: string
+}
+
+export async function searchRecipients(query: string): Promise<RecipientSearchResponse[]> {
+  const response = await apiFetch(`/notifications/search-recipients?query=${encodeURIComponent(query)}`)
+  if (!response.ok) return []
+  const data = await response.json()
+  return data.result || data
+}
+
+export async function getNotificationStats(): Promise<{ activeTokens: number; sentLast30Days: number }> {
+  const response = await apiFetch('/notifications/stats')
+  if (!response.ok) return { activeTokens: 0, sentLast30Days: 0 }
+  const data = await response.json()
+  return data.result || data
+}
+
 export async function deleteNotification(id: string | number) {
-  // return apiFetch(`/admin/notifications/${id}`, { method: 'DELETE' })
-  console.log('Deleting notification', id)
-  return Promise.resolve()
+  const response = await apiFetch(`/notifications/history/${id}`, { method: 'DELETE' })
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    throw new Error(errorData?.message || `Failed to delete/recall notification (${response.status})`)
+  }
 }

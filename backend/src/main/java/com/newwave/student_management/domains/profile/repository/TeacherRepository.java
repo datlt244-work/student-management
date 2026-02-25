@@ -30,4 +30,14 @@ public interface TeacherRepository extends JpaRepository<Teacher, UUID> {
     Optional<Teacher> findByTeacherIdAndDeletedAtIsNull(UUID teacherId);
 
     java.util.List<Teacher> findByDepartment_DepartmentIdAndDeletedAtIsNull(Integer departmentId);
+
+    Optional<Teacher> findByTeacherCodeAndDeletedAtIsNull(String teacherCode);
+
+    @Query("SELECT t FROM Teacher t WHERE t.deletedAt IS NULL AND " +
+            "(LOWER(t.firstName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+            "LOWER(t.lastName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+            "LOWER(t.email) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+            "LOWER(t.teacherCode) LIKE LOWER(CONCAT('%', :query, '%')))")
+    java.util.List<Teacher> searchRecipients(@Param("query") String query,
+            org.springframework.data.domain.Pageable pageable);
 }

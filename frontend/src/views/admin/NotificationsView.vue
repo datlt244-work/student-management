@@ -5,8 +5,12 @@ import {
   getNotificationHistory,
   sendAdminNotification,
   deleteNotification,
+  searchRecipients,
+  getNotificationStats,
   type AdminNotificationListItem,
+  type RecipientSearchResponse,
 } from '@/services/adminNotificationService'
+import { getAdminDepartments, type AdminDepartmentItem } from '@/services/adminUserService'
 import { useToast } from '@/composables/useToast'
 
 const { toast, showToast } = useToast()
@@ -26,6 +30,10 @@ const showDeleteConfirmModal = ref(false)
 const deleteTargetId = ref<string | number | null>(null)
 const isDeleting = ref(false)
 
+// Detail modal states
+const showDetailModal = ref(false)
+const selectedNotification = ref<AdminNotificationListItem | null>(null)
+
 // Form states
 const activeTab = ref('broadcast') // 'broadcast', 'targeted', 'personal'
 const form = ref({
@@ -33,10 +41,48 @@ const form = ref({
   body: 'Please be advised that the final exam schedule for the Fall 2023 semester has been updated. Check your portal for details.',
   actionUrl: '',
   role: 'All Roles',
-  department: 'All Departments',
-  class: 'All Classes',
+  departmentId: undefined as number | undefined,
+  classId: 'All Classes',
   recipientId: '',
 })
+
+const departments = ref<AdminDepartmentItem[]>([])
+
+const searchRecipientQuery = ref('')
+const searchResults = ref<RecipientSearchResponse[]>([])
+const selectedRecipient = ref<RecipientSearchResponse | null>(null)
+const isSearchingRecipients = ref(false)
+
+watchDebounced(
+  searchRecipientQuery,
+  async (newQuery) => {
+    if (!newQuery || newQuery.length < 2) {
+      searchResults.value = []
+      return
+    }
+    isSearchingRecipients.value = true
+    try {
+      searchResults.value = await searchRecipients(newQuery)
+    } catch (err) {
+      console.error('Search failed', err)
+    } finally {
+      isSearchingRecipients.value = false
+    }
+  },
+  { debounce: 500 },
+)
+
+function selectRecipient(res: RecipientSearchResponse) {
+  selectedRecipient.value = res
+  form.value.recipientId = res.identifier
+  searchRecipientQuery.value = ''
+  searchResults.value = []
+}
+
+function clearSelectedRecipient() {
+  selectedRecipient.value = null
+  form.value.recipientId = ''
+}
 
 // Filter states
 const searchQuery = ref('')
@@ -67,8 +113,23 @@ async function fetchNotifications() {
   }
 }
 
-onMounted(() => {
+async function fetchStats() {
+  try {
+    const data = await getNotificationStats()
+    stats.value = data
+  } catch (error) {
+    console.error('Failed to fetch stats', error)
+  }
+}
+
+onMounted(async () => {
   fetchNotifications()
+  fetchStats()
+  try {
+    departments.value = await getAdminDepartments()
+  } catch (error) {
+    console.error('Failed to fetch departments', error)
+  }
 })
 
 watch([currentPage, pageSize], () => {
@@ -89,9 +150,19 @@ watch([typeFilter, startDate, endDate], () => {
   fetchNotifications()
 })
 
+watch(activeTab, () => {
+  clearSelectedRecipient()
+  searchRecipientQuery.value = ''
+})
+
 async function handleSend() {
   if (!form.value.title.trim() || !form.value.body.trim()) {
     showToast('Title and body are required', 'error')
+    return
+  }
+
+  if (activeTab.value === 'personal' && !form.value.recipientId) {
+    showToast('Please select a recipient', 'error')
     return
   }
 
@@ -103,7 +174,12 @@ async function handleSend() {
     })
     showToast('Notification sent successfully')
     showCreateModal.value = false
+    clearSelectedRecipient()
+    form.value.title = ''
+    form.value.body = ''
+    form.value.actionUrl = ''
     await fetchNotifications()
+    await fetchStats()
   } catch (error) {
     showToast('Failed to send notification', 'error')
   } finally {
@@ -129,6 +205,11 @@ async function confirmDelete() {
   } finally {
     isDeleting.value = false
   }
+}
+
+function openDetailModal(notif: AdminNotificationListItem) {
+  selectedNotification.value = notif
+  showDetailModal.value = true
 }
 
 function getTypeClass(type: string) {
@@ -414,6 +495,7 @@ function clearFilters() {
               <td class="p-4 text-right whitespace-nowrap">
                 <div class="flex items-center justify-end gap-1">
                   <button
+                    @click="openDetailModal(notif)"
                     class="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-md transition-colors"
                     title="View Details"
                   >
@@ -591,36 +673,113 @@ function clearFilters() {
                         <label class="block text-xs font-bold text-slate-500 mb-1"
                           >Department</label
                         >
-                        <select v-model="form.department" class="w-full">
-                          <option>All Departments</option>
-                          <option>Computer Science</option>
-                          <option>English Literature</option>
+                        <select v-model="form.departmentId" class="w-full">
+                          <option :value="undefined">All Departments</option>
+                          <option
+                            v-for="dept in departments"
+                            :key="dept.departmentId"
+                            :value="dept.departmentId"
+                          >
+                            {{ dept.name }}
+                          </option>
                         </select>
                       </div>
                       <div>
                         <label class="block text-xs font-bold text-slate-500 mb-1">Class</label>
-                        <select v-model="form.class" class="w-full">
+                        <select v-model="form.classId" class="w-full">
                           <option>All Classes</option>
-                          <option>CS101-A</option>
-                          <option>ENG202-B</option>
+                          <option>SE1701</option>
+                          <option>SE1702</option>
+                          <option>IT1601</option>
                         </select>
                       </div>
                     </div>
-                    <div v-else>
-                      <label class="block text-xs font-bold text-slate-500 mb-1"
-                        >Search User (Email/Code)</label
-                      >
-                      <div class="relative">
-                        <span
-                          class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]"
-                          >search</span
+                    <div v-else class="space-y-3">
+                      <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1"
+                          >Search User (Email/Code)</label
                         >
-                        <input
-                          v-model="form.recipientId"
-                          class="w-full pl-10"
-                          placeholder="Search for recipient..."
-                          type="text"
-                        />
+                        <div class="relative">
+                          <span
+                            class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]"
+                            >search</span
+                          >
+                          <input
+                            v-model="searchRecipientQuery"
+                            class="w-full pl-10 h-10 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary"
+                            placeholder="Enter email or student/teacher code..."
+                            type="text"
+                          />
+                          <!-- Search Loading spinner -->
+                          <div
+                            v-if="isSearchingRecipients"
+                            class="absolute right-3 top-1/2 -translate-y-1/2"
+                          >
+                            <div
+                              class="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"
+                            ></div>
+                          </div>
+
+                          <!-- Dropdown results -->
+                          <div
+                            v-if="searchResults.length > 0 && searchRecipientQuery"
+                            class="absolute z-50 w-full mt-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-lg shadow-xl max-h-60 overflow-y-auto"
+                          >
+                            <div
+                              v-for="res in searchResults"
+                              :key="res.identifier"
+                              @click="selectRecipient(res)"
+                              class="p-3 hover:bg-stone-50 dark:hover:bg-stone-800 cursor-pointer border-b border-stone-100 dark:border-stone-800 last:border-0"
+                            >
+                              <div class="font-medium text-sm text-slate-900 dark:text-slate-100">
+                                {{ res.name }}
+                              </div>
+                              <div
+                                class="text-xs text-slate-500 flex justify-between items-center mt-1"
+                              >
+                                <span>{{ res.identifier }}</span>
+                                <span
+                                  class="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-stone-800 text-[10px] font-bold"
+                                  >{{ res.role }}</span
+                                >
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div
+                        v-if="selectedRecipient"
+                        class="bg-primary/5 dark:bg-primary/10 p-3 rounded-xl border border-primary/20 flex justify-between items-center animate-in fade-in slide-in-from-top-1 duration-200"
+                      >
+                        <div class="flex items-center gap-3">
+                          <div
+                            class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary"
+                          >
+                            <span class="material-symbols-outlined text-[18px]">{{
+                              selectedRecipient.role === 'STUDENT' ? 'school' : 'person'
+                            }}</span>
+                          </div>
+                          <div>
+                            <div
+                              class="text-[10px] font-bold text-primary uppercase tracking-wider mb-0.5"
+                            >
+                              Selected Recipient
+                            </div>
+                            <div class="font-medium text-sm text-slate-900 dark:text-slate-100">
+                              {{ selectedRecipient.name }}
+                            </div>
+                            <div class="text-xs text-slate-500">
+                              {{ selectedRecipient.identifier }}
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          @click="clearSelectedRecipient"
+                          class="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-all"
+                        >
+                          <span class="material-symbols-outlined text-[18px]">close</span>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -862,6 +1021,114 @@ function clearFilters() {
                   class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"
                 ></span>
                 {{ isDeleting ? 'Processing...' : 'Yes, Delete/Recall' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Detail Modal -->
+    <Teleport to="body">
+      <Transition name="fade">
+        <div
+          v-if="showDetailModal"
+          class="fixed inset-0 z-[150] flex items-center justify-center p-4 outline-none"
+        >
+          <div
+            class="absolute inset-0 bg-black/50 backdrop-blur-md"
+            @click="showDetailModal = false"
+          ></div>
+          <div
+            class="relative bg-white dark:bg-surface-dark w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden border border-stone-200 dark:border-stone-800"
+          >
+            <!-- Modal Header -->
+            <div
+              class="px-6 py-4 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between bg-stone-50/50 dark:bg-stone-900/30"
+            >
+              <h3 class="font-bold text-slate-800 dark:text-slate-200">Notification Details</h3>
+              <button
+                @click="showDetailModal = false"
+                class="p-1 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 text-slate-400"
+              >
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div class="p-6 space-y-6 text-left">
+              <div class="flex flex-wrap gap-4 items-start justify-between">
+                <div class="space-y-1">
+                  <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    Subject
+                  </div>
+                  <h4 class="text-xl font-bold text-slate-900 dark:text-white">
+                    {{ selectedNotification?.title }}
+                  </h4>
+                </div>
+                <span
+                  v-if="selectedNotification"
+                  :class="[
+                    'px-3 py-1 rounded-full text-xs font-bold',
+                    getTypeClass(selectedNotification.type),
+                  ]"
+                >
+                  {{ selectedNotification.type.toUpperCase() }}
+                </span>
+              </div>
+
+              <div
+                class="grid grid-cols-2 lg:grid-cols-3 gap-6 py-4 border-y border-stone-100 dark:border-stone-800"
+              >
+                <div>
+                  <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                    Sent Date
+                  </div>
+                  <div class="text-sm font-medium text-slate-900 dark:text-slate-100">
+                    {{ selectedNotification?.date }}
+                  </div>
+                  <div class="text-xs text-slate-500">{{ selectedNotification?.time }}</div>
+                </div>
+                <div>
+                  <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                    Recipients
+                  </div>
+                  <div class="text-sm font-medium text-slate-900 dark:text-slate-100">
+                    {{ selectedNotification?.recipients }} devices
+                  </div>
+                </div>
+                <div>
+                  <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                    Status
+                  </div>
+                  <div class="flex items-center gap-1.5 text-sm font-medium text-green-600">
+                    <span class="material-symbols-outlined text-[18px]">check_circle</span>
+                    Delivered
+                  </div>
+                </div>
+              </div>
+
+              <div class="space-y-4">
+                <div>
+                  <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
+                    Message Content
+                  </div>
+                  <div
+                    class="bg-stone-50 dark:bg-stone-900/50 p-4 rounded-xl text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap border border-stone-100 dark:border-stone-800"
+                  >
+                    {{ selectedNotification?.body }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div
+              class="px-6 py-4 bg-stone-50/50 dark:bg-stone-900/30 flex justify-end border-t border-stone-100 dark:border-stone-800"
+            >
+              <button
+                @click="showDetailModal = false"
+                class="px-6 py-2 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg text-sm font-bold text-slate-700 dark:text-slate-200 transition-colors"
+              >
+                Close
               </button>
             </div>
           </div>

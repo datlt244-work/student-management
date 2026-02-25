@@ -7,14 +7,23 @@ import com.newwave.student_management.domains.notification.entity.SentNotificati
 import com.newwave.student_management.domains.notification.repository.FcmTokenRepository;
 import com.newwave.student_management.domains.notification.repository.NotificationRepository;
 import com.newwave.student_management.domains.notification.repository.SentNotificationRepository;
+import com.newwave.student_management.domains.auth.repository.UserRepository;
+import com.newwave.student_management.domains.profile.repository.StudentRepository;
+import com.newwave.student_management.domains.profile.repository.TeacherRepository;
 import com.newwave.student_management.infrastructure.fcm.FcmService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.newwave.student_management.domains.notification.dto.RecipientSearchResponse;
+import org.springframework.data.domain.PageRequest;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +33,9 @@ public class NotificationInternalService {
     private final FcmTokenRepository fcmTokenRepository;
     private final NotificationRepository notificationRepository;
     private final SentNotificationRepository sentNotificationRepository;
+    private final UserRepository userRepository;
+    private final StudentRepository studentRepository;
+    private final TeacherRepository teacherRepository;
 
     @Transactional(readOnly = true)
     public Page<SentNotification> getSentHistory(
@@ -39,7 +51,10 @@ public class NotificationInternalService {
     }
 
     @Transactional
-    public void registerToken(User user, String token, String deviceType) {
+    public void registerToken(java.util.UUID userId, String token, String deviceType) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
         fcmTokenRepository.findByToken(token).ifPresentOrElse(
                 t -> {
                     t.setUser(user);
@@ -78,8 +93,8 @@ public class NotificationInternalService {
 
     @Transactional
     public void broadcast(String title, String body, String actionUrl) {
-        // 1. Lấy toàn bộ token
-        List<FcmToken> allTokens = fcmTokenRepository.findAll();
+        // 1. Lấy toàn bộ token (ngoại trừ Admin)
+        List<FcmToken> allTokens = fcmTokenRepository.findAllByRoleNot("ADMIN");
 
         // 2. Lưu vào lịch sử Admin
         SentNotification history = SentNotification.builder()
@@ -103,7 +118,132 @@ public class NotificationInternalService {
             }
         }
 
-        // 4. (Tùy chọn) Lưu vao bảng Notification cho từng User để xem lại trong app
-        // Lưu ý: Nếu số lượng User cực lớn thì bước này nên xử lý bất đồng bộ
+    }
+
+    @Transactional
+    public void sendTargeted(String title, String body, String actionUrl, String role, Long departmentId,
+            String classCode) {
+        // 1. Tìm token thỏa mãn tiêu chí
+        String roleParam = (role == null || role.equalsIgnoreCase("All Roles")) ? null : role.toUpperCase();
+        String classParam = (classCode == null || classCode.equalsIgnoreCase("All Classes")) ? null : classCode;
+
+        List<FcmToken> tokens = fcmTokenRepository.findTokensByCriteria(roleParam, departmentId, classParam);
+
+        // 2. Lưu vào lịch sử Admin
+        StringBuilder targetGroup = new StringBuilder();
+        if (roleParam != null)
+            targetGroup.append("Role: ").append(roleParam).append("; ");
+        if (departmentId != null)
+            targetGroup.append("Dept ID: ").append(departmentId).append("; ");
+        if (classParam != null)
+            targetGroup.append("Class: ").append(classParam);
+        if (targetGroup.length() == 0)
+            targetGroup.append("Specific Groups");
+
+        SentNotification history = SentNotification.builder()
+                .title(title)
+                .body(body)
+                .actionUrl(actionUrl)
+                .notificationType("TARGETED")
+                .recipientCount(tokens.size())
+                .targetGroup(targetGroup.toString().trim())
+                .build();
+        sentNotificationRepository.save(history);
+
+        // 3. Gửi FCM
+        for (FcmToken fcmToken : tokens) {
+            try {
+                fcmService.sendNotification(fcmToken.getToken(), title, body);
+            } catch (Exception e) {
+                System.err.println("Failed to send FCM to token: " + fcmToken.getToken() + " - " + e.getMessage());
+            }
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getStats() {
+        long activeTokens = fcmTokenRepository.count();
+        long sentLast30Days = sentNotificationRepository
+                .countByCreatedAtAfter(java.time.LocalDateTime.now().minusDays(30));
+
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("activeTokens", activeTokens);
+        stats.put("sentLast30Days", sentLast30Days);
+        return stats;
+    }
+
+    @Transactional(readOnly = true)
+    public List<RecipientSearchResponse> searchRecipients(String query) {
+        if (query == null || query.isBlank())
+            return new ArrayList<>();
+
+        org.springframework.data.domain.Pageable limit = PageRequest.of(0, 10);
+
+        List<RecipientSearchResponse> results = new ArrayList<>();
+
+        // 1. Search Students
+        results.addAll(studentRepository.searchRecipients(query, limit).stream()
+                .map(s -> RecipientSearchResponse.builder()
+                        .name(s.getFirstName() + " " + s.getLastName())
+                        .identifier(s.getStudentCode() != null ? s.getStudentCode() : s.getEmail())
+                        .role("STUDENT")
+                        .build())
+                .collect(Collectors.toList()));
+
+        // 2. Search Teachers
+        results.addAll(teacherRepository.searchRecipients(query, limit).stream()
+                .map(t -> RecipientSearchResponse.builder()
+                        .name(t.getFirstName() + " " + t.getLastName())
+                        .identifier(t.getTeacherCode() != null ? t.getTeacherCode() : t.getEmail())
+                        .role("TEACHER")
+                        .build())
+                .collect(Collectors.toList()));
+
+        return results;
+    }
+
+    @Transactional
+    public void sendPersonal(String title, String body, String actionUrl, String identifier) {
+        // 1. Tìm User theo email, studentCode hoặc teacherCode
+        java.util.Optional<com.newwave.student_management.domains.auth.entity.User> userOpt = userRepository
+                .findByEmail(identifier);
+
+        if (userOpt.isEmpty()) {
+            userOpt = studentRepository.findByStudentCodeAndDeletedAtIsNull(identifier)
+                    .map(com.newwave.student_management.domains.profile.entity.Student::getUser);
+        }
+
+        if (userOpt.isEmpty()) {
+            userOpt = teacherRepository.findByTeacherCodeAndDeletedAtIsNull(identifier)
+                    .map(com.newwave.student_management.domains.profile.entity.Teacher::getUser);
+        }
+
+        if (userOpt.isEmpty()) {
+            throw new RuntimeException("Recipient not found: " + identifier);
+        }
+
+        com.newwave.student_management.domains.auth.entity.User user = userOpt.get();
+
+        // 2. Lưu vào lịch sử Admin
+        SentNotification history = SentNotification.builder()
+                .title(title)
+                .body(body)
+                .actionUrl(actionUrl)
+                .notificationType("PERSONAL")
+                .recipientCount(1)
+                .targetGroup("User: " + identifier)
+                .build();
+        sentNotificationRepository.save(history);
+
+        // 3. Gửi thông báo
+        sendToUser(user, title, body, actionUrl);
+    }
+
+    @Transactional
+    public void deleteSentNotification(java.util.UUID sentId) {
+        sentNotificationRepository.findById(sentId).ifPresent(notif -> {
+            notif.setDeletedAt(java.time.LocalDateTime.now());
+            sentNotificationRepository.save(notif);
+        });
     }
 }

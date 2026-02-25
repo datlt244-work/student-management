@@ -69,31 +69,35 @@ export async function getNotificationHistory(params: {
   }
   const data = await response.json()
   const raw = data.result || data
-  const list = (raw.content || []) as any[]
+  const list = (raw.content || []) as unknown[]
 
   return {
-    content: list.map((item: any) => {
-      const displayDate = item.status === 'PENDING' ? item.scheduledAt : (item.sentAt || item.createdAt);
-      return {
-        id: item.sentId,
-        title: item.title,
-        body: item.body,
-        type:
-          item.notificationType === 'BROADCAST'
-            ? 'Broadcast'
-            : item.notificationType === 'TARGETED'
-              ? 'Targeted'
-              : 'Personal',
-        recipients: item.recipientCount,
-        status: item.status.charAt(0) + item.status.slice(1).toLowerCase(),
-        date: new Date(displayDate).toLocaleDateString(),
-        time: new Date(displayDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        createdAt: item.createdAt,
-        scheduledAt: item.scheduledAt,
-        sentAt: item.sentAt,
-        actionUrl: item.actionUrl
-      }
-    }),
+  content: list.map((itemObj: unknown) => {
+    const item = itemObj as Record<string, unknown>
+    const status = (item.status as string) || ''
+    const displayDate = (item.status === 'PENDING' ? item.scheduledAt : (item.sentAt || item.createdAt)) as string;
+    
+    return {
+      id: (item.sentId as string | number),
+      title: item.title as string,
+      body: item.body as string,
+      type: (
+        item.notificationType === 'BROADCAST'
+          ? 'Broadcast'
+          : item.notificationType === 'TARGETED'
+            ? 'Targeted'
+            : 'Personal'
+      ) as 'Broadcast' | 'Targeted' | 'Personal',
+      recipients: (item.recipientCount as number) || 0,
+      status: (status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()) as 'Pending' | 'Sent' | 'Failed' | 'Cancelled',
+      date: new Date(displayDate).toLocaleDateString(),
+      time: new Date(displayDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      createdAt: item.createdAt as string,
+      scheduledAt: item.scheduledAt as string,
+      sentAt: item.sentAt as string,
+      actionUrl: item.actionUrl as string
+    }
+  }),
     page: raw.number ?? 0,
     size: raw.size ?? 20,
     totalElements: raw.totalElements ?? 0,

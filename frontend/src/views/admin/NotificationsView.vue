@@ -119,7 +119,7 @@ async function fetchNotifications() {
     })
     notifications.value = result.content
     totalPages.value = result.totalPages || 1
-  } catch (error) {
+  } catch {
     showToast('Failed to fetch notification history', 'error')
   } finally {
     isLoading.value = false
@@ -198,7 +198,7 @@ async function handleSend() {
     scheduledDate.value = ''
     await fetchNotifications()
     await fetchStats()
-  } catch (error) {
+  } catch {
     showToast('Failed to send notification', 'error')
   } finally {
     isSending.value = false
@@ -218,7 +218,7 @@ async function confirmDelete() {
     showToast('Notification deleted/recalled')
     showDeleteConfirmModal.value = false
     await fetchNotifications()
-  } catch (error) {
+  } catch {
     showToast('Failed to delete notification', 'error')
   } finally {
     isDeleting.value = false

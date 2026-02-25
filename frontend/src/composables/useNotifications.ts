@@ -45,11 +45,12 @@ export function useNotifications() {
     };
 
     const listenForMessages = () => {
-        onMessage(messaging, (payload: any) => {
+        onMessage(messaging, (payload) => {
             console.log('Message received. ', payload);
             // Hiển thị thông báo (Toast/Alert)
-            if (payload.notification) {
-                alert(`${payload.notification.title}: ${payload.notification.body}`);
+            const notification = payload.notification;
+            if (notification) {
+                alert(`${notification.title}: ${notification.body}`);
             }
         });
     };

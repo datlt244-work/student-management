@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
+import { watchDebounced } from '@vueuse/core'
 import {
   getNotificationHistory,
   sendAdminNotification,
@@ -40,14 +41,25 @@ const form = ref({
 // Filter states
 const searchQuery = ref('')
 const typeFilter = ref('')
+const startDate = ref('')
+const endDate = ref('')
 const currentPage = ref(1)
 const totalPages = ref(12)
-const pageSize = ref(20)
+const pageSize = ref(10)
 
 async function fetchNotifications() {
   isLoading.value = true
   try {
-    notifications.value = await getNotificationHistory()
+    const result = await getNotificationHistory({
+      page: currentPage.value,
+      size: pageSize.value,
+      search: searchQuery.value,
+      type: typeFilter.value,
+      startDate: startDate.value ? new Date(startDate.value).toISOString() : undefined,
+      endDate: endDate.value ? new Date(endDate.value + 'T23:59:59').toISOString() : undefined,
+    })
+    notifications.value = result.content
+    totalPages.value = result.totalPages || 1
   } catch (error) {
     showToast('Failed to fetch notification history', 'error')
   } finally {
@@ -56,6 +68,24 @@ async function fetchNotifications() {
 }
 
 onMounted(() => {
+  fetchNotifications()
+})
+
+watch([currentPage, pageSize], () => {
+  fetchNotifications()
+})
+
+watchDebounced(
+  searchQuery,
+  () => {
+    currentPage.value = 1
+    fetchNotifications()
+  },
+  { debounce: 500 },
+)
+
+watch([typeFilter, startDate, endDate], () => {
+  currentPage.value = 1
   fetchNotifications()
 })
 
@@ -134,6 +164,8 @@ function goToPage(page: number) {
 function clearFilters() {
   searchQuery.value = ''
   typeFilter.value = ''
+  startDate.value = ''
+  endDate.value = ''
 }
 </script>
 
@@ -253,16 +285,30 @@ function clearFilters() {
           <option value="targeted">Targeted</option>
           <option value="personal">Personal</option>
         </select>
-        <div class="relative">
-          <input
-            class="h-11 pl-10 pr-4 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary"
-            placeholder="Date Range"
-            type="text"
-          />
-          <span
-            class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]"
-            >date_range</span
-          >
+        <div class="flex items-center gap-2">
+          <div class="relative">
+            <input
+              v-model="startDate"
+              class="h-11 pl-10 pr-4 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary"
+              type="date"
+            />
+            <span
+              class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]"
+              >event_available</span
+            >
+          </div>
+          <span class="text-slate-400">to</span>
+          <div class="relative">
+            <input
+              v-model="endDate"
+              class="h-11 pl-10 pr-4 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary"
+              type="date"
+            />
+            <span
+              class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]"
+              >event_busy</span
+            >
+          </div>
         </div>
         <button
           @click="clearFilters"

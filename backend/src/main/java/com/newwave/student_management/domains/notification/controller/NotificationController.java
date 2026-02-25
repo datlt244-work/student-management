@@ -27,10 +27,10 @@ public class NotificationController {
     public ResponseEntity<Void> registerToken(
             @AuthenticationPrincipal Jwt jwt,
             @RequestBody @Valid FcmTokenRequest request) {
-        
+
         User user = new User();
         user.setUserId(UUID.fromString(jwt.getSubject()));
-        
+
         notificationService.registerToken(user, request.getToken(), request.getDeviceType());
         return ResponseEntity.ok().build();
     }
@@ -40,5 +40,16 @@ public class NotificationController {
     public ResponseEntity<Void> broadcast(@RequestBody @Valid NotificationRequest request) {
         notificationService.broadcast(request.getTitle(), request.getBody(), request.getActionUrl());
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/history")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<org.springframework.data.domain.Page<com.newwave.student_management.domains.notification.entity.SentNotification>> getHistory(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime startDate,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime endDate,
+            @org.springframework.data.web.PageableDefault(size = 10, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC) org.springframework.data.domain.Pageable pageable) {
+        return ResponseEntity.ok(notificationService.getSentHistory(search, type, startDate, endDate, pageable));
     }
 }

@@ -185,8 +185,11 @@ public class NotificationInternalService {
     private void sendTargetedImmediate(SentNotification notif) {
         String roleParam = (notif.getTargetRole() == null || notif.getTargetRole().equalsIgnoreCase("All Roles")) ? null
                 : notif.getTargetRole().toUpperCase();
+        String classCodeParam = (notif.getTargetClassCode() == null
+                || notif.getTargetClassCode().equalsIgnoreCase("All Classes")) ? null
+                        : notif.getTargetClassCode();
         List<FcmToken> tokens = fcmTokenRepository.findTokensByCriteria(roleParam, notif.getTargetDepartmentId(),
-                notif.getTargetClassCode());
+                classCodeParam);
         notif.setRecipientCount(tokens.size());
         for (FcmToken fcmToken : tokens) {
             try {

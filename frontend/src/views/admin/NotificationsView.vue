@@ -52,7 +52,11 @@ const scheduledDate = ref('')
 const minScheduleDate = computed(() => {
   const now = new Date()
   now.setMinutes(now.getMinutes() + 5) // Min 5 minutes from now
-  return now.toISOString().slice(0, 16)
+
+  // Format to local ISO string (YYYY-MM-DDTHH:mm)
+  const tzOffset = now.getTimezoneOffset() * 60000
+  const localISOTime = new Date(now.getTime() - tzOffset).toISOString().slice(0, 16)
+  return localISOTime
 })
 
 const departments = ref<AdminDepartmentItem[]>([])
@@ -180,10 +184,7 @@ async function handleSend() {
     await sendAdminNotification({
       ...form.value,
       type: activeTab.value,
-      scheduledAt:
-        isScheduled.value && scheduledDate.value
-          ? new Date(scheduledDate.value).toISOString()
-          : undefined,
+      scheduledAt: isScheduled.value && scheduledDate.value ? scheduledDate.value : undefined,
     })
     showToast(
       isScheduled.value ? 'Notification scheduled successfully' : 'Notification sent successfully',

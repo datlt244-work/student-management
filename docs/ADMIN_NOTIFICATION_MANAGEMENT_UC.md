@@ -13,6 +13,7 @@ Tài liệu này chi tiết hóa các chức năng quản lý thông báo dành 
 | **UC-20.A2.1** | Gửi thông báo cho cá nhân           | Tìm kiếm và gửi thông báo trực tiếp cho một người dùng cụ thể.   |
 | **UC-20.A3**   | Xem lịch sử thông báo đã gửi        | Quản lý, theo dõi trạng thái các thông báo Admin đã thực hiện.   |
 | **UC-20.A4**   | Xóa/Thu hồi thông báo               | Ẩn thông báo khỏi lịch sử của người dùng.                        |
+| **UC-20.A5**   | Đặt lịch gửi thông báo              | Soạn thảo và đặt thời gian gửi tự động trong tương lai.          |
 
 ---
 
@@ -155,6 +156,65 @@ Trong trường hợp gửi nhầm thông tin sai lệch, Admin có thể xóa t
    - Backend đánh dấu `deleted_at` (Soft Delete) trong bảng `notifications`.
    - (Nâng cao) Gửi một lệnh đẩy "SILENT" qua FCM để yêu cầu Client xóa thông báo trong app (nếu app có logic này).
 4. Người dùng sẽ không còn thấy thông báo này trong lịch sử của họ trên Portal.
+
+---
+
+### UC-20.A5: Đặt lịch gửi thông báo (Scheduled Notification)
+
+#### 1. Mô tả
+
+Cho phép Admin chủ động lên lịch gửi thông báo cho các sự kiện sắp tới. Hệ thống sẽ tự động thực hiện việc gửi vào đúng thời điểm đã thiết lập mà không cần sự can thiệp thủ công lại của Admin.
+
+#### 2. Luồng công việc (Flow)
+
+**Luồng chính (Main Flow):**
+
+1. Admin chọn loại thông báo muốn gửi (Broadcast, Targeted hoặc Personal).
+2. Admin soạn thảo tiêu đề, nội dung và đính kèm link.
+3. Admin bật tùy chọn **"Schedule for later" (Đặt lịch gửi)**.
+4. Admin chọn thời gian gửi dự kiến (Ngày và Giờ).
+5. Admin nhấn **"Schedule Notification"**.
+6. Hệ thống thực hiện:
+   - Kiểm tra thời gian đặt lịch (Phải là tương lai).
+   - Lưu thông báo vào bảng `sent_notifications` với trạng thái `PENDING`.
+   - Lưu các tiêu chí lọc (target criteria) để phục vụ việc truy vấn token lúc gửi.
+7. **Cơ chế gửi tự động**:
+   - Một tiến trình chạy ngầm (`NotificationScheduler`) quét cơ sở dữ liệu mỗi phút một lần.
+   - Tìm các bản ghi có trạng thái `PENDING` và có thời gian đặt lịch nhỏ hơn hoặc bằng thời gian hiện tại.
+   - Thực thi luồng gửi FCM dựa trên các tiêu chí đã lưu.
+   - Cập nhật trạng thái thông báo thành `SENT` và ghi nhận thời gian gửi thực tế (`sent_at`).
+
+#### 3. Flow Diagram (Mermaid)
+
+```mermaid
+sequenceDiagram
+    participant Admin
+    participant UI as Admin Dashboard
+    participant BE as NotificationService
+    participant DB as PostgreSQL
+    participant NS as NotificationScheduler
+    participant FCM as Firebase Messaging
+
+    Admin->>UI: Soạn tin & Chọn thời gian gửi
+    Admin->>UI: Nhấn "Schedule"
+    UI->>BE: POST /api/v1/notifications/... (with scheduledAt)
+    BE->>DB: Lưu Notification (status=PENDING, scheduled_at=...)
+    BE-->>UI: 200 OK (Scheduled)
+
+    Note over NS, DB: Mỗi 1 phút chạy định kỳ
+    NS->>DB: Truy vấn SELECT FROM sent_notifications WHERE status=PENDING AND scheduled_at <= NOW
+    DB-->>NS: Danh sách tin đến hạn
+    loop Per Notification
+        NS->>BE: processScheduledNotification(notif)
+        BE->>FCM: Thực hiện gửi multicast/unicast
+        BE->>DB: UPDATE status=SENT, sent_at=NOW
+    end
+```
+
+#### 4. Các ngoại lệ (Exceptions)
+
+- **E1: Hủy thông báo đã đặt lịch**: Admin có thể vào lịch sử, chọn "Delete" đối với tin nhắn đang `PENDING`. Hệ thống sẽ chuyển trạng thái thành `CANCELLED` và không thực hiện gửi nữa.
+- **E2: Lỗi trong lúc gửi tự động**: Nếu quá trình gửi gặp sự cố (ví dụ FCM sập), hệ thống chuyển trạng thái thành `FAILED` để Admin có thể kiểm tra và thử lại thủ công.
 
 ---
 

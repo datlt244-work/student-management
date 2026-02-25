@@ -107,26 +107,27 @@ public class NotificationInternalService {
             return;
         }
 
-        // 1. Lấy toàn bộ token (ngoại trừ Admin)
-        List<FcmToken> allTokens = fcmTokenRepository.findAllByRoleNot("ADMIN");
-
-        // 2. Lưu vào lịch sử Admin
         SentNotification history = SentNotification.builder()
                 .title(title)
                 .body(body)
                 .actionUrl(actionUrl)
                 .notificationType("BROADCAST")
-                .recipientCount(allTokens.size())
                 .targetGroup("All Users")
                 .status("SENT")
                 .sentAt(java.time.LocalDateTime.now())
                 .build();
-        sentNotificationRepository.save(history);
 
-        // 3. Gửi FCM
+        sendBroadcastImmediate(history);
+        sentNotificationRepository.save(history);
+    }
+
+    private void sendBroadcastImmediate(SentNotification notif) {
+        List<FcmToken> allTokens = fcmTokenRepository.findAllByRoleNot("ADMIN");
+        notif.setRecipientCount(allTokens.size());
         for (FcmToken fcmToken : allTokens) {
             try {
-                fcmService.sendNotification(fcmToken.getToken(), title, body, actionUrl);
+                fcmService.sendNotification(fcmToken.getToken(), notif.getTitle(), notif.getBody(),
+                        notif.getActionUrl());
             } catch (Exception e) {
                 System.err.println("Failed to send FCM: " + e.getMessage());
             }
@@ -164,25 +165,33 @@ public class NotificationInternalService {
             return;
         }
 
-        // Immediate Send
-        String roleParam = (role == null || role.equalsIgnoreCase("All Roles")) ? null : role.toUpperCase();
-        List<FcmToken> tokens = fcmTokenRepository.findTokensByCriteria(roleParam, departmentId, classCode);
-
         SentNotification history = SentNotification.builder()
                 .title(title)
                 .body(body)
                 .actionUrl(actionUrl)
                 .notificationType("TARGETED")
-                .recipientCount(tokens.size())
                 .targetGroup(targetGroup.toString().trim())
+                .targetRole(role)
+                .targetDepartmentId(departmentId)
+                .targetClassCode(classCode)
                 .status("SENT")
                 .sentAt(java.time.LocalDateTime.now())
                 .build();
-        sentNotificationRepository.save(history);
 
+        sendTargetedImmediate(history);
+        sentNotificationRepository.save(history);
+    }
+
+    private void sendTargetedImmediate(SentNotification notif) {
+        String roleParam = (notif.getTargetRole() == null || notif.getTargetRole().equalsIgnoreCase("All Roles")) ? null
+                : notif.getTargetRole().toUpperCase();
+        List<FcmToken> tokens = fcmTokenRepository.findTokensByCriteria(roleParam, notif.getTargetDepartmentId(),
+                notif.getTargetClassCode());
+        notif.setRecipientCount(tokens.size());
         for (FcmToken fcmToken : tokens) {
             try {
-                fcmService.sendNotification(fcmToken.getToken(), title, body, actionUrl);
+                fcmService.sendNotification(fcmToken.getToken(), notif.getTitle(), notif.getBody(),
+                        notif.getActionUrl());
             } catch (Exception e) {
                 System.err.println("Failed to send FCM: " + e.getMessage());
             }
@@ -249,7 +258,24 @@ public class NotificationInternalService {
             return;
         }
 
-        // 1. Tìm User
+        SentNotification history = SentNotification.builder()
+                .title(title)
+                .body(body)
+                .actionUrl(actionUrl)
+                .notificationType("PERSONAL")
+                .targetGroup("User: " + identifier)
+                .targetRecipientId(identifier)
+                .recipientCount(1)
+                .status("SENT")
+                .sentAt(java.time.LocalDateTime.now())
+                .build();
+
+        sendPersonalImmediate(history);
+        sentNotificationRepository.save(history);
+    }
+
+    private void sendPersonalImmediate(SentNotification notif) {
+        String identifier = notif.getTargetRecipientId();
         java.util.Optional<com.newwave.student_management.domains.auth.entity.User> userOpt = userRepository
                 .findByEmail(identifier);
         if (userOpt.isEmpty()) {
@@ -260,26 +286,12 @@ public class NotificationInternalService {
             userOpt = teacherRepository.findByTeacherCodeAndDeletedAtIsNull(identifier)
                     .map(com.newwave.student_management.domains.profile.entity.Teacher::getUser);
         }
-        if (userOpt.isEmpty())
+
+        if (userOpt.isPresent()) {
+            sendToUser(userOpt.get(), notif.getTitle(), notif.getBody(), notif.getActionUrl());
+        } else {
             throw new RuntimeException("Recipient not found: " + identifier);
-
-        com.newwave.student_management.domains.auth.entity.User user = userOpt.get();
-
-        // 2. Lưu lịch sử
-        SentNotification history = SentNotification.builder()
-                .title(title)
-                .body(body)
-                .actionUrl(actionUrl)
-                .notificationType("PERSONAL")
-                .recipientCount(1)
-                .targetGroup("User: " + identifier)
-                .status("SENT")
-                .sentAt(java.time.LocalDateTime.now())
-                .build();
-        sentNotificationRepository.save(history);
-
-        // 3. Gửi
-        sendToUser(user, title, body, actionUrl);
+        }
     }
 
     @Transactional
@@ -297,23 +309,11 @@ public class NotificationInternalService {
     public void processScheduledNotification(SentNotification notif) {
         try {
             if ("BROADCAST".equals(notif.getNotificationType())) {
-                List<FcmToken> allTokens = fcmTokenRepository.findAllByRoleNot("ADMIN");
-                notif.setRecipientCount(allTokens.size());
-                for (FcmToken t : allTokens)
-                    fcmService.sendNotification(t.getToken(), notif.getTitle(), notif.getBody(), notif.getActionUrl());
+                sendBroadcastImmediate(notif);
             } else if ("TARGETED".equals(notif.getNotificationType())) {
-                String roleParam = (notif.getTargetRole() == null
-                        || notif.getTargetRole().equalsIgnoreCase("All Roles")) ? null
-                                : notif.getTargetRole().toUpperCase();
-                List<FcmToken> tokens = fcmTokenRepository.findTokensByCriteria(roleParam,
-                        notif.getTargetDepartmentId(), notif.getTargetClassCode());
-                notif.setRecipientCount(tokens.size());
-                for (FcmToken t : tokens)
-                    fcmService.sendNotification(t.getToken(), notif.getTitle(), notif.getBody(), notif.getActionUrl());
+                sendTargetedImmediate(notif);
             } else if ("PERSONAL".equals(notif.getNotificationType())) {
-                sendPersonal(notif.getTitle(), notif.getBody(), notif.getActionUrl(), notif.getTargetRecipientId(),
-                        null);
-                return; // sendPersonal already updates status
+                sendPersonalImmediate(notif);
             }
 
             notif.setStatus("SENT");

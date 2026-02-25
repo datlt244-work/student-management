@@ -7,6 +7,7 @@ on:
       - 'frontend/**'
       - '.github/workflows/deploy-frontend.yml'
 
+
 jobs:
   deploy-frontend:
     runs-on: self-hosted

@@ -11,12 +11,12 @@ self.addEventListener('activate', (event) => {
 });
 
 firebase.initializeApp({
-    apiKey: "AIzaSyBajkhjil6XdhrSR-2HSXOCpEiEdTjHUYk",
-    authDomain: "student-management-24137.firebaseapp.com",
-    projectId: "student-management-24137",
-    storageBucket: "student-management-24137.firebasestorage.app",
-    messagingSenderId: "737453803180",
-    appId: "1:737453803180:web:7923873ef26cfaed724109"
+    apiKey: "__VITE_FIREBASE_API_KEY__",
+    authDomain: "__VITE_FIREBASE_AUTH_DOMAIN__",
+    projectId: "__VITE_FIREBASE_PROJECT_ID__",
+    storageBucket: "__VITE_FIREBASE_STORAGE_BUCKET__",
+    messagingSenderId: "__VITE_FIREBASE_MESSAGING_SENDER_ID__",
+    appId: "__VITE_FIREBASE_APP_ID__"
 });
 
 const messaging = firebase.messaging();

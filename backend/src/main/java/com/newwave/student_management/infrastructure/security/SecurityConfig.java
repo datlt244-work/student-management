@@ -109,15 +109,17 @@ public class SecurityConfig {
         @Bean
         @Order(Ordered.HIGHEST_PRECEDENCE)
         public CorsFilter corsFilter() {
+                return new CorsFilter(corsConfigurationSource());
+        }
+
+        @Bean
+        public CorsConfigurationSource corsConfigurationSource() {
                 CorsConfiguration configuration = new CorsConfiguration();
 
                 // 1. Cho phép các origin cụ thể (Frontend)
                 configuration.setAllowedOrigins(java.util.List.of(
                                 "https://admin-datlt244.io.vn",
-                                "http://admin-datlt244.io.vn",
-                                "https://api.admin-datlt244.io.vn", // Backup nếu gọi trực tiếp
-                                "http://localhost:5173",
-                                "http://localhost:3000"));
+                                "http://admin-datlt244.io.vn"));
 
                 // 2. Cho phép các pattern (Localhost)
                 configuration.setAllowedOriginPatterns(java.util.List.of(
@@ -127,15 +129,8 @@ public class SecurityConfig {
                 // 3. Cho phép tất cả các Method phổ biến
                 configuration.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
 
-                // 4. Cho phép các Header cần thiết
-                configuration.setAllowedHeaders(java.util.List.of(
-                                "Authorization",
-                                "Content-Type",
-                                "X-Requested-With",
-                                "Accept",
-                                "Origin",
-                                "Access-Control-Request-Method",
-                                "Access-Control-Request-Headers"));
+                // 4. Cho phép tất cả các Header
+                configuration.setAllowedHeaders(java.util.List.of("*"));
 
                 // 5. Cho phép gửi kèm Credentials (Token, Cookies)
                 configuration.setAllowCredentials(true);
@@ -145,12 +140,6 @@ public class SecurityConfig {
 
                 UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
                 source.registerCorsConfiguration("/**", configuration);
-                return new CorsFilter(source);
-        }
-
-        @Bean
-        public CorsConfigurationSource corsConfigurationSource() {
-                UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
                 return source;
         }
 

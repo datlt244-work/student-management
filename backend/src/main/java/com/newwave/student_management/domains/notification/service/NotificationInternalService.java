@@ -17,7 +17,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.newwave.student_management.domains.notification.dto.RecipientSearchResponse;
+import com.newwave.student_management.domains.notification.dto.NotificationEvent;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -36,6 +39,7 @@ public class NotificationInternalService {
     private final UserRepository userRepository;
     private final StudentRepository studentRepository;
     private final TeacherRepository teacherRepository;
+    private final NotificationProducer notificationProducer;
 
     @Transactional(readOnly = true)
     public Page<SentNotification> getSentHistory(
@@ -113,12 +117,29 @@ public class NotificationInternalService {
                 .actionUrl(actionUrl)
                 .notificationType("BROADCAST")
                 .targetGroup("All Users")
-                .status("SENT")
-                .sentAt(java.time.LocalDateTime.now())
+                .status("PENDING") // Set to PENDING to be processed by Consumer
                 .build();
 
-        sendBroadcastImmediate(history);
-        sentNotificationRepository.save(history);
+        history = sentNotificationRepository.save(history); // Save first to get ID
+        sendToKafka(history);
+    }
+
+    private void sendToKafka(SentNotification notif) {
+        NotificationEvent event = NotificationEvent.builder()
+                .sentNotificationId(notif.getSentId())
+                .type(notif.getNotificationType())
+                .build();
+
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    notificationProducer.sendNotificationEvent(event);
+                }
+            });
+        } else {
+            notificationProducer.sendNotificationEvent(event);
+        }
     }
 
     private void sendBroadcastImmediate(SentNotification notif) {
@@ -186,12 +207,11 @@ public class NotificationInternalService {
                 .targetRole(role)
                 .targetDepartmentId(departmentId)
                 .targetClassCode(classCode)
-                .status("SENT")
-                .sentAt(java.time.LocalDateTime.now())
+                .status("PENDING")
                 .build();
 
-        sendTargetedImmediate(history);
-        sentNotificationRepository.save(history);
+        history = sentNotificationRepository.save(history);
+        sendToKafka(history);
     }
 
     private void sendTargetedImmediate(SentNotification notif) {
@@ -294,12 +314,11 @@ public class NotificationInternalService {
                 .targetGroup("User: " + identifier)
                 .targetRecipientId(identifier)
                 .recipientCount(1)
-                .status("SENT")
-                .sentAt(java.time.LocalDateTime.now())
+                .status("PENDING")
                 .build();
 
-        sendPersonalImmediate(history);
-        sentNotificationRepository.save(history);
+        history = sentNotificationRepository.save(history);
+        sendToKafka(history);
     }
 
     private void sendPersonalImmediate(SentNotification notif) {

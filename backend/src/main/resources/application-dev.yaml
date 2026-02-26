@@ -42,6 +42,9 @@ spring:
     jwt:
       signer-key: ${JWT_SECRET_KEY}
 
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
 # MinIO (dev: khớp .env - API port 9004, Console 9005)
 minio:
   url: ${MINIO_URL:http://localhost:9004}

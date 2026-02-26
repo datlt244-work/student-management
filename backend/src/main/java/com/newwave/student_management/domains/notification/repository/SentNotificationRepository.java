@@ -29,4 +29,10 @@ public interface SentNotificationRepository extends JpaRepository<SentNotificati
         long countByCreatedAtAfter(java.time.LocalDateTime date);
 
         java.util.List<SentNotification> findByStatusAndScheduledAtBefore(String status, java.time.LocalDateTime now);
+
+        @Query("SELECT sn FROM SentNotification sn WHERE sn.status = 'PENDING' AND " +
+                        "(sn.scheduledAt <= :now OR (sn.scheduledAt IS NULL AND sn.createdAt <= :threshold))")
+        java.util.List<SentNotification> findStuckNotifications(
+                        @Param("now") java.time.LocalDateTime now,
+                        @Param("threshold") java.time.LocalDateTime threshold);
 }

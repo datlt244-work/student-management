@@ -31,105 +31,114 @@ import javax.crypto.spec.SecretKeySpec;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    @Value("${spring.security.jwt.signer-key}")
-    private String signerKey;
+        @Value("${spring.security.jwt.signer-key}")
+        private String signerKey;
 
-    private final JwtBlacklistValidator jwtBlacklistValidator;
-    private final JwtTokenVersionValidator jwtTokenVersionValidator;
+        private final JwtBlacklistValidator jwtBlacklistValidator;
+        private final JwtTokenVersionValidator jwtTokenVersionValidator;
 
-    private final String[] PUBLIC_POST_ENDPOINTS = {
-            "/auth/login",
-            "/auth/logout",
-            "/auth/forgot-password",
-            "/auth/reset-password",
-            "/auth/refresh-token"
-    };
+        private final String[] PUBLIC_POST_ENDPOINTS = {
+                        "/auth/login",
+                        "/auth/logout",
+                        "/auth/forgot-password",
+                        "/auth/reset-password",
+                        "/auth/refresh-token"
+        };
 
-    private final String[] PUBLIC_GET_ENDPOINTS = {
-            "/v3/api-docs/**",
-            "/swagger-ui/**",
-            "/swagger-ui.html",
-            "/auth/activate"
-    };
+        private final String[] PUBLIC_GET_ENDPOINTS = {
+                        "/v3/api-docs/**",
+                        "/swagger-ui/**",
+                        "/swagger-ui.html",
+                        "/auth/activate"
+        };
 
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception{
-        http
-                .csrf(AbstractHttpConfigurer::disable)
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .authorizeHttpRequests(request -> request
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, PUBLIC_POST_ENDPOINTS).permitAll()
-                        .requestMatchers(HttpMethod.GET, PUBLIC_GET_ENDPOINTS).permitAll()
-                        .anyRequest().authenticated())
-                .oauth2ResourceServer(oath2 -> oath2
-                        .jwt(jwt -> jwt
-                                .decoder(jwtDecoder())
-                                .jwtAuthenticationConverter(jwtAuthenticationConverter())
-                        )
-                );
-        return http.build();
-    }
+        @Bean
+        public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+                http
+                                .csrf(AbstractHttpConfigurer::disable)
+                                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                                .authorizeHttpRequests(request -> request
+                                                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                                                .requestMatchers(HttpMethod.POST, PUBLIC_POST_ENDPOINTS).permitAll()
+                                                .requestMatchers(HttpMethod.GET, PUBLIC_GET_ENDPOINTS).permitAll()
+                                                .anyRequest().authenticated())
+                                .oauth2ResourceServer(oath2 -> oath2
+                                                .jwt(jwt -> jwt
+                                                                .decoder(jwtDecoder())
+                                                                .jwtAuthenticationConverter(
+                                                                                jwtAuthenticationConverter())));
+                return http.build();
+        }
 
-    @Bean
-    public JwtDecoder jwtDecoder(){
-        SecretKeySpec spec = new SecretKeySpec(signerKey.getBytes(), "HmacSHA256");
-        NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(spec)
-                .macAlgorithm(MacAlgorithm.HS256)
-                .build();
+        @Bean
+        public JwtDecoder jwtDecoder() {
+                SecretKeySpec spec = new SecretKeySpec(signerKey.getBytes(), "HmacSHA256");
+                NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(spec)
+                                .macAlgorithm(MacAlgorithm.HS256)
+                                .build();
 
-        // Default validators (exp, nbf, etc.) + blacklist (jti) + token version (invalidate after password change)
-        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
-                JwtValidators.createDefault(),
-                jwtBlacklistValidator,
-                jwtTokenVersionValidator
-        ));
+                // Default validators (exp, nbf, etc.) + blacklist (jti) + token version
+                // (invalidate after password change)
+                decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                                JwtValidators.createDefault(),
+                                jwtBlacklistValidator,
+                                jwtTokenVersionValidator));
 
-        return decoder;
-    }
+                return decoder;
+        }
 
-    @Bean
-    public JwtAuthenticationConverter jwtAuthenticationConverter(){
-        JwtGrantedAuthoritiesConverter converter = new JwtGrantedAuthoritiesConverter();
-        converter.setAuthorityPrefix("ROLE_");
-        converter.setAuthoritiesClaimName("role");
+        @Bean
+        public JwtAuthenticationConverter jwtAuthenticationConverter() {
+                JwtGrantedAuthoritiesConverter converter = new JwtGrantedAuthoritiesConverter();
+                converter.setAuthorityPrefix("ROLE_");
+                converter.setAuthoritiesClaimName("role");
 
-        JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
-        jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(converter);
-        return jwtAuthenticationConverter;
-    }
+                JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
+                jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(converter);
+                return jwtAuthenticationConverter;
+        }
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
+        @Bean
+        public PasswordEncoder passwordEncoder() {
+                return new BCryptPasswordEncoder();
+        }
 
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
+        @Bean
+        public CorsConfigurationSource corsConfigurationSource() {
+                CorsConfiguration configuration = new CorsConfiguration();
 
-        // Cho phép các origin sử dụng cả HTTP (local) và HTTPS (prod)
-        configuration.setAllowedOriginPatterns(java.util.List.of(
-                "https://api.admin-datlt244.io.vn",
-                "http://api.admin-datlt244.io.vn",
-                "https://admin-datlt244.io.vn",
-                "http://localhost:5173",
-                "http://localhost:*",
-                "https://localhost:*"
-        ));
+                // 1. Cho phép các origin cụ thể (Frontend)
+                configuration.setAllowedOrigins(java.util.List.of(
+                                "https://admin-datlt244.io.vn",
+                                "http://admin-datlt244.io.vn"));
 
-        // Cho phép tất cả các Method (GET, POST, PUT, DELETE, v.v.)
-        configuration.setAllowedMethods(java.util.List.of("*"));
+                // 2. Cho phép các pattern (Localhost)
+                configuration.setAllowedOriginPatterns(java.util.List.of(
+                                "http://localhost:*",
+                                "https://localhost:*"));
 
-        // Cho phép tất cả các Header (Rất quan trọng để gửi kèm Authorization token)
-        configuration.setAllowedHeaders(java.util.List.of("*"));
+                // 3. Cho phép tất cả các Method phổ biến
+                configuration.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
 
-        // Cho phép gửi kèm Credentials (như Cookie nếu có)
-        configuration.setAllowCredentials(true);
+                // 4. Cho phép tất cả các Header cần thiết
+                configuration.setAllowedHeaders(java.util.List.of(
+                                "Authorization",
+                                "Content-Type",
+                                "X-Requested-With",
+                                "Accept",
+                                "Origin",
+                                "Access-Control-Request-Method",
+                                "Access-Control-Request-Headers"));
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        return source;
-    }
+                // 5. Cho phép gửi kèm Credentials (Token, Cookies)
+                configuration.setAllowCredentials(true);
+
+                // 6. Cache kết quả Preflight trong 1 giờ (3600s)
+                configuration.setMaxAge(3600L);
+
+                UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+                source.registerCorsConfiguration("/**", configuration);
+                return source;
+        }
 
 }

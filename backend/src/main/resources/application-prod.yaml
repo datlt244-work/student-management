@@ -63,10 +63,11 @@ management:
       enabled: true
     readinessstate:
       enabled: true
+    kafka:
+      enabled: false
 
 springdoc:
   api-docs:
     enabled: false
   swagger-ui:
     enabled: false
-

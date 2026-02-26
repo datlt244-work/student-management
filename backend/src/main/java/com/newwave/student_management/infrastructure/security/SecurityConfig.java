@@ -151,8 +151,6 @@ public class SecurityConfig {
         @Bean
         public CorsConfigurationSource corsConfigurationSource() {
                 UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-                // Dùng chung cấu hình từ corsFilter logic hoặc định nghĩa lại nếu cần
-                // Ở đây ta trỏ thẳng vào source đã được config ở trên nếu muốn đồng bộ
                 return source;
         }
 

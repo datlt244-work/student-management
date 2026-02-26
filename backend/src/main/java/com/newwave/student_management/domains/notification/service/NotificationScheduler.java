@@ -24,15 +24,16 @@ public class NotificationScheduler {
     @Scheduled(cron = "0 * * * * *")
     public void processScheduledNotifications() {
         LocalDateTime now = LocalDateTime.now();
-        List<SentNotification> pending = repository.findByStatusAndScheduledAtBefore("PENDING", now);
+        LocalDateTime threshold = now.minusMinutes(2); // Cho phép độ trễ 2 phút cho notification tức thì
+        List<SentNotification> pending = repository.findStuckNotifications(now, threshold);
 
         if (!pending.isEmpty()) {
-            log.info("Found {} pending scheduled notifications to process", pending.size());
+            log.info("Found {} pending or stuck notifications to process", pending.size());
             for (SentNotification notif : pending) {
                 try {
                     notificationService.processScheduledNotification(notif);
                 } catch (Exception e) {
-                    log.error("Failed to process scheduled notification {}: {}", notif.getSentId(), e.getMessage());
+                    log.error("Failed to process notification {}: {}", notif.getSentId(), e.getMessage());
                 }
             }
         }

@@ -25,6 +25,7 @@ public class AdminUserImportServiceImpl implements IAdminUserImportService {
     private final DepartmentRepository departmentRepository;
     private final com.newwave.student_management.domains.auth.repository.ImportJobRepository importJobRepository;
     private final com.newwave.student_management.domains.auth.service.UserImportProducer userImportProducer;
+    private final com.newwave.student_management.domains.auth.repository.UserRepository userRepository;
 
     @Override
     public byte[] generateTeacherTemplate() {
@@ -125,12 +126,18 @@ public class AdminUserImportServiceImpl implements IAdminUserImportService {
                 throw new AppException(ErrorCode.EXCEL_FILE_EMPTY);
             }
 
+            String userEmail = org.springframework.security.core.context.SecurityContextHolder.getContext()
+                    .getAuthentication().getName();
+            com.newwave.student_management.domains.auth.entity.User currentUser = userRepository.findByEmail(userEmail)
+                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
             com.newwave.student_management.domains.auth.entity.ImportJob importJob = com.newwave.student_management.domains.auth.entity.ImportJob
                     .builder()
                     .status("IN_PROGRESS")
                     .role(role)
                     .totalRows(totalRows)
                     .fileName(file.getOriginalFilename())
+                    .createdBy(currentUser)
                     .build();
 
             importJob = importJobRepository.save(importJob);

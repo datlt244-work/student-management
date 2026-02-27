@@ -12,6 +12,7 @@ import com.newwave.student_management.domains.profile.repository.StudentReposito
 import com.newwave.student_management.domains.profile.repository.TeacherRepository;
 import com.newwave.student_management.infrastructure.fcm.FcmService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -28,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class NotificationInternalService {
@@ -325,13 +327,24 @@ public class NotificationInternalService {
         String identifier = notif.getTargetRecipientId();
         java.util.Optional<com.newwave.student_management.domains.auth.entity.User> userOpt = userRepository
                 .findByEmail(identifier);
+
         if (userOpt.isEmpty()) {
             userOpt = studentRepository.findByStudentCodeAndDeletedAtIsNull(identifier)
                     .map(com.newwave.student_management.domains.profile.entity.Student::getUser);
         }
+
         if (userOpt.isEmpty()) {
             userOpt = teacherRepository.findByTeacherCodeAndDeletedAtIsNull(identifier)
                     .map(com.newwave.student_management.domains.profile.entity.Teacher::getUser);
+        }
+
+        // Add UUID fallback for "User: UUID" style format
+        if (userOpt.isEmpty()) {
+            try {
+                java.util.UUID parsedId = java.util.UUID.fromString(identifier);
+                userOpt = userRepository.findById(parsedId);
+            } catch (IllegalArgumentException ignored) {
+            }
         }
 
         if (userOpt.isPresent()) {
@@ -373,7 +386,9 @@ public class NotificationInternalService {
             fresh.setSentAt(java.time.LocalDateTime.now());
             sentNotificationRepository.save(fresh);
         } catch (Exception e) {
+            log.error("Failed to process Scheduled Notification", e);
             fresh.setStatus("FAILED");
+            fresh.setTitle(e.getClass().getSimpleName() + ": " + e.getMessage());
             sentNotificationRepository.save(fresh);
         }
     }

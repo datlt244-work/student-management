@@ -7,6 +7,10 @@ import com.newwave.student_management.domains.auth.entity.ImportJobError;
 import com.newwave.student_management.domains.auth.event.UserImportEvent;
 import com.newwave.student_management.domains.auth.repository.ImportJobErrorRepository;
 import com.newwave.student_management.domains.auth.repository.ImportJobRepository;
+import com.newwave.student_management.domains.notification.dto.NotificationEvent;
+import com.newwave.student_management.domains.notification.entity.SentNotification;
+import com.newwave.student_management.domains.notification.repository.SentNotificationRepository;
+import com.newwave.student_management.domains.notification.service.NotificationProducer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -20,6 +24,8 @@ public class UserImportConsumer {
     private final IAdminUserService adminUserService;
     private final ImportJobRepository importJobRepository;
     private final ImportJobErrorRepository importJobErrorRepository;
+    private final SentNotificationRepository sentNotificationRepository;
+    private final NotificationProducer notificationProducer;
 
     // Manual ObjectMapper to avoid missing beans and handle JSR310 dates
     private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
@@ -86,6 +92,40 @@ public class UserImportConsumer {
                 importJobRepository.save(job);
                 log.info("ImportJob {} has finished. Status: {}, Total: {}, Success: {}, Failure: {}",
                         job.getId(), job.getStatus(), job.getTotalRows(), job.getSuccessCount(), job.getFailureCount());
+
+                // UC-12.4: Notify Admin when Import Job is finished
+                try {
+                    String title = "Import " + job.getRole() + " Completed";
+                    String body = String.format(
+                            "Tiến trình import %s từ Excel đã hoàn tất. Thành công: %d, Thất bại: %d.",
+                            job.getRole(), job.getSuccessCount(), job.getFailureCount());
+
+                    SentNotification sn = SentNotification.builder()
+                            .title(title)
+                            .body(body)
+                            .actionUrl("http://localhost:8080/ui/clusters/local/all-topics/user-import-topic") // Redirect
+                                                                                                               // to
+                                                                                                               // Kafka
+                                                                                                               // Topic
+                                                                                                               // UI
+                            .notificationType("PERSONAL")
+                            .targetGroup("User: " + job.getCreatedBy().getUserId())
+                            .status("PENDING")
+                            .targetRecipientId(job.getCreatedBy().getUserId().toString())
+                            .recipientCount(1)
+                            .build();
+
+                    SentNotification savedSn = sentNotificationRepository.save(sn);
+
+                    NotificationEvent notifyEvent = NotificationEvent.builder()
+                            .sentNotificationId(savedSn.getSentId())
+                            .type("PERSONAL")
+                            .build();
+
+                    notificationProducer.sendNotificationEvent(notifyEvent);
+                } catch (Exception e) {
+                    log.error("Failed to push UC-12.4 Notification to Admin for Job {}", job.getId(), e);
+                }
             }
         });
     }

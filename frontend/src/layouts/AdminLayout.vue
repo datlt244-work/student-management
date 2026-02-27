@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { apiFetch } from '@/utils/api'
 import { useNotificationSetup } from '@/composables/useNotificationSetup'
+import NotificationPopover from '@/components/NotificationPopover.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -66,6 +67,11 @@ function getInitials(email: string | undefined): string {
     >
       <span class="material-symbols-outlined text-2xl">menu</span>
     </button>
+
+    <!-- Mobile Notification Bell -->
+    <div class="md:hidden fixed top-4 right-4 z-50 flex items-center justify-center rounded-lg bg-surface-light dark:bg-surface-dark border border-stone-200 dark:border-stone-800 shadow-md">
+      <NotificationPopover portal="admin" />
+    </div>
 
     <!-- Mobile full-screen overlay menu -->
     <Teleport to="body">
@@ -150,25 +156,31 @@ function getInitials(email: string | undefined): string {
       <div class="p-6 flex flex-col h-full justify-between">
         <!-- Header / User Info -->
         <div class="flex flex-col gap-8">
-          <div class="flex items-center gap-3">
-            <div
-              v-if="user?.profilePictureUrl"
-              class="bg-center bg-no-repeat bg-cover rounded-full h-12 w-12 border-2 border-primary"
-              :style="{ backgroundImage: `url(${user.profilePictureUrl})` }"
-            ></div>
-            <div
-              v-else
-              class="rounded-full h-12 w-12 border-2 border-primary bg-primary/10 flex items-center justify-center text-primary font-bold text-sm"
-            >
-              {{ getInitials(user?.email) }}
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div
+                v-if="user?.profilePictureUrl"
+                class="bg-center bg-no-repeat bg-cover rounded-full h-12 w-12 border-2 border-primary"
+                :style="{ backgroundImage: `url(${user.profilePictureUrl})` }"
+              ></div>
+              <div
+                v-else
+                class="rounded-full h-12 w-12 border-2 border-primary bg-primary/10 flex items-center justify-center text-primary font-bold text-sm"
+              >
+                {{ getInitials(user?.email) }}
+              </div>
+              <div class="flex flex-col">
+                <h1 class="text-slate-900 dark:text-white text-base font-bold leading-tight">
+                  Admin Portal
+                </h1>
+                <p class="text-primary text-sm font-normal truncate max-w-[130px]">
+                  {{ user?.email || 'Administrator' }}
+                </p>
+              </div>
             </div>
-            <div class="flex flex-col">
-              <h1 class="text-slate-900 dark:text-white text-base font-bold leading-tight">
-                Admin Portal
-              </h1>
-              <p class="text-primary text-sm font-normal truncate max-w-[170px]">
-                {{ user?.email || 'Administrator' }}
-              </p>
+            
+            <div class="shrink-0 flex items-center">
+              <NotificationPopover portal="admin" align="left" />
             </div>
           </div>
 

@@ -9,9 +9,12 @@ import {
   type UserNotification,
 } from '@/services/portalNotificationService'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   portal: string
-}>()
+  align?: 'left' | 'right'
+}>(), {
+  align: 'right'
+})
 
 const router = useRouter()
 const isOpen = ref(false)
@@ -142,7 +145,10 @@ onMounted(() => {
     <Transition name="fade">
       <div
         v-if="isOpen"
-        class="absolute right-0 mt-2 w-80 sm:w-96 bg-surface-light dark:bg-surface-dark rounded-xl shadow-2xl border border-border-light dark:border-border-dark z-50 overflow-hidden"
+        :class="[
+          'absolute mt-2 w-80 sm:w-96 bg-surface-light dark:bg-surface-dark rounded-xl shadow-2xl border border-border-light dark:border-border-dark z-50 overflow-hidden',
+          align === 'left' ? 'left-0 origin-top-left' : 'right-0 origin-top-right'
+        ]"
       >
         <div
           class="px-4 py-3 border-b border-border-light dark:border-border-dark flex items-center justify-between"

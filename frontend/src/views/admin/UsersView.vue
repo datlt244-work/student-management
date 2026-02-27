@@ -7,6 +7,9 @@ import {
   getAdminUsers,
   getAdminDepartments,
   deleteAdminUser,
+  downloadTeacherTemplate as apiDownloadTeacherTemplate,
+  downloadStudentTemplate as apiDownloadStudentTemplate,
+  importUsers as apiImportUsers,
   type AdminUserListItem,
   type AdminCreateUserRequest,
   type AdminDepartmentItem,
@@ -405,6 +408,9 @@ async function submitNewUser() {
 const showImportExcelModal = ref(false)
 const importFile = ref<File | null>(null)
 const importFileInputRef = ref<HTMLInputElement | null>(null)
+const importRole = ref<'TEACHER' | 'STUDENT'>('TEACHER')
+const importLoading = ref(false)
+const importError = ref<string | null>(null)
 
 function handleImportFromExcel() {
   showImportExcelModal.value = true
@@ -416,14 +422,28 @@ function closeImportExcelModal() {
   importFile.value = null
 }
 
-function downloadTeacherTemplate() {
-  // TODO: tải template Excel cho Teacher
-  console.log('Download teacher template')
+async function downloadTeacherTemplate() {
+  try {
+    importLoading.value = true;
+    importError.value = null;
+    await apiDownloadTeacherTemplate();
+  } catch (err: unknown) {
+    importError.value = err instanceof Error ? err.message : 'Failed to download template';
+  } finally {
+    importLoading.value = false;
+  }
 }
 
-function downloadStudentTemplate() {
-  // TODO: tải template Excel cho Student
-  console.log('Download student template')
+async function downloadStudentTemplate() {
+  try {
+    importLoading.value = true;
+    importError.value = null;
+    await apiDownloadStudentTemplate();
+  } catch (err: unknown) {
+    importError.value = err instanceof Error ? err.message : 'Failed to download template';
+  } finally {
+    importLoading.value = false;
+  }
 }
 
 function triggerImportFileInput() {
@@ -463,11 +483,21 @@ function handleImportDragOver(event: DragEvent) {
   event.preventDefault()
 }
 
-function processImport() {
+async function processImport() {
   if (!importFile.value) return
-  // TODO: gọi API upload và xử lý import
-  console.log('Process import', importFile.value.name)
-  closeImportExcelModal()
+  
+  try {
+    importLoading.value = true
+    importError.value = null
+    const res = await apiImportUsers(importFile.value, importRole.value)
+    showToast(res.message, 'success')
+    closeImportExcelModal()
+    fetchUsers() // Refresh list in background
+  } catch (err: unknown) {
+    importError.value = err instanceof Error ? err.message : 'Import failed'
+  } finally {
+    importLoading.value = false
+  }
 }
 </script>
 
@@ -1214,6 +1244,12 @@ function processImport() {
           </div>
 
           <div class="px-8 py-8 flex flex-col gap-8 max-h-[70vh] overflow-y-auto">
+            <div
+              v-if="importError"
+              class="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm"
+            >
+              {{ importError }}
+            </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div
                 class="p-5 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-900/30 flex flex-col gap-4"
@@ -1257,7 +1293,41 @@ function processImport() {
               </div>
             </div>
 
-            <div class="flex flex-col gap-3">
+            <!-- Role Selection & Upload block -->
+            <div class="flex flex-col gap-6">
+              <div class="space-y-3">
+                 <label class="text-sm font-bold text-slate-700 dark:text-slate-300"
+                  >Role Selection for Import</label
+                 >
+                 <div class="flex p-1 bg-stone-100 dark:bg-stone-800 rounded-lg max-w-sm">
+                  <button
+                    type="button"
+                    :class="[
+                      'flex-1 py-2 text-sm font-medium rounded-md transition-all',
+                      importRole === 'TEACHER'
+                        ? 'bg-white dark:bg-surface-dark text-slate-900 dark:text-white shadow-sm ring-1 ring-stone-200 dark:ring-stone-700'
+                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300',
+                    ]"
+                    @click="importRole = 'TEACHER'"
+                  >
+                    Teacher
+                  </button>
+                  <button
+                    type="button"
+                    :class="[
+                      'flex-1 py-2 text-sm font-medium rounded-md transition-all',
+                      importRole === 'STUDENT'
+                        ? 'bg-white dark:bg-surface-dark text-slate-900 dark:text-white shadow-sm ring-1 ring-stone-200 dark:ring-stone-700'
+                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300',
+                    ]"
+                    @click="importRole = 'STUDENT'"
+                  >
+                    Student
+                  </button>
+                 </div>
+              </div>
+
+              <div class="flex flex-col gap-3">
               <label class="text-sm font-bold text-slate-700 dark:text-slate-300"
                 >Upload Filled Template</label
               >
@@ -1290,6 +1360,7 @@ function processImport() {
                 </div>
               </div>
             </div>
+            </div>
           </div>
 
           <div
@@ -1310,10 +1381,13 @@ function processImport() {
                   ? 'bg-primary hover:bg-primary-dark text-white cursor-pointer'
                   : 'bg-primary/50 text-white cursor-not-allowed',
               ]"
-              :disabled="!importFile"
+              :disabled="!importFile || importLoading"
               @click="processImport"
             >
-              Process Import
+              <span v-if="importLoading" class="material-symbols-outlined text-[18px] animate-spin"
+                >progress_activity</span
+              >
+              <span v-else>Process Import</span>
             </button>
           </div>
         </div>

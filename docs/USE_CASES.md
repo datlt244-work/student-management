@@ -10,6 +10,106 @@ _(Đã được triển khai trong các module Auth/User)_
 
 ---
 
+## UC-12: Import người dùng hàng loạt (Batch User Import via Excel)
+
+### 1. Mô tả (Description)
+
+Cho phép Quản trị viên (Admin) tạo nhiều tài khoản Teacher hoặc Student cùng lúc thông qua việc tải lên một file Excel được định dạng theo mẫu (Template). Quá trình xử lý file và tạo tài khoản được thực hiện dưới hệ thống nền **bất đồng bộ (Async)** thông qua **Kafka** để đảm bảo không gây gián đoạn hoặc timeout cho hệ thống khi file chứa số lượng lớn người dùng.
+
+### 2. Tác nhân (Actors)
+
+- Admin (Quản trị viên)
+
+### 3. Các luồng công việc (Flows)
+
+#### UC-12.1: Tải File Mẫu (Download Templates)
+
+- **Luồng chính**:
+  1. Admin truy cập màn hình **User Management** (Quản lý người dùng) và nhấn nút **"Import from Excel"**.
+  2. Hệ thống hiển thị Modal "Import Excel" với 2 tùy chọn tải Mẫu Excel:
+     - **Template_Teacher.xlsx**: Mẫu dữ liệu dành cho Giảng viên.
+     - **Template_Student.xlsx**: Mẫu dữ liệu dành cho Sinh viên.
+  3. **Lưu ý về Template**: Mỗi file Excel tải về sẽ tự động sinh và bao gồm 2 Sheet:
+     - **Sheet 1 (Data Input)**: Nơi Admin nhập dữ liệu người dùng. Các cột bắt buộc và Validation dựa vào chuẩn hệ thống `AdminCreateUserRequest` như sau:
+       - **Teacher**: _Email (`_@fpt.edu.vn`), Department ID, First/Last Name, Phone, Teacher Code (`HJxxxxxx`), Specialization, Academic Rank, v.v.\*
+       - **Student**: _Email (`_@fpt.edu.vn`), Department ID, First/Last Name, Phone, Student Code (`HExxxxxx`), Date of Birth, Gender, Major, Year, Manage Class.\*
+         _(Các field này khớp 100% với API thêm một người dùng)._
+     - **Sheet 2 (Reference Data - Departments)**: Chứa danh sách đối chiếu giữa `Department ID` và `Department Name` (được hệ thống query trực tiếp từ Database khi xuất file) để Admin biết cần điền số ID của Khoa phù hợp vào cột `Department ID` ở Sheet 1.
+  4. Admin tải file mẫu về máy và tiến hành điền.
+
+#### UC-12.2: Bắt đầu Import File (Trigger Excel Import)
+
+- **Luồng chính**:
+  1. Admin điền dữ liệu người dùng vào **Sheet 1** của file Template. **Không nhập mật khẩu** (hệ thống tự sinh mật khẩu).
+  2. Tại Modal "Import Excel", Admin chọn vai trò (Teacher/Student) tương ứng.
+  3. Admin tải lên file Excel và nhấn **"Import"**.
+  4. Hệ thống (Backend) tiếp nhận file:
+     - Đọc tổng số dòng dữ liệu hợp lệ (`totalRows`).
+     - Lưu một bản ghi tracking `ImportJob` vào Database với cấu trúc cơ bản (`jobId`, `status`, `totalRows`, `successCount = 0`, `failureCount = 0`).
+     - Phản hồi nhanh (HTTP 202 Accepted) kèm thông báo: "Hệ thống đang xử lý import ở chế độ nền. Bạn sẽ nhận được thông báo khi hoàn tất."
+  5. Modal đóng lại, Admin có thể tiếp tục xem và thao tác trên danh sách người dùng.
+
+#### UC-12.3: Xử lý Import dưới nền (Background Processing qua Kafka)
+
+- **Luồng chính**:
+  1. Từ `ImportJob` đã lưu, hệ thống đọc từng dòng trong Excel (Sheet 1) và phát (produce) các sự kiện `UserImportEvent` lên hệ thống Message Broker (Kafka).
+  2. `UserImportConsumer` (tiến trình nghe event) sẽ tuần tự nhận event và thực thi logic thêm User y hệt như Consolidation API tạo User đơn (`AdminCreateUserRequest`):
+     - Kiểm tra Validation (định dạng Email, Pattern cho Code, giới hạn kiểu của Gender/Role...).
+     - Tự động sinh `password`.
+     - Tạo Auth Record với Role tương ứng và Trạng thái `PENDING_VERIFICATION`.
+     - Tạo Profile tương ứng (Teacher Profile hoặc Student Profile) tham chiếu từ Auth Record.
+     - Phát đi sự kiện qua Notification gửi **"Welcome Email"** kèm link kích hoạt hệ thống.
+  3. **Cập nhật quá trình ImportJob**:
+     - Nếu dòng thêm **thành công**: `successCount` + 1 cho Job ID tương ứng.
+     - Nếu dòng có **lỗi** (email trùng, trùng mã Student/Teacher, sai định dạng Data): `failureCount` + 1, ghi log vào cơ sở dữ liệu (ví dụ: bảng `import_job_errors`) chứa thông tin chi tiết (dòng bao nhiêu, lý do là gì). Hệ thống sẽ bỏ qua dòng lỗi và tiếp tục dòng tiếp theo. Tính toàn vẹn của Job không bị huỷ.
+  4. Sau khi duyệt hết sự kiện của một Job (`successCount` + `failureCount` = `totalRows`), trạng thái `ImportJob` chuyển sang `COMPLETED_SUCCESSFULLY` hoặc `COMPLETED_WITH_ERRORS`.
+
+#### UC-12.4: Nhận Thông báo Kết quả (Receive Result Notification)
+
+- **Luồng chính**:
+  1. Khi một Job đạt trạng thái Completed (hết quá trình), Notification System sẽ được kích hoạt (UC-20).
+  2. Hệ thống gửi trả **1 thông báo duy nhất** đến tài khoản Admin thao tác để tránh spam:
+     - _VD: "Tiến trình import Giáo viên từ Excel đã hoàn tất. Thành công: X, Thất bại: Y. Nhấn vào để xem chi tiết."_
+  3. Admin nhấn vào dòng thông báo (trên chuông) để mở ra "Notification Details Modal", có thể hiển thị thống kê cụ thể và chi tiết những dòng thất bại (nếu có).
+
+### 4. Các ràng buộc và Quy tắc (Business Rules & Constraints)
+
+#### 4.1. Ràng buộc về File và Kỹ thuật
+
+1. **Định dạng file**: Hệ thống chỉ chấp nhận định dạng Excel có đuôi `.xlsx` (hoặc `.xls`). Tất cả các format khác tải lên phải bị văng lỗi (Validation Header báo lỗi ngay tại HTTP request).
+2. **Giới hạn dung lượng và số lượng**:
+   - Kích thước tối đa mỗi file tải lên không quá 10MB.
+   - Số dòng dữ liệu tối đa trong Sheet 1 không được vượt quá 2000 dòng/lần import để đảm bảo Kafka Consumer không bị nghẽn ở một Job quá lâu.
+3. **Bỏ qua dòng trống**: Quá trình đọc file phải tự động bỏ qua (Skip) những dòng Excel "trống" (Blank rows) hoặc những dòng mà trường bắt buộc (First Name, Last Name, Email) bị để trống liên tiếp để không tính nó vào `totalRows`.
+
+#### 4.2. Ràng buộc toàn vẹn Dữ liệu (Row-Level Validation)
+
+**Tiến trình (Consumer) xử lý Excel dòng-theo-dòng phải kế thừa toàn bộ logic kiểm thử (Validate) của luồng API `POST /admin/users` (Add/Create 1 user). Mọi ngoại lệ (Exception) đều phải được bắt (Catch), ghi lại lỗi vào Job và chuyển sang dòng kế tiếp.**
+
+1. **Định danh duy nhất (Unique Identifiers)**:
+   - Email (Teacher/Student) không được trùng lắp với bất kỳ tài khoản Active hay Inactive nào trong hệ thống.
+   - `Teacher Code` (Ví dụ: `HJ123456`) và `Student Code` (Ví dụ: `HE123456`) phải là duy nhất.
+2. **Định dạng dữ liệu (Formatting & Regex)**:
+   - Email bắt buộc phải có quy tắc `@fpt.edu.vn`.
+   - Các field chuỗi (String) không được vượt quá giới hạn độ dài khai báo trong Database (VD: First/Last/ManageClass <= 50, Email <= 100).
+   - Ngày sinh (Date of Birth) của Student phải được định dạng chính xác (VD: yyyy-MM-dd) và giá trị phải ở quá khứ (`@Past`).
+   - Năm học (Year) của Student chỉ nằm ở giới hạn 1, 2, 3 hoặc 4.
+3. **Mối quan hệ khoá ngoại (Foreign Keys constraints)**:
+   - `Department ID`: Chỉ khớp với ID của các Khoa hiện đang ở trạng thái `ACTIVE` (dựa trên bảng đối chiếu ở Sheet 2). Nếu điền ID không tồn tại hoặc khoa đang bị khóa (INACTIVE), dòng này sẽ bị đánh Failed.
+
+#### 4.3. Ràng buộc về Quy tắc Nghiệp vụ (Business Behaviors)
+
+1. **Không hỗ trợ Admin Role**: File Excel có định dạng chuyên biệt cho Student hoặc Teacher (dựa vào `Role Option` do Admin chọn tại Modal). Tuyệt đối ngăn chặn hành vi lợi dụng Batch Import để tạo quyền Admin.
+2. **Xử lý Xóa Mềm (Soft Delete Conflict)**:
+   - Trường hợp Admin import 1 User có Email/Code đã từng tạo trước đó nhưng hiện tại đang ở trạng thái "Bị xóa mềm" (`deleted_at IS NOT NULL`), hệ thống (Consumer) **sẽ không ngầm khôi phục** bản ghi cũ. Dòng import này sẽ bị báo lỗi `Duplicate/Conflict` để tăng số đếm `failureCount`. Quản trị viên phải vào danh sách bị xóa để tra cứu và khôi phục (Restore) thủ công nếu cần.
+3. **Mật khẩu và Gửi Mail**:
+   - File template không có cột mật khẩu. Consumer tự sinh một chuỗi ngẫu nhiên (hoặc Default Pattern) cho Password.
+   - Sau khi save thành công vào Database, phải gọi ngay Service bắn tín hiệu cho Notification/Mail Worker gửi Welcome Email kèm Link Active trong 72 giờ.
+4. **Không Rollback lô dữ liệu (No Bulk Rollback)**:
+   - Nếu Job chạy có lỗi ở dòng thứ X, dữ liệu của các dòng chạy thành công trước hoặc sau X vẫn được ghi nhận vững chắc trong DB theo cơ chế Commit theo bản ghi.
+
+---
+
 ## UC-13: Quản lý Khoa (Department Management)
 
 _(Đã được triển khai trong AdminDepartmentController)_

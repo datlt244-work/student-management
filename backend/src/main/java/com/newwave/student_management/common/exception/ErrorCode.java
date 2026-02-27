@@ -110,6 +110,11 @@ public enum ErrorCode {
         FILE_INVALID_FORMAT(1602, "Invalid file format. Allowed: JPG, PNG, WebP", HttpStatus.BAD_REQUEST),
         FILE_PROCESSING_FAILED(1603, "Failed to process image", HttpStatus.INTERNAL_SERVER_ERROR),
         FILE_UPLOAD_FAILED(1604, "Failed to upload file to storage", HttpStatus.INTERNAL_SERVER_ERROR),
+        EXCEL_FILE_INVALID_FORMAT(1605, "Invalid file format. Only Excel files (.xls, .xlsx) are supported",
+                        HttpStatus.BAD_REQUEST),
+        EXCEL_FILE_EMPTY(1606, "The uploaded file contains no valid data rows", HttpStatus.BAD_REQUEST),
+        EXCEL_FILE_TOO_LARGE_ROWS(1607, "Maximum allowed rows is 2000 per import", HttpStatus.BAD_REQUEST),
+        EXCEL_PROCESSING_ERROR(1608, "Failed to read or process Excel file", HttpStatus.INTERNAL_SERVER_ERROR),
         ;
 
         ErrorCode(int code, String message, HttpStatus statusCode) {

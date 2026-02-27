@@ -802,3 +802,60 @@ export async function deleteAdminSemester(id: number): Promise<void> {
     throw new Error(errorData?.message || `Failed to delete semester (${response.status})`)
   }
 }
+
+// ========== UC-12.1: Excel Templates ==========
+
+export async function downloadTeacherTemplate(): Promise<void> {
+  const response = await apiFetch('/admin/users/import/templates/teacher');
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    throw new Error(errorData?.message || `Failed to download teacher template (${response.status})`);
+  }
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'Template_Teacher.xlsx';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+export async function downloadStudentTemplate(): Promise<void> {
+  const response = await apiFetch('/admin/users/import/templates/student');
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    throw new Error(errorData?.message || `Failed to download student template (${response.status})`);
+  }
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'Template_Student.xlsx';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+// ========== UC-12.2: Batch User Import via Excel ==========
+
+export async function importUsers(file: File, role: 'TEACHER' | 'STUDENT'): Promise<{ message: string }> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await apiFetch(`/admin/users/import/${role.toLowerCase()}`, {
+    method: 'POST',
+    body: formData,
+    // Note: Do not specify Content-Type, browser will automatically set it to multipart/form-data with the correct boundary
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    throw new Error(errorData?.message || `Failed to trigger import (${response.status})`);
+  }
+
+  const data = await response.json();
+  return { message: data.result || 'Import initiated successfully.' };
+}

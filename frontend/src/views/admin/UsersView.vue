@@ -7,6 +7,8 @@ import {
   getAdminUsers,
   getAdminDepartments,
   deleteAdminUser,
+  downloadTeacherTemplate as apiDownloadTeacherTemplate,
+  downloadStudentTemplate as apiDownloadStudentTemplate,
   type AdminUserListItem,
   type AdminCreateUserRequest,
   type AdminDepartmentItem,
@@ -405,6 +407,8 @@ async function submitNewUser() {
 const showImportExcelModal = ref(false)
 const importFile = ref<File | null>(null)
 const importFileInputRef = ref<HTMLInputElement | null>(null)
+const importLoading = ref(false)
+const importError = ref<string | null>(null)
 
 function handleImportFromExcel() {
   showImportExcelModal.value = true
@@ -416,14 +420,28 @@ function closeImportExcelModal() {
   importFile.value = null
 }
 
-function downloadTeacherTemplate() {
-  // TODO: tải template Excel cho Teacher
-  console.log('Download teacher template')
+async function downloadTeacherTemplate() {
+  try {
+    importLoading.value = true;
+    importError.value = null;
+    await apiDownloadTeacherTemplate();
+  } catch (err: unknown) {
+    importError.value = err instanceof Error ? err.message : 'Failed to download template';
+  } finally {
+    importLoading.value = false;
+  }
 }
 
-function downloadStudentTemplate() {
-  // TODO: tải template Excel cho Student
-  console.log('Download student template')
+async function downloadStudentTemplate() {
+  try {
+    importLoading.value = true;
+    importError.value = null;
+    await apiDownloadStudentTemplate();
+  } catch (err: unknown) {
+    importError.value = err instanceof Error ? err.message : 'Failed to download template';
+  } finally {
+    importLoading.value = false;
+  }
 }
 
 function triggerImportFileInput() {
@@ -1214,6 +1232,12 @@ function processImport() {
           </div>
 
           <div class="px-8 py-8 flex flex-col gap-8 max-h-[70vh] overflow-y-auto">
+            <div
+              v-if="importError"
+              class="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm"
+            >
+              {{ importError }}
+            </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div
                 class="p-5 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-900/30 flex flex-col gap-4"

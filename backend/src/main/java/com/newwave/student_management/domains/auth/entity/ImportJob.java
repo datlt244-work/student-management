@@ -27,7 +27,7 @@ public class ImportJob {
     @Column(nullable = false, length = 50)
     private String role; // TEACHER, STUDENT
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "created_by")
     private User createdBy;
 

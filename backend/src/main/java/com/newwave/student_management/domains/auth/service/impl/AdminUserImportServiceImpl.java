@@ -102,7 +102,8 @@ public class AdminUserImportServiceImpl implements IAdminUserImportService {
 
     @Override
     public void triggerBatchImport(org.springframework.web.multipart.MultipartFile file, String role) {
-        if (!file.getOriginalFilename().endsWith(".xlsx") && !file.getOriginalFilename().endsWith(".xls")) {
+        String originalFilename = file.getOriginalFilename();
+        if (originalFilename == null || (!originalFilename.endsWith(".xlsx") && !originalFilename.endsWith(".xls"))) {
             throw new AppException(ErrorCode.EXCEL_FILE_INVALID_FORMAT);
         }
 
@@ -136,7 +137,7 @@ public class AdminUserImportServiceImpl implements IAdminUserImportService {
                     .status("IN_PROGRESS")
                     .role(role)
                     .totalRows(totalRows)
-                    .fileName(file.getOriginalFilename())
+                    .fileName(originalFilename)
                     .createdBy(currentUser)
                     .build();
 

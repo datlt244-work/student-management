@@ -388,7 +388,8 @@ public class NotificationInternalService {
         } catch (Exception e) {
             log.error("Failed to process Scheduled Notification", e);
             fresh.setStatus("FAILED");
-            fresh.setTitle(e.getClass().getSimpleName() + ": " + e.getMessage());
+            fresh.setBody(
+                    fresh.getBody() + "\n\n[System Error]: " + e.getClass().getSimpleName() + " - " + e.getMessage());
             sentNotificationRepository.save(fresh);
         }
     }

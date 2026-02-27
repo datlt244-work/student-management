@@ -838,3 +838,24 @@ export async function downloadStudentTemplate(): Promise<void> {
   a.remove();
   window.URL.revokeObjectURL(url);
 }
+
+// ========== UC-12.2: Batch User Import via Excel ==========
+
+export async function importUsers(file: File, role: 'TEACHER' | 'STUDENT'): Promise<{ message: string }> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await apiFetch(`/admin/users/import/${role.toLowerCase()}`, {
+    method: 'POST',
+    body: formData,
+    // Note: Do not specify Content-Type, browser will automatically set it to multipart/form-data with the correct boundary
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    throw new Error(errorData?.message || `Failed to trigger import (${response.status})`);
+  }
+
+  const data = await response.json();
+  return { message: data.result || 'Import initiated successfully.' };
+}

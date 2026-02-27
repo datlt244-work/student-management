@@ -34,6 +34,7 @@ public class Notification extends JpaBaseEntity {
 
     @com.fasterxml.jackson.annotation.JsonProperty("isRead")
     @Column(name = "is_read")
+    @Builder.Default
     private boolean read = false;
 
     @Column(name = "action_url")

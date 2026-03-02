@@ -11,6 +11,7 @@ import {
   type AdminUpdateUserStatusRequest,
   type AdminUserDetailResult,
 } from '@/services/adminUserService'
+import { adminRoomService, type AdminRoomResponse } from '@/services/adminRoomService'
 
 interface StudentCourse {
   code: string
@@ -50,6 +51,10 @@ const editError = ref<string | null>(null)
 // Departments for select
 const departments = ref<AdminDepartmentItem[]>([])
 const departmentsLoading = ref(false)
+
+// Rooms for Office Room select
+const rooms = ref<AdminRoomResponse[]>([])
+const roomsLoading = ref(false)
 
 // Edit form models
 const editTeacher = ref({
@@ -290,6 +295,19 @@ function handleEdit() {
         departmentsLoading.value = false
       })
   }
+
+  // Load rooms for Office Room select
+  roomsLoading.value = true
+  adminRoomService.getAllRoomsSimple()
+    .then((r) => {
+      rooms.value = r
+    })
+    .catch(() => {
+      rooms.value = []
+    })
+    .finally(() => {
+      roomsLoading.value = false
+    })
 
   const d = detail.value
   if (!d) return
@@ -1011,7 +1029,19 @@ watch(
                   </div>
                   <div class="flex flex-col gap-1.5">
                     <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">Office Room</label>
-                    <input v-model="editTeacher.officeRoom" class="py-2.5 px-3 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary transition-all" type="text" />
+                    <select v-model="editTeacher.officeRoom" class="py-2.5 px-3 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:ring-primary focus:border-primary transition-all appearance-none cursor-pointer">
+                      <option value="">— Select room —</option>
+                      <option
+                        v-for="room in rooms"
+                        :key="room.roomId"
+                        :value="room.roomName"
+                        :disabled="!!room.assignedTeacherName && room.roomName !== editTeacher.officeRoom"
+                      >
+                        {{ room.roomName }}
+                        <template v-if="room.assignedTeacherName && room.roomName !== editTeacher.officeRoom"> (Occupied: {{ room.assignedTeacherName }})</template>
+                      </option>
+                    </select>
+                    <p v-if="roomsLoading" class="text-[10px] text-slate-500 mt-0.5 animate-pulse italic">Loading rooms…</p>
                   </div>
                   <div class="flex flex-col gap-1.5 sm:col-span-2">
                     <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">Degrees / Qualifications</label>

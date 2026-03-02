@@ -1,6 +1,8 @@
 package com.newwave.student_management.domains.auth.service.impl;
 
 import com.newwave.student_management.domains.auth.service.IAdminUserImportService;
+import com.newwave.student_management.domains.facility.entity.Room;
+import com.newwave.student_management.domains.facility.repository.RoomRepository;
 import com.newwave.student_management.domains.profile.entity.Department;
 import com.newwave.student_management.domains.profile.entity.DepartmentStatus;
 import com.newwave.student_management.domains.profile.repository.DepartmentRepository;
@@ -23,6 +25,7 @@ import java.util.List;
 public class AdminUserImportServiceImpl implements IAdminUserImportService {
 
     private final DepartmentRepository departmentRepository;
+    private final RoomRepository roomRepository;
     private final com.newwave.student_management.domains.auth.repository.ImportJobRepository importJobRepository;
     private final com.newwave.student_management.domains.auth.service.UserImportProducer userImportProducer;
     private final com.newwave.student_management.domains.auth.repository.UserRepository userRepository;
@@ -32,7 +35,7 @@ public class AdminUserImportServiceImpl implements IAdminUserImportService {
         return generateTemplate(new String[] {
                 "Email (*@fpt.edu.vn)", "Department ID", "First Name", "Last Name", "Phone",
                 "Teacher Code (HJxxxxxx)", "Specialization", "Academic Rank", "Office Room", "Degrees / Qualification"
-        }, getActiveDepartments());
+        }, getActiveDepartments(), getActiveRooms());
     }
 
     @Override
@@ -41,14 +44,18 @@ public class AdminUserImportServiceImpl implements IAdminUserImportService {
                 "Email (*@fpt.edu.vn)", "Department ID", "First Name", "Last Name", "Phone",
                 "Student Code (HExxxxxx)", "Date of Birth (yyyy-MM-dd)", "Gender (MALE/FEMALE/OTHER)", "Major",
                 "Year (1-4)", "Manage Class"
-        }, getActiveDepartments());
+        }, getActiveDepartments(), null);
     }
 
     private List<Department> getActiveDepartments() {
         return departmentRepository.findAllByStatusAndDeletedAtIsNull(DepartmentStatus.ACTIVE);
     }
 
-    private byte[] generateTemplate(String[] headers, List<Department> departments) {
+    private List<Room> getActiveRooms() {
+        return roomRepository.findAllByDeletedAtIsNull();
+    }
+
+    private byte[] generateTemplate(String[] headers, List<Department> departments, List<Room> rooms) {
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
 
             // Sheet 1: Data Input
@@ -91,6 +98,69 @@ public class AdminUserImportServiceImpl implements IAdminUserImportService {
 
             // Protect Sheet 2 to prevent accidental editing
             sheet2.protectSheet("admin@123");
+
+            // Sheet 3: Reference Data - Rooms (only for Teacher template)
+            if (rooms != null && !rooms.isEmpty()) {
+                Sheet sheet3 = workbook.createSheet("Reference Data - Rooms");
+                Row headerRow3 = sheet3.createRow(0);
+                String[] roomHeaders = { "Room Name", "Room Type", "Capacity", "Assigned Teacher", "Status" };
+                for (int i = 0; i < roomHeaders.length; i++) {
+                    Cell cell = headerRow3.createCell(i);
+                    cell.setCellValue(roomHeaders[i]);
+                    cell.setCellStyle(headerStyle);
+                    sheet3.setColumnWidth(i, 6000);
+                }
+
+                // Styling for occupied rooms (red background)
+                CellStyle occupiedStyle = workbook.createCellStyle();
+                Font occupiedFont = workbook.createFont();
+                occupiedFont.setColor(IndexedColors.RED.getIndex());
+                occupiedStyle.setFont(occupiedFont);
+                occupiedStyle.setFillForegroundColor(IndexedColors.ROSE.getIndex());
+                occupiedStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+                // Styling for available rooms (green background)
+                CellStyle availableStyle = workbook.createCellStyle();
+                Font availableFont = workbook.createFont();
+                availableFont.setColor(IndexedColors.DARK_GREEN.getIndex());
+                availableStyle.setFont(availableFont);
+                availableStyle.setFillForegroundColor(IndexedColors.LIGHT_GREEN.getIndex());
+                availableStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+                int roomRowIdx = 1;
+                for (Room room : rooms) {
+                    Row row = sheet3.createRow(roomRowIdx++);
+                    boolean isOccupied = room.getAssignedTeacher() != null;
+                    CellStyle rowStyle = isOccupied ? occupiedStyle : availableStyle;
+
+                    Cell nameCell = row.createCell(0);
+                    nameCell.setCellValue(room.getName());
+                    nameCell.setCellStyle(rowStyle);
+
+                    Cell typeCell = row.createCell(1);
+                    typeCell.setCellValue(room.getRoomType() != null ? room.getRoomType().name() : "");
+                    typeCell.setCellStyle(rowStyle);
+
+                    Cell capCell = row.createCell(2);
+                    capCell.setCellValue(room.getCapacity() != null ? room.getCapacity() : 0);
+                    capCell.setCellStyle(rowStyle);
+
+                    Cell teacherCell = row.createCell(3);
+                    if (isOccupied) {
+                        teacherCell.setCellValue(room.getAssignedTeacher().getFirstName() + " "
+                                + room.getAssignedTeacher().getLastName());
+                    } else {
+                        teacherCell.setCellValue("");
+                    }
+                    teacherCell.setCellStyle(rowStyle);
+
+                    Cell statusCell = row.createCell(4);
+                    statusCell.setCellValue(isOccupied ? "OCCUPIED" : "AVAILABLE");
+                    statusCell.setCellStyle(rowStyle);
+                }
+
+                sheet3.protectSheet("admin@123");
+            }
 
             workbook.write(out);
             return out.toByteArray();

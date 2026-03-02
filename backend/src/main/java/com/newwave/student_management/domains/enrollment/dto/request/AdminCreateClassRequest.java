@@ -8,8 +8,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalTime;
-
 @Data
 @Builder
 @NoArgsConstructor
@@ -25,17 +23,8 @@ public class AdminCreateClassRequest {
     @NotNull(message = "Semester is required")
     private Integer semesterId;
 
-    @NotBlank(message = "Room number is required")
-    private String roomNumber;
-
-    @NotNull(message = "Day of week is required")
-    private Integer dayOfWeek; // 1-7 (Monday-Sunday)
-
-    @NotNull(message = "Start time is required")
-    private LocalTime startTime;
-
-    @NotNull(message = "End time is required")
-    private LocalTime endTime;
+    @NotNull(message = "Sessions are required")
+    private java.util.List<ClassSessionRequest> sessions;
 
     @NotNull(message = "Max students is required")
     @Min(value = 1, message = "Max students must be at least 1")

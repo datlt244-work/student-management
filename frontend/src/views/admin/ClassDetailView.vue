@@ -141,6 +141,17 @@ function formatDate(dateString: string): string {
     day: 'numeric',
   })
 }
+
+const formattedSchedules = computed(() => {
+  if (!classInfo.value?.sessions || classInfo.value.sessions.length === 0) return 'N/A'
+  return classInfo.value.sessions.map(s => `T${s.dayOfWeek} ${s.startTime.slice(0, 5)}-${s.endTime.slice(0, 5)}`).join(', ')
+})
+
+const formattedRooms = computed(() => {
+  if (!classInfo.value?.sessions || classInfo.value.sessions.length === 0) return 'N/A'
+  const rooms = new Set(classInfo.value.sessions.map(s => s.roomName))
+  return Array.from(rooms).join(', ')
+})
 </script>
 
 <template>
@@ -205,7 +216,7 @@ function formatDate(dateString: string): string {
           >
           <div class="flex items-center gap-2 mt-1">
             <span class="material-symbols-outlined text-primary text-[20px]">schedule</span>
-            <span class="font-medium text-slate-900 dark:text-white">{{ classInfo.schedule }}</span>
+            <span class="font-medium text-slate-900 dark:text-white">{{ formattedSchedules }}</span>
           </div>
         </div>
         <div class="flex flex-col gap-1 border-stone-100 dark:border-stone-800 sm:border-l sm:pl-4">
@@ -216,7 +227,7 @@ function formatDate(dateString: string): string {
           <div class="flex items-center gap-2 mt-1">
             <span class="material-symbols-outlined text-primary text-[20px]">meeting_room</span>
             <span class="font-medium text-slate-900 dark:text-white">{{
-              classInfo.roomNumber
+              formattedRooms
             }}</span>
           </div>
         </div>

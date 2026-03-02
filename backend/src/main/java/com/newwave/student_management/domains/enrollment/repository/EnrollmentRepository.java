@@ -12,24 +12,25 @@ import java.util.UUID;
 
 @Repository
 public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer> {
-    long countByScheduledClassClassId(Integer classId);
+        long countByScheduledClassClassId(Integer classId);
 
-    List<Enrollment> findByScheduledClassClassId(Integer classId);
+        List<Enrollment> findByScheduledClassClassId(Integer classId);
 
-    boolean existsByScheduledClassClassIdAndStudentStudentId(Integer classId, UUID studentId);
+        boolean existsByScheduledClassClassIdAndStudentStudentId(Integer classId, UUID studentId);
 
-    Optional<Enrollment> findByScheduledClassClassIdAndStudentStudentId(Integer classId, UUID studentId);
+        Optional<Enrollment> findByScheduledClassClassIdAndStudentStudentId(Integer classId, UUID studentId);
 
-    @Query("SELECT COUNT(e) FROM Enrollment e WHERE e.student.studentId = :studentId AND " +
-            "e.scheduledClass.semester.semesterId = :semesterId AND e.scheduledClass.dayOfWeek = :dayOfWeek AND " +
-            "((e.scheduledClass.startTime < :endTime AND e.scheduledClass.endTime > :startTime)) AND " +
-            "e.scheduledClass.deletedAt IS NULL")
-    long countStudentConflicts(UUID studentId, Integer semesterId, Integer dayOfWeek, LocalTime startTime,
-            LocalTime endTime);
+        @Query("SELECT COUNT(e) FROM Enrollment e JOIN e.scheduledClass.sessions sess WHERE e.student.studentId = :studentId AND "
+                        +
+                        "e.scheduledClass.semester.semesterId = :semesterId AND sess.dayOfWeek = :dayOfWeek AND " +
+                        "((sess.startTime < :endTime AND sess.endTime > :startTime)) AND " +
+                        "e.scheduledClass.deletedAt IS NULL")
+        long countStudentConflicts(UUID studentId, Integer semesterId, Integer dayOfWeek, LocalTime startTime,
+                        LocalTime endTime);
 
-    boolean existsByStudentStudentIdAndScheduledClassCourseCourseIdAndScheduledClassSemesterSemesterIdAndScheduledClassDeletedAtIsNull(
-            UUID studentId, Integer courseId, Integer semesterId);
+        boolean existsByStudentStudentIdAndScheduledClassCourseCourseIdAndScheduledClassSemesterSemesterIdAndScheduledClassDeletedAtIsNull(
+                        UUID studentId, Integer courseId, Integer semesterId);
 
-    List<Enrollment> findByStudentStudentIdAndScheduledClassSemesterSemesterIdAndScheduledClassDeletedAtIsNull(
-            UUID studentId, Integer semesterId);
+        List<Enrollment> findByStudentStudentIdAndScheduledClassSemesterSemesterIdAndScheduledClassDeletedAtIsNull(
+                        UUID studentId, Integer semesterId);
 }

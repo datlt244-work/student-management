@@ -2,8 +2,10 @@ package com.newwave.student_management.domains.enrollment.service.impl;
 
 import com.newwave.student_management.common.exception.AppException;
 import com.newwave.student_management.common.exception.ErrorCode;
+import com.newwave.student_management.domains.enrollment.dto.response.ClassSessionResponse;
 import com.newwave.student_management.domains.enrollment.dto.response.StudentAvailableClassResponse;
 import com.newwave.student_management.domains.enrollment.dto.response.StudentEnrolledClassResponse;
+import com.newwave.student_management.domains.enrollment.entity.ClassSession;
 import com.newwave.student_management.domains.enrollment.entity.Enrollment;
 import com.newwave.student_management.domains.enrollment.entity.ScheduledClass;
 import com.newwave.student_management.domains.enrollment.repository.EnrollmentRepository;
@@ -90,8 +92,19 @@ public class StudentClassServiceImpl implements IStudentClassService {
                                 .courseName(scheduledClass.getCourse().getName())
                                 .credits(scheduledClass.getCourse().getCredits())
                                 .teacherName(teacherName)
-                                .schedule(formatSchedule(scheduledClass))
-                                .roomNumber(scheduledClass.getRoomNumber())
+                                .sessions(scheduledClass.getSessions() != null
+                                                ? scheduledClass.getSessions().stream().map(s -> ClassSessionResponse
+                                                                .builder()
+                                                                .sessionId(s.getSessionId())
+                                                                .roomId(s.getRoom() != null ? s.getRoom().getRoomId()
+                                                                                : null)
+                                                                .roomName(s.getRoom() != null ? s.getRoom().getName()
+                                                                                : null)
+                                                                .dayOfWeek(s.getDayOfWeek())
+                                                                .startTime(s.getStartTime())
+                                                                .endTime(s.getEndTime())
+                                                                .build()).collect(Collectors.toList())
+                                                : new java.util.ArrayList<>())
                                 .enrollmentDate(enrollment.getEnrollmentDate())
                                 .build();
         }
@@ -112,8 +125,19 @@ public class StudentClassServiceImpl implements IStudentClassService {
                                 .courseName(scheduledClass.getCourse().getName())
                                 .credits(scheduledClass.getCourse().getCredits())
                                 .teacherName(teacherName)
-                                .schedule(formatSchedule(scheduledClass))
-                                .roomNumber(scheduledClass.getRoomNumber())
+                                .sessions(scheduledClass.getSessions() != null
+                                                ? scheduledClass.getSessions().stream().map(s -> ClassSessionResponse
+                                                                .builder()
+                                                                .sessionId(s.getSessionId())
+                                                                .roomId(s.getRoom() != null ? s.getRoom().getRoomId()
+                                                                                : null)
+                                                                .roomName(s.getRoom() != null ? s.getRoom().getName()
+                                                                                : null)
+                                                                .dayOfWeek(s.getDayOfWeek())
+                                                                .startTime(s.getStartTime())
+                                                                .endTime(s.getEndTime())
+                                                                .build()).collect(Collectors.toList())
+                                                : new java.util.ArrayList<>())
                                 .maxStudents(scheduledClass.getMaxStudents())
                                 .currentStudents((int) currentStudents)
                                 .status(scheduledClass.getStatus())
@@ -157,15 +181,18 @@ public class StudentClassServiceImpl implements IStudentClassService {
                 }
 
                 // 5. Check schedule conflicts
-                long conflicts = enrollmentRepository.countStudentConflicts(
-                                student.getStudentId(),
-                                scheduledClass.getSemester().getSemesterId(),
-                                scheduledClass.getDayOfWeek(),
-                                scheduledClass.getStartTime(),
-                                scheduledClass.getEndTime());
-
-                if (conflicts > 0) {
-                        throw new AppException(ErrorCode.STUDENT_SCHEDULE_CONFLICT);
+                if (scheduledClass.getSessions() != null) {
+                        for (ClassSession session : scheduledClass.getSessions()) {
+                                long conflicts = enrollmentRepository.countStudentConflicts(
+                                                student.getStudentId(),
+                                                scheduledClass.getSemester().getSemesterId(),
+                                                session.getDayOfWeek(),
+                                                session.getStartTime(),
+                                                session.getEndTime());
+                                if (conflicts > 0) {
+                                        throw new AppException(ErrorCode.STUDENT_SCHEDULE_CONFLICT);
+                                }
+                        }
                 }
 
                 // 6. Create enrollment
@@ -200,21 +227,4 @@ public class StudentClassServiceImpl implements IStudentClassService {
                 enrollmentRepository.delete(enrollment);
         }
 
-        private String formatSchedule(ScheduledClass scheduledClass) {
-                if (scheduledClass.getDayOfWeek() == null || scheduledClass.getStartTime() == null
-                                || scheduledClass.getEndTime() == null) {
-                        return "N/A";
-                }
-                String day = switch (scheduledClass.getDayOfWeek()) {
-                        case 1 -> "Mon";
-                        case 2 -> "Tue";
-                        case 3 -> "Wed";
-                        case 4 -> "Thu";
-                        case 5 -> "Fri";
-                        case 6 -> "Sat";
-                        case 7 -> "Sun";
-                        default -> "N/A";
-                };
-                return String.format("%s %s-%s", day, scheduledClass.getStartTime(), scheduledClass.getEndTime());
-        }
 }

@@ -3,6 +3,8 @@ package com.newwave.student_management.domains.auth.service.impl;
 import com.newwave.student_management.common.exception.AppException;
 import com.newwave.student_management.common.exception.ErrorCode;
 import com.newwave.student_management.common.util.PaginationUtil;
+import com.newwave.student_management.domains.facility.entity.Room;
+import com.newwave.student_management.domains.facility.repository.RoomRepository;
 import com.newwave.student_management.domains.auth.dto.request.AdminCreateUserRequest;
 import com.newwave.student_management.domains.auth.dto.request.AdminUpdateUserProfileRequest;
 import com.newwave.student_management.domains.auth.dto.request.AdminUpdateUserStatusRequest;
@@ -54,6 +56,7 @@ public class AdminUserService implements IAdminUserService {
     private final DepartmentRepository departmentRepository;
     private final TeacherRepository teacherRepository;
     private final StudentRepository studentRepository;
+    private final RoomRepository roomRepository;
     private final PasswordEncoder passwordEncoder;
     private final ITokenRedisService tokenRedisService;
     private final IMailService mailService;
@@ -229,6 +232,9 @@ public class AdminUserService implements IAdminUserService {
             teacher.setOfficeRoom(trimToNull(request.getOfficeRoom(), 50));
             teacher.setDegreesQualification(request.getDegreesQualification());
             teacherRepository.save(teacher);
+
+            // Assign room to teacher if officeRoom is specified
+            assignRoomToTeacher(teacher, trimToNull(request.getOfficeRoom(), 50));
         } else {
             Student student = new Student();
             student.setUser(user);
@@ -305,7 +311,23 @@ public class AdminUserService implements IAdminUserService {
                 teacher.setAcademicRank(trimToNull(request.getAcademicRank(), 50));
             }
             if (request.getOfficeRoom() != null) {
-                teacher.setOfficeRoom(trimToNull(request.getOfficeRoom(), 50));
+                String newRoomName = trimToNull(request.getOfficeRoom(), 50);
+                String oldRoomName = teacher.getOfficeRoom();
+                teacher.setOfficeRoom(newRoomName);
+
+                // Un-assign old room if changed
+                if (oldRoomName != null && !oldRoomName.equals(newRoomName)) {
+                    roomRepository.findByNameAndDeletedAtIsNull(oldRoomName).ifPresent(oldRoom -> {
+                        if (oldRoom.getAssignedTeacher() != null
+                                && oldRoom.getAssignedTeacher().getTeacherId().equals(teacher.getTeacherId())) {
+                            oldRoom.setAssignedTeacher(null);
+                            roomRepository.save(oldRoom);
+                        }
+                    });
+                }
+
+                // Assign new room
+                assignRoomToTeacher(teacher, newRoomName);
             }
             if (request.getDegreesQualification() != null) {
                 String dq = request.getDegreesQualification();
@@ -455,13 +477,27 @@ public class AdminUserService implements IAdminUserService {
     @Override
     public List<TeacherSimpleResponse> getTeachersByDepartment(Integer departmentId) {
         return teacherRepository.findByDepartment_DepartmentIdAndDeletedAtIsNull(departmentId).stream()
-                .map(t -> TeacherSimpleResponse.builder()
-                        .teacherId(t.getTeacherId())
-                        .teacherCode(t.getTeacherCode())
-                        .firstName(t.getFirstName())
-                        .lastName(t.getLastName())
-                        .fullName((t.getFirstName() + " " + t.getLastName()).trim())
-                        .build())
+                .map(t -> {
+                    // Lookup assigned room for this teacher
+                    Integer roomId = null;
+                    String roomName = null;
+                    if (t.getOfficeRoom() != null && !t.getOfficeRoom().isBlank()) {
+                        var roomOpt = roomRepository.findByNameAndDeletedAtIsNull(t.getOfficeRoom());
+                        if (roomOpt.isPresent()) {
+                            roomId = roomOpt.get().getRoomId();
+                            roomName = roomOpt.get().getName();
+                        }
+                    }
+                    return TeacherSimpleResponse.builder()
+                            .teacherId(t.getTeacherId())
+                            .teacherCode(t.getTeacherCode())
+                            .firstName(t.getFirstName())
+                            .lastName(t.getLastName())
+                            .fullName((t.getFirstName() + " " + t.getLastName()).trim())
+                            .officeRoomId(roomId)
+                            .officeRoomName(roomName)
+                            .build();
+                })
                 .toList();
     }
 
@@ -521,6 +557,24 @@ public class AdminUserService implements IAdminUserService {
             throw new AppException(ErrorCode.VALIDATION_ERROR, errorMessage);
         }
         return t.length() > maxLen ? t.substring(0, maxLen) : t;
+    }
+
+    /**
+     * Assign a room to a teacher. Validates that the room exists and is not already
+     * assigned to another teacher.
+     */
+    private void assignRoomToTeacher(Teacher teacher, String roomName) {
+        if (roomName == null || roomName.isBlank()) {
+            return;
+        }
+        roomRepository.findByNameAndDeletedAtIsNull(roomName).ifPresent(room -> {
+            if (room.getAssignedTeacher() != null
+                    && !room.getAssignedTeacher().getTeacherId().equals(teacher.getTeacherId())) {
+                throw new AppException(ErrorCode.ROOM_ALREADY_ASSIGNED);
+            }
+            room.setAssignedTeacher(teacher);
+            roomRepository.save(room);
+        });
     }
 
     private AdminUserDetailResponse.StudentProfilePart toStudentProfilePart(Student s) {

@@ -22,6 +22,12 @@ import com.newwave.student_management.domains.enrollment.repository.ScheduledCla
 import com.newwave.student_management.domains.enrollment.service.IAdminClassService;
 import com.newwave.student_management.domains.profile.entity.Semester;
 import com.newwave.student_management.domains.profile.entity.Teacher;
+import com.newwave.student_management.domains.enrollment.dto.request.ClassSessionRequest;
+import com.newwave.student_management.domains.enrollment.dto.response.ClassSessionResponse;
+import com.newwave.student_management.domains.enrollment.entity.ClassSession;
+import com.newwave.student_management.domains.enrollment.repository.ClassSessionRepository;
+import com.newwave.student_management.domains.facility.entity.Room;
+import com.newwave.student_management.domains.facility.repository.RoomRepository;
 import com.newwave.student_management.domains.profile.repository.SemesterRepository;
 import com.newwave.student_management.domains.profile.repository.StudentRepository;
 import com.newwave.student_management.domains.profile.repository.TeacherRepository;
@@ -50,6 +56,8 @@ public class AdminClassServiceImpl implements IAdminClassService {
     private final TeacherRepository teacherRepository;
     private final StudentRepository studentRepository;
     private final SemesterRepository semesterRepository;
+    private final RoomRepository roomRepository;
+    private final ClassSessionRepository classSessionRepository;
 
     @Override
     public AdminClassListResponse getAdminClasses(
@@ -141,28 +149,58 @@ public class AdminClassServiceImpl implements IAdminClassService {
             throw new AppException(ErrorCode.INVALID_MAX_STUDENTS);
         }
 
-        long conflicts = scheduledClassRepository.countOverlappingClasses(
-                teacher.getTeacherId(),
-                currentSemester.getSemesterId(),
-                request.getDayOfWeek(),
-                request.getStartTime(),
-                request.getEndTime(),
-                null);
-
-        if (conflicts > 0) {
-            throw new AppException(ErrorCode.TEACHER_SCHEDULE_CONFLICT);
-        }
-
         ScheduledClass scheduledClass = new ScheduledClass();
         scheduledClass.setCourse(course);
         scheduledClass.setTeacher(teacher);
         scheduledClass.setSemester(currentSemester);
-        scheduledClass.setRoomNumber(request.getRoomNumber());
-        scheduledClass.setDayOfWeek(request.getDayOfWeek());
-        scheduledClass.setStartTime(request.getStartTime());
-        scheduledClass.setEndTime(request.getEndTime());
         scheduledClass.setMaxStudents(request.getMaxStudents() != null ? request.getMaxStudents() : 40);
         scheduledClass.setStatus(ScheduledClassStatus.OPEN);
+
+        List<ClassSession> classSessions = new java.util.ArrayList<>();
+        if (request.getSessions() != null) {
+            for (ClassSessionRequest sessionRequest : request.getSessions()) {
+                Room room = roomRepository.findById(sessionRequest.getRoomId())
+                        .orElseThrow(() -> new AppException(ErrorCode.ROOM_NOT_FOUND));
+
+                // Check room capacity
+                if (scheduledClass.getMaxStudents() > room.getCapacity()) {
+                    throw new AppException(ErrorCode.CLASS_SLOT_EXCEEDS_ROOM_CAPACITY);
+                }
+
+                // Check teacher conflict
+                long teacherConflicts = scheduledClassRepository.countOverlappingClasses(
+                        teacher.getTeacherId(),
+                        currentSemester.getSemesterId(),
+                        sessionRequest.getDayOfWeek(),
+                        sessionRequest.getStartTime(),
+                        sessionRequest.getEndTime(),
+                        null);
+                if (teacherConflicts > 0) {
+                    throw new AppException(ErrorCode.TEACHER_SCHEDULE_CONFLICT);
+                }
+
+                // Check room conflict
+                long roomConflicts = classSessionRepository.countRoomConflicts(
+                        room.getRoomId(),
+                        sessionRequest.getDayOfWeek(),
+                        sessionRequest.getStartTime(),
+                        sessionRequest.getEndTime(),
+                        currentSemester.getSemesterId(),
+                        null);
+                if (roomConflicts > 0) {
+                    throw new AppException(ErrorCode.ROOM_SCHEDULE_CONFLICT);
+                }
+
+                ClassSession classSession = new ClassSession();
+                classSession.setScheduledClass(scheduledClass);
+                classSession.setRoom(room);
+                classSession.setDayOfWeek(sessionRequest.getDayOfWeek());
+                classSession.setStartTime(sessionRequest.getStartTime());
+                classSession.setEndTime(sessionRequest.getEndTime());
+                classSessions.add(classSession);
+            }
+        }
+        scheduledClass.setSessions(classSessions);
 
         scheduledClass = scheduledClassRepository.save(scheduledClass);
 
@@ -202,26 +240,60 @@ public class AdminClassServiceImpl implements IAdminClassService {
             throw new AppException(ErrorCode.INVALID_MAX_STUDENTS);
         }
 
-        // Conflict Check (exclude current class)
-        long conflicts = scheduledClassRepository.countOverlappingClasses(
-                teacher.getTeacherId(),
-                scheduledClass.getSemester().getSemesterId(),
-                request.getDayOfWeek(),
-                request.getStartTime(),
-                request.getEndTime(),
-                classId);
+        scheduledClass.setTeacher(teacher);
+        scheduledClass.setMaxStudents(
+                request.getMaxStudents() != null ? request.getMaxStudents() : scheduledClass.getMaxStudents());
+        scheduledClass.setStatus(request.getStatus());
 
-        if (conflicts > 0) {
-            throw new AppException(ErrorCode.TEACHER_SCHEDULE_CONFLICT);
+        if (scheduledClass.getSessions() != null) {
+            scheduledClass.getSessions().clear();
+        } else {
+            scheduledClass.setSessions(new java.util.ArrayList<>());
         }
 
-        scheduledClass.setTeacher(teacher);
-        scheduledClass.setRoomNumber(request.getRoomNumber());
-        scheduledClass.setDayOfWeek(request.getDayOfWeek());
-        scheduledClass.setStartTime(request.getStartTime());
-        scheduledClass.setEndTime(request.getEndTime());
-        scheduledClass.setMaxStudents(request.getMaxStudents());
-        scheduledClass.setStatus(request.getStatus());
+        if (request.getSessions() != null) {
+            for (ClassSessionRequest sessionRequest : request.getSessions()) {
+                Room room = roomRepository.findById(sessionRequest.getRoomId())
+                        .orElseThrow(() -> new AppException(ErrorCode.ROOM_NOT_FOUND));
+
+                // Check room capacity
+                if (scheduledClass.getMaxStudents() > room.getCapacity()) {
+                    throw new AppException(ErrorCode.CLASS_SLOT_EXCEEDS_ROOM_CAPACITY);
+                }
+
+                // Check teacher conflict
+                long teacherConflicts = scheduledClassRepository.countOverlappingClasses(
+                        teacher.getTeacherId(),
+                        scheduledClass.getSemester().getSemesterId(),
+                        sessionRequest.getDayOfWeek(),
+                        sessionRequest.getStartTime(),
+                        sessionRequest.getEndTime(),
+                        classId);
+                if (teacherConflicts > 0) {
+                    throw new AppException(ErrorCode.TEACHER_SCHEDULE_CONFLICT);
+                }
+
+                // Check room conflict
+                long roomConflicts = classSessionRepository.countRoomConflicts(
+                        room.getRoomId(),
+                        sessionRequest.getDayOfWeek(),
+                        sessionRequest.getStartTime(),
+                        sessionRequest.getEndTime(),
+                        scheduledClass.getSemester().getSemesterId(),
+                        classId);
+                if (roomConflicts > 0) {
+                    throw new AppException(ErrorCode.ROOM_SCHEDULE_CONFLICT);
+                }
+
+                ClassSession classSession = new ClassSession();
+                classSession.setScheduledClass(scheduledClass);
+                classSession.setRoom(room);
+                classSession.setDayOfWeek(sessionRequest.getDayOfWeek());
+                classSession.setStartTime(sessionRequest.getStartTime());
+                classSession.setEndTime(sessionRequest.getEndTime());
+                scheduledClass.getSessions().add(classSession);
+            }
+        }
 
         scheduledClass = scheduledClassRepository.save(scheduledClass);
         return mapToListItemResponse(scheduledClass);
@@ -261,11 +333,16 @@ public class AdminClassServiceImpl implements IAdminClassService {
                         : null)
                 .semesterName(
                         scheduledClass.getSemester() != null ? scheduledClass.getSemester().getDisplayName() : "N/A")
-                .roomNumber(scheduledClass.getRoomNumber())
-                .schedule(formatSchedule(scheduledClass))
-                .dayOfWeek(scheduledClass.getDayOfWeek())
-                .startTime(scheduledClass.getStartTime() != null ? scheduledClass.getStartTime().toString() : null)
-                .endTime(scheduledClass.getEndTime() != null ? scheduledClass.getEndTime().toString() : null)
+                .sessions(scheduledClass.getSessions() != null ? scheduledClass.getSessions().stream()
+                        .map(s -> ClassSessionResponse.builder()
+                                .sessionId(s.getSessionId())
+                                .roomId(s.getRoom() != null ? s.getRoom().getRoomId() : null)
+                                .roomName(s.getRoom() != null ? s.getRoom().getName() : null)
+                                .dayOfWeek(s.getDayOfWeek())
+                                .startTime(s.getStartTime())
+                                .endTime(s.getEndTime())
+                                .build())
+                        .collect(Collectors.toList()) : new java.util.ArrayList<>())
                 .status(scheduledClass.getStatus())
                 .maxStudents(scheduledClass.getMaxStudents())
                 .studentCount(enrollments.size())
@@ -318,15 +395,18 @@ public class AdminClassServiceImpl implements IAdminClassService {
         }
 
         // 3. Check Student Schedule Conflict
-        long conflicts = enrollmentRepository.countStudentConflicts(
-                student.getStudentId(),
-                scheduledClass.getSemester().getSemesterId(),
-                scheduledClass.getDayOfWeek(),
-                scheduledClass.getStartTime(),
-                scheduledClass.getEndTime());
-
-        if (conflicts > 0) {
-            throw new AppException(ErrorCode.STUDENT_SCHEDULE_CONFLICT);
+        if (scheduledClass.getSessions() != null) {
+            for (ClassSession session : scheduledClass.getSessions()) {
+                long conflicts = enrollmentRepository.countStudentConflicts(
+                        student.getStudentId(),
+                        scheduledClass.getSemester().getSemesterId(),
+                        session.getDayOfWeek(),
+                        session.getStartTime(),
+                        session.getEndTime());
+                if (conflicts > 0) {
+                    throw new AppException(ErrorCode.STUDENT_SCHEDULE_CONFLICT);
+                }
+            }
         }
 
         // 4. Create Enrollment
@@ -375,13 +455,20 @@ public class AdminClassServiceImpl implements IAdminClassService {
                         return false;
                     }
                     // Check schedule conflicts in the SAME semester
-                    long conflicts = enrollmentRepository.countStudentConflicts(
-                            student.getStudentId(),
-                            scheduledClass.getSemester().getSemesterId(),
-                            scheduledClass.getDayOfWeek(),
-                            scheduledClass.getStartTime(),
-                            scheduledClass.getEndTime());
-                    return conflicts == 0;
+                    if (scheduledClass.getSessions() != null) {
+                        for (ClassSession session : scheduledClass.getSessions()) {
+                            long conflicts = enrollmentRepository.countStudentConflicts(
+                                    student.getStudentId(),
+                                    scheduledClass.getSemester().getSemesterId(),
+                                    session.getDayOfWeek(),
+                                    session.getStartTime(),
+                                    session.getEndTime());
+                            if (conflicts > 0) {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
                 })
                 .map(student -> AdminEligibleStudentResponse.builder()
                         .userId(student.getUser().getUserId().toString())
@@ -410,32 +497,19 @@ public class AdminClassServiceImpl implements IAdminClassService {
                         : null)
                 .semesterName(
                         scheduledClass.getSemester() != null ? scheduledClass.getSemester().getDisplayName() : "N/A")
-                .roomNumber(scheduledClass.getRoomNumber())
-                .schedule(formatSchedule(scheduledClass))
-                .dayOfWeek(scheduledClass.getDayOfWeek())
-                .startTime(scheduledClass.getStartTime() != null ? scheduledClass.getStartTime().toString() : null)
-                .endTime(scheduledClass.getEndTime() != null ? scheduledClass.getEndTime().toString() : null)
+                .sessions(scheduledClass.getSessions() != null ? scheduledClass.getSessions().stream()
+                        .map(s -> ClassSessionResponse.builder()
+                                .sessionId(s.getSessionId())
+                                .roomId(s.getRoom() != null ? s.getRoom().getRoomId() : null)
+                                .roomName(s.getRoom() != null ? s.getRoom().getName() : null)
+                                .dayOfWeek(s.getDayOfWeek())
+                                .startTime(s.getStartTime())
+                                .endTime(s.getEndTime())
+                                .build())
+                        .collect(Collectors.toList()) : new java.util.ArrayList<>())
                 .status(scheduledClass.getStatus())
                 .maxStudents(scheduledClass.getMaxStudents())
                 .studentCount(studentCount)
                 .build();
-    }
-
-    private String formatSchedule(ScheduledClass scheduledClass) {
-        if (scheduledClass.getDayOfWeek() == null || scheduledClass.getStartTime() == null
-                || scheduledClass.getEndTime() == null) {
-            return "N/A";
-        }
-        String day = switch (scheduledClass.getDayOfWeek()) {
-            case 1 -> "Mon";
-            case 2 -> "Tue";
-            case 3 -> "Wed";
-            case 4 -> "Thu";
-            case 5 -> "Fri";
-            case 6 -> "Sat";
-            case 7 -> "Sun";
-            default -> "N/A";
-        };
-        return String.format("%s %s-%s", day, scheduledClass.getStartTime(), scheduledClass.getEndTime());
     }
 }

@@ -40,17 +40,31 @@ const createLoading = ref(false)
 const deleteLoading = ref(false)
 const createError = ref<string | null>(null)
 
+interface SessionForm {
+  roomId: string | number;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+}
+
 const newClass = ref({
   courseId: '' as string | number,
   teacherId: '',
   semesterId: '' as string | number,
-  roomNumber: '',
-  dayOfWeek: 1,
-  startTime: '08:00',
-  endTime: '10:00',
+  sessions: [
+    { roomId: '', dayOfWeek: 1, startTime: '08:00', endTime: '10:00' }
+  ] as SessionForm[],
   maxStudents: 40,
   status: 'OPEN' as 'OPEN' | 'CLOSED' | 'CANCELLED',
 })
+
+function addSession() {
+  newClass.value.sessions.push({ roomId: '', dayOfWeek: 1, startTime: '08:00', endTime: '10:00' })
+}
+
+function removeSession(index: number) {
+  newClass.value.sessions.splice(index, 1)
+}
 
 const days = [
   { value: 1, label: 'Monday' },
@@ -68,6 +82,13 @@ const loadingTeachers = ref(false)
 
 const editingClass = ref<AdminClassListItem | null>(null)
 const deletingClass = ref<AdminClassListItem | null>(null)
+
+// Get current selected teacher's room info
+const selectedTeacherRoom = computed(() => {
+  const t = teachers.value.find((t) => t.teacherId === newClass.value.teacherId)
+  if (t?.officeRoomId) return { id: t.officeRoomId, name: t.officeRoomName || `Room #${t.officeRoomId}` }
+  return null
+})
 
 // Teachers will be loaded dynamically based on course department
 
@@ -137,6 +158,17 @@ async function handleCourseChange() {
   }
 }
 
+function handleTeacherChange() {
+  const selectedTeacher = teachers.value.find((t) => t.teacherId === newClass.value.teacherId)
+  if (selectedTeacher?.officeRoomId) {
+    // Auto-fill roomId for all sessions with teacher's office room
+    for (const session of newClass.value.sessions) {
+      session.roomId = selectedTeacher.officeRoomId
+    }
+    showToast(`Room auto-filled: ${selectedTeacher.officeRoomName || selectedTeacher.officeRoomId}`, 'success')
+  }
+}
+
 onMounted(() => {
   fetchClasses()
   loadSemesters()
@@ -183,10 +215,7 @@ function handleAddClass() {
     courseId: '',
     teacherId: '',
     semesterId: currentSemester ? currentSemester.semesterId : '',
-    roomNumber: '',
-    dayOfWeek: 1,
-    startTime: '08:00',
-    endTime: '10:00',
+    sessions: [{ roomId: '', dayOfWeek: 1, startTime: '08:00', endTime: '10:00' }],
     maxStudents: 40,
     status: 'OPEN',
   }
@@ -207,10 +236,12 @@ async function handleEditClass(cls: AdminClassListItem) {
       courseId: actualCourse.courseId,
       teacherId: cls.teacherId || '',
       semesterId: semesters.value.find((s) => s.displayName === cls.semesterName)?.semesterId || '',
-      roomNumber: cls.roomNumber,
-      dayOfWeek: cls.dayOfWeek || 1,
-      startTime: cls.startTime?.slice(0, 5) || '08:00',
-      endTime: cls.endTime?.slice(0, 5) || '10:00',
+      sessions: cls.sessions && cls.sessions.length > 0 ? cls.sessions.map((s) => ({
+        roomId: s.roomId,
+        dayOfWeek: s.dayOfWeek,
+        startTime: s.startTime?.slice(0, 5) ?? '08:00',
+        endTime: s.endTime?.slice(0, 5) ?? '10:00',
+      })) : [{ roomId: '', dayOfWeek: 1, startTime: '08:00', endTime: '10:00' }],
       maxStudents: cls.maxStudents,
       status: cls.status,
     }
@@ -247,11 +278,13 @@ async function submitNewClass() {
       courseId: Number(newClass.value.courseId),
       teacherId: newClass.value.teacherId,
       semesterId: Number(newClass.value.semesterId),
-      roomNumber: newClass.value.roomNumber,
-      dayOfWeek: newClass.value.dayOfWeek,
-      startTime: newClass.value.startTime,
-      endTime: newClass.value.endTime,
       maxStudents: newClass.value.maxStudents,
+      sessions: newClass.value.sessions.map((s) => ({
+        roomId: Number(s.roomId),
+        dayOfWeek: s.dayOfWeek,
+        startTime: s.startTime,
+        endTime: s.endTime,
+      }))
     })
 
     showToast('Class created successfully')
@@ -275,12 +308,14 @@ async function submitEditClass() {
       courseId: Number(newClass.value.courseId),
       teacherId: newClass.value.teacherId,
       semesterId: Number(newClass.value.semesterId),
-      roomNumber: newClass.value.roomNumber,
-      dayOfWeek: newClass.value.dayOfWeek,
-      startTime: newClass.value.startTime,
-      endTime: newClass.value.endTime,
       maxStudents: newClass.value.maxStudents,
       status: newClass.value.status,
+      sessions: newClass.value.sessions.map((s) => ({
+        roomId: Number(s.roomId),
+        dayOfWeek: s.dayOfWeek,
+        startTime: s.startTime,
+        endTime: s.endTime,
+      }))
     })
 
     showToast('Class updated successfully')
@@ -532,10 +567,14 @@ async function confirmDeleteClass() {
                 </div>
               </td>
               <td class="p-4 text-sm text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                {{ cls.schedule }}
+                <span v-if="cls.sessions && cls.sessions.length > 0">
+                  {{ `T${cls.sessions[0]?.dayOfWeek} ${cls.sessions[0]?.startTime?.slice(0, 5)}-${cls.sessions[0]?.endTime?.slice(0, 5)}` }}
+                </span>
+                <span v-else>N/A</span>
               </td>
               <td class="p-4 text-sm text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                {{ cls.roomNumber }}
+                <span v-if="cls.sessions && cls.sessions.length > 0">{{ cls.sessions[0]?.roomName }}</span>
+                <span v-else>N/A</span>
               </td>
               <td class="p-4">
                 <div class="flex items-center gap-2 text-slate-900 dark:text-white">
@@ -780,6 +819,7 @@ async function confirmDeleteClass() {
                 v-model="newClass.teacherId"
                 required
                 :disabled="loadingTeachers || !newClass.courseId"
+                @change="handleTeacherChange"
                 class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary disabled:opacity-50"
               >
                 <option value="" disabled>
@@ -787,23 +827,12 @@ async function confirmDeleteClass() {
                 </option>
                 <option v-for="t in teachers" :key="t.teacherId" :value="t.teacherId">
                   [{{ t.teacherCode }}] {{ t.fullName }}
+                  <template v-if="t.officeRoomName"> — Room: {{ t.officeRoomName }}</template>
                 </option>
               </select>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <div class="space-y-1.5">
-                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider"
-                  >Room <span class="text-red-500">*</span></label
-                >
-                <input
-                  v-model="newClass.roomNumber"
-                  required
-                  type="text"
-                  placeholder="e.g. Rm 304"
-                  class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary"
-                />
-              </div>
               <div class="space-y-1.5">
                 <label class="text-xs font-bold text-slate-500 uppercase tracking-wider"
                   >Max Students</label
@@ -829,40 +858,84 @@ async function confirmDeleteClass() {
               </div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
-              <div class="space-y-1.5">
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
                 <label class="text-xs font-bold text-slate-500 uppercase tracking-wider"
-                  >Day <span class="text-red-500">*</span></label
+                  >Class Sessions</label
                 >
-                <select
-                  v-model="newClass.dayOfWeek"
-                  required
-                  class="w-full px-2 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary"
+                <button
+                  type="button"
+                  @click="addSession"
+                  class="text-xs text-primary font-bold hover:underline"
                 >
-                  <option v-for="d in days" :key="d.value" :value="d.value">{{ d.label }}</option>
-                </select>
+                  + Add Session
+                </button>
               </div>
-              <div class="space-y-1.5">
-                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider"
-                  >Starts <span class="text-red-500">*</span></label
-                >
-                <input
-                  v-model="newClass.startTime"
-                  required
-                  type="time"
-                  class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary"
-                />
-              </div>
-              <div class="space-y-1.5">
-                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider"
-                  >Ends <span class="text-red-500">*</span></label
-                >
-                <input
-                  v-model="newClass.endTime"
-                  required
-                  type="time"
-                  class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary"
-                />
+
+              <div v-for="(session, index) in newClass.sessions" :key="index" class="p-4 border border-stone-200 dark:border-stone-700 rounded-xl space-y-4">
+                <div class="flex justify-between items-center">
+                  <span class="text-sm font-bold text-slate-700 dark:text-slate-300">Session {{ index + 1 }}</span>
+                  <button
+                    v-if="newClass.sessions.length > 1"
+                    type="button"
+                    @click="removeSession(index)"
+                    class="text-red-500 hover:text-red-700"
+                  >
+                    <span class="material-symbols-outlined text-sm">delete</span>
+                  </button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                  <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider"
+                      >Room</label
+                    >
+                    <div
+                      class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-stone-50 dark:bg-stone-900/50 text-sm flex items-center gap-2"
+                    >
+                      <span v-if="selectedTeacherRoom" class="text-slate-900 dark:text-white font-medium">{{ selectedTeacherRoom.name }}</span>
+                      <span v-else class="text-slate-400 italic">{{ newClass.teacherId ? 'Teacher has no assigned room' : 'Select a teacher first' }}</span>
+                      <span v-if="selectedTeacherRoom" class="material-symbols-outlined text-[16px] text-slate-400 ml-auto" title="Auto-filled from teacher's office room">lock</span>
+                    </div>
+                  </div>
+                  <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider"
+                      >Day <span class="text-red-500">*</span></label
+                    >
+                    <select
+                      v-model="session.dayOfWeek"
+                      required
+                      class="w-full px-2 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary"
+                    >
+                      <option v-for="d in days" :key="d.value" :value="d.value">{{ d.label }}</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                  <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider"
+                      >Starts <span class="text-red-500">*</span></label
+                    >
+                    <input
+                      v-model="session.startTime"
+                      required
+                      type="time"
+                      class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary"
+                    />
+                  </div>
+                  <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider"
+                      >Ends <span class="text-red-500">*</span></label
+                    >
+                    <input
+                      v-model="session.endTime"
+                      required
+                      type="time"
+                      class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 

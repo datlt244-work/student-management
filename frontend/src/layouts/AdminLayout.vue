@@ -25,6 +25,7 @@ const navItems = [
   { name: 'Course Management', icon: 'menu_book', routeName: 'admin-courses' },
   { name: 'Semester Management', icon: 'calendar_month', routeName: 'admin-semesters' },
   { name: 'Class Management', icon: 'school', routeName: 'admin-classes' },
+  { name: 'Room Management', icon: 'meeting_room', routeName: 'admin-rooms' },
   { name: 'Notifications', icon: 'notifications', routeName: 'admin-notifications' },
   { name: 'System Logs', icon: 'description', routeName: 'admin-logs' },
 ]

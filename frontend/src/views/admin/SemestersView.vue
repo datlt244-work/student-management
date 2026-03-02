@@ -287,27 +287,27 @@ function clearSemesterFilters() {
     </div>
   </Transition>
 
-  <div class="max-w-[1200px] w-full mx-auto p-6 md:p-10 flex flex-col gap-8">
+  <div class="max-w-[1400px] w-full mx-auto p-6 md:p-10 flex flex-col gap-8">
     <!-- ── Page Header ───────────────────────────────────── -->
-    <div
-      class="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-4 border-b border-stone-200 dark:border-stone-800"
-    >
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div>
         <h1 class="text-slate-900 dark:text-white text-3xl font-bold leading-tight tracking-tight">
           Semester Management
         </h1>
-        <p class="text-slate-500 dark:text-slate-400 mt-2 text-sm">
+        <p class="text-slate-500 dark:text-slate-400 mt-1 text-sm">
           Organize academic periods, start dates, and term statuses.
         </p>
       </div>
-      <button
-        id="btn-add-semester"
-        class="inline-flex items-center gap-2 rounded-xl bg-primary hover:bg-primary-dark text-white px-5 py-2.5 text-sm font-bold shadow-md shadow-orange-500/20 transition-all active:scale-95 whitespace-nowrap"
-        @click="openAddModal"
-      >
-        <span class="material-symbols-outlined text-[20px]">add_circle</span>
-        Add New Semester
-      </button>
+      <div class="flex items-center gap-3">
+        <button
+          id="btn-add-semester"
+          @click="openAddModal"
+          class="flex items-center gap-2 px-6 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-lg font-bold shadow-lg shadow-primary/20 transition-all active:scale-95"
+        >
+          <span class="material-symbols-outlined text-[20px]">add_circle</span>
+          Add New Semester
+        </button>
+      </div>
     </div>
 
     <!-- ── Stats Cards ───────────────────────────────────── -->

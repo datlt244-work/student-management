@@ -15,6 +15,7 @@ import {
   type AdminDepartmentItem,
   type UserStatus,
 } from '@/services/adminUserService'
+import { adminRoomService, type AdminRoomResponse } from '@/services/adminRoomService'
 import { useToast } from '@/composables/useToast'
 
 const { toast, showToast } = useToast()
@@ -142,6 +143,10 @@ const createUserError = ref<string | null>(null)
 // Departments for select (fetch when opening Add User modal)
 const departments = ref<AdminDepartmentItem[]>([])
 const departmentsLoading = ref(false)
+
+// Rooms for Office Room select (fetch when opening Add User modal)
+const rooms = ref<AdminRoomResponse[]>([])
+const roomsLoading = ref(false)
 
 const filteredUsers = computed(() => {
   return users.value
@@ -274,12 +279,20 @@ async function handleAddUser() {
   newUserRole.value = 'TEACHER'
   createUserError.value = null
   departmentsLoading.value = true
+  roomsLoading.value = true
   try {
     departments.value = await getAdminDepartments()
   } catch {
     departments.value = []
   } finally {
     departmentsLoading.value = false
+  }
+  try {
+    rooms.value = await adminRoomService.getAllRoomsSimple()
+  } catch {
+    rooms.value = []
+  } finally {
+    roomsLoading.value = false
   }
   newTeacher.value = {
     firstName: '',
@@ -985,13 +998,25 @@ async function processImport() {
                     <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">
                       Office Room <span class="text-red-500">*</span>
                     </label>
-                    <input
+                    <select
                       v-model="newTeacher.officeRoom"
                       required
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all"
-                      placeholder="A-301"
-                      type="text"
-                    />
+                    >
+                      <option value="">— Select room —</option>
+                      <option
+                        v-for="room in rooms"
+                        :key="room.roomId"
+                        :value="room.roomName"
+                        :disabled="!!room.assignedTeacherName"
+                      >
+                        {{ room.roomName }}
+                        <template v-if="room.assignedTeacherName"> (Occupied: {{ room.assignedTeacherName }})</template>
+                      </option>
+                    </select>
+                    <p v-if="roomsLoading" class="text-xs text-slate-500 mt-1">
+                      Loading rooms…
+                    </p>
                   </div>
                   <div class="space-y-1.5 sm:col-span-2">
                     <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">

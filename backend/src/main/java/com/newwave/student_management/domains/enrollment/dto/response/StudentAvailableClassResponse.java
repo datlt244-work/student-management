@@ -16,8 +16,7 @@ public class StudentAvailableClassResponse {
     private String courseName;
     private Integer credits;
     private String teacherName;
-    private String schedule;
-    private String roomNumber;
+    private java.util.List<ClassSessionResponse> sessions;
     private Integer maxStudents;
     private Integer currentStudents;
     private ScheduledClassStatus status;

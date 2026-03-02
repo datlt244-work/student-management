@@ -693,6 +693,8 @@ export interface TeacherSimpleResponse {
   firstName: string;
   lastName: string;
   fullName: string;
+  officeRoomId?: number | null;
+  officeRoomName?: string | null;
 }
 
 export interface AdminCreateSemesterRequest {

@@ -113,16 +113,20 @@ function formatDate(dateStr: string) {
   return date.toLocaleDateString()
 }
 
+let pollInterval: ReturnType<typeof setInterval> | null = null
+
 onMounted(() => {
   fetchSummary()
-  // Refresh count every 30 seconds
-  const interval = setInterval(fetchSummary, 30000)
+  pollInterval = setInterval(fetchSummary, 30000)
   document.addEventListener('mousedown', handleClickOutside)
+})
 
-  onUnmounted(() => {
-    clearInterval(interval)
-    document.removeEventListener('mousedown', handleClickOutside)
-  })
+onUnmounted(() => {
+  if (pollInterval !== null) {
+    clearInterval(pollInterval)
+    pollInterval = null
+  }
+  document.removeEventListener('mousedown', handleClickOutside)
 })
 </script>
 

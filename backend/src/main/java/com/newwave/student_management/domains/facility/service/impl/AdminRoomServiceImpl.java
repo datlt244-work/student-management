@@ -44,7 +44,7 @@ public class AdminRoomServiceImpl implements AdminRoomService {
 
         return AdminRoomListResponse.builder()
                 .content(roomPage.getContent())
-                .page(roomPage.getNumber() + 1)
+                .page(roomPage.getNumber())
                 .size(roomPage.getSize())
                 .totalElements(roomPage.getTotalElements())
                 .totalPages(roomPage.getTotalPages())

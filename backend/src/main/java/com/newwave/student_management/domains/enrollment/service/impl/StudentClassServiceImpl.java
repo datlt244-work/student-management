@@ -16,6 +16,7 @@ import com.newwave.student_management.domains.profile.entity.Student;
 import com.newwave.student_management.domains.profile.repository.SemesterRepository;
 import com.newwave.student_management.domains.profile.repository.StudentRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,12 +26,14 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class StudentClassServiceImpl implements IStudentClassService {
 
         private final ScheduledClassRepository scheduledClassRepository;
         private final EnrollmentRepository enrollmentRepository;
         private final StudentRepository studentRepository;
         private final SemesterRepository semesterRepository;
+        private final ClassCacheService classCacheService;
 
         @Override
         @Transactional(readOnly = true)
@@ -47,6 +50,22 @@ public class StudentClassServiceImpl implements IStudentClassService {
                         return List.of();
                 }
 
+                // Phase 2: Redis-first → fallback DB
+                List<StudentAvailableClassResponse> cachedResult = null;
+                try {
+                        cachedResult = classCacheService.getAvailableClassesFromCache(
+                                        currentSemester.getSemesterId(), departmentId, student.getStudentId());
+                } catch (Exception e) {
+                        log.warn("Redis cache read failed, falling back to DB: {}", e.getMessage());
+                }
+
+                if (cachedResult != null) {
+                        log.debug("Cache HIT: returned {} classes from Redis", cachedResult.size());
+                        return cachedResult;
+                }
+
+                // Cache MISS → fallback to PostgreSQL
+                log.debug("Cache MISS: querying PostgreSQL for available classes");
                 List<ScheduledClass> availableClasses = scheduledClassRepository.findAvailableClassesForStudent(
                                 departmentId,
                                 currentSemester.getSemesterId(),

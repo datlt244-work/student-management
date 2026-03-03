@@ -36,4 +36,12 @@ public interface ScheduledClassRepository
                         "AND sc.deletedAt IS NULL " +
                         "AND sc.classId NOT IN (SELECT e.scheduledClass.classId FROM Enrollment e WHERE e.student.studentId = :studentId)")
         List<ScheduledClass> findAvailableClassesForStudent(Integer departmentId, Integer semesterId, UUID studentId);
+
+        /**
+         * Tìm tất cả lớp OPEN (chưa bị xóa) trong 1 semester.
+         * Dùng cho ClassCacheService để sync lên Redis khi Admin publish.
+         */
+        List<ScheduledClass> findBySemesterSemesterIdAndStatusAndDeletedAtIsNull(
+                        Integer semesterId,
+                        com.newwave.student_management.domains.enrollment.entity.ScheduledClassStatus status);
 }

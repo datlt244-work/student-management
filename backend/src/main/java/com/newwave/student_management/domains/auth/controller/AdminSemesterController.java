@@ -29,7 +29,7 @@ public class AdminSemesterController {
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) String name,
             @RequestParam(required = false) Boolean isCurrent,
-            @PageableDefault(sort = {"year", "semesterId"}, direction = Sort.Direction.DESC) Pageable pageable) {
+            @PageableDefault(sort = { "year", "semesterId" }, direction = Sort.Direction.DESC) Pageable pageable) {
         return ApiResponse.<AdminSemesterListResponse>builder()
                 .result(adminSemesterService.getSemesters(year, name, isCurrent, pageable))
                 .build();
@@ -66,5 +66,29 @@ public class AdminSemesterController {
     public ApiResponse<Void> deleteSemester(@PathVariable Integer id) {
         adminSemesterService.deleteSemester(id);
         return ApiResponse.<Void>builder().build();
+    }
+
+    /**
+     * Publish semester: sync tất cả lớp OPEN lên Redis, sẵn sàng cho SV đăng ký.
+     * POST /admin/semesters/{id}/publish
+     */
+    @PatchMapping("/{id}/publish")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<AdminSemesterResponse> publishSemester(@PathVariable Integer id) {
+        return ApiResponse.<AdminSemesterResponse>builder()
+                .result(adminSemesterService.publishSemester(id))
+                .build();
+    }
+
+    /**
+     * Đóng cổng đăng ký: xóa Redis cache.
+     * POST /admin/semesters/{id}/close-enrollment
+     */
+    @PatchMapping("/{id}/close-enrollment")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<AdminSemesterResponse> closeSemesterEnrollment(@PathVariable Integer id) {
+        return ApiResponse.<AdminSemesterResponse>builder()
+                .result(adminSemesterService.closeSemesterEnrollment(id))
+                .build();
     }
 }

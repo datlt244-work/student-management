@@ -33,4 +33,14 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Integer>
 
         List<Enrollment> findByStudentStudentIdAndScheduledClassSemesterSemesterIdAndScheduledClassDeletedAtIsNull(
                         UUID studentId, Integer semesterId);
+
+        /**
+         * Lấy danh sách classId mà SV đã đăng ký trong 1 semester.
+         * Dùng cho cache read path: chỉ lấy ID, rất nhẹ.
+         */
+        @Query("SELECT e.scheduledClass.classId FROM Enrollment e " +
+                        "WHERE e.student.studentId = :studentId " +
+                        "AND e.scheduledClass.semester.semesterId = :semesterId " +
+                        "AND e.scheduledClass.deletedAt IS NULL")
+        java.util.Set<Integer> findClassIdsByStudentIdAndSemesterId(UUID studentId, Integer semesterId);
 }

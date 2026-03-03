@@ -8,6 +8,8 @@ import com.newwave.student_management.domains.auth.dto.response.AdminSemesterLis
 import com.newwave.student_management.domains.auth.dto.response.AdminSemesterResponse;
 import com.newwave.student_management.domains.auth.service.AdminSemesterService;
 import com.newwave.student_management.domains.enrollment.repository.ScheduledClassRepository;
+import com.newwave.student_management.domains.enrollment.service.impl.ClassCacheService;
+import com.newwave.student_management.domains.profile.entity.EnrollmentStatus;
 import com.newwave.student_management.domains.profile.entity.Semester;
 import com.newwave.student_management.domains.profile.repository.SemesterRepository;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +29,7 @@ public class AdminSemesterServiceImpl implements AdminSemesterService {
 
     private final SemesterRepository semesterRepository;
     private final ScheduledClassRepository scheduledClassRepository;
+    private final ClassCacheService classCacheService;
 
     @Override
     public AdminSemesterListResponse getSemesters(Integer year, String name, Boolean isCurrent, Pageable pageable) {
@@ -86,24 +89,28 @@ public class AdminSemesterServiceImpl implements AdminSemesterService {
         Semester semester = semesterRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.SEMESTER_NOT_FOUND));
 
-        java.time.LocalDate newStart = request.getStartDate() != null ? request.getStartDate() : semester.getStartDate();
+        java.time.LocalDate newStart = request.getStartDate() != null ? request.getStartDate()
+                : semester.getStartDate();
         java.time.LocalDate newEnd = request.getEndDate() != null ? request.getEndDate() : semester.getEndDate();
 
         validateSemesterDatesOverlap(id, newStart, newEnd);
 
-        if (request.getStartDate() != null) semester.setStartDate(request.getStartDate());
-        if (request.getEndDate() != null) semester.setEndDate(request.getEndDate());
+        if (request.getStartDate() != null)
+            semester.setStartDate(request.getStartDate());
+        if (request.getEndDate() != null)
+            semester.setEndDate(request.getEndDate());
 
         semester = semesterRepository.save(semester);
         return mapToResponse(semester);
     }
 
     private void validateSemesterDatesOverlap(Integer id, java.time.LocalDate start, java.time.LocalDate end) {
-        if (start == null || end == null) return;
+        if (start == null || end == null)
+            return;
         if (start.isAfter(end)) {
             throw new AppException(ErrorCode.VALIDATION_ERROR);
         }
-        
+
         var overlaps = semesterRepository.findOverlappingSemesters(id != null ? id : -1, start, end);
         if (!overlaps.isEmpty()) {
             throw new AppException(ErrorCode.SEMESTER_DATE_OVERLAP);
@@ -144,6 +151,61 @@ public class AdminSemesterServiceImpl implements AdminSemesterService {
         semesterRepository.delete(semester);
     }
 
+    /**
+     * Publish semester: sync tất cả lớp OPEN lên Redis Cache.
+     *
+     * Flow:
+     * 1. Tìm semester, validate trạng thái
+     * 2. Gọi ClassCacheService.warmCache() → sync lên Redis
+     * 3. Đổi enrollmentStatus = PUBLISHED, ghi publishedAt
+     * 4. Trả response
+     */
+    @Override
+    @Transactional
+    public AdminSemesterResponse publishSemester(Integer id) {
+        Semester semester = semesterRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.SEMESTER_NOT_FOUND));
+
+        // Chỉ semester hiện tại mới được publish
+        if (!semester.isCurrent()) {
+            throw new AppException(ErrorCode.SEMESTER_NOT_CURRENT);
+        }
+
+        // Sync lên Redis
+        int classCount = classCacheService.warmCache(id);
+        log.info("Published semester {}: {} classes synced to Redis", semester.getDisplayName(), classCount);
+
+        // Cập nhật trạng thái
+        semester.setEnrollmentStatus(EnrollmentStatus.PUBLISHED);
+        semester.setPublishedAt(java.time.LocalDateTime.now());
+        semester = semesterRepository.save(semester);
+
+        return mapToResponse(semester);
+    }
+
+    /**
+     * Đóng cổng đăng ký: xóa cache Redis, đổi status = CLOSED.
+     */
+    @Override
+    @Transactional
+    public AdminSemesterResponse closeSemesterEnrollment(Integer id) {
+        Semester semester = semesterRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.SEMESTER_NOT_FOUND));
+
+        if (semester.getEnrollmentStatus() != EnrollmentStatus.PUBLISHED) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR);
+        }
+
+        // Xóa cache Redis
+        classCacheService.clearSemesterCache(id);
+        log.info("Closed enrollment for semester {}: Redis cache cleared", semester.getDisplayName());
+
+        semester.setEnrollmentStatus(EnrollmentStatus.CLOSED);
+        semester = semesterRepository.save(semester);
+
+        return mapToResponse(semester);
+    }
+
     private AdminSemesterResponse mapToResponse(Semester semester) {
         return AdminSemesterResponse.builder()
                 .semesterId(semester.getSemesterId())
@@ -153,6 +215,10 @@ public class AdminSemesterServiceImpl implements AdminSemesterService {
                 .startDate(semester.getStartDate())
                 .endDate(semester.getEndDate())
                 .isCurrent(semester.isCurrent())
+                .enrollmentStatus(semester.getEnrollmentStatus() != null
+                        ? semester.getEnrollmentStatus().name()
+                        : "DRAFT")
+                .publishedAt(semester.getPublishedAt())
                 .createdAt(semester.getCreatedAt())
                 .build();
     }

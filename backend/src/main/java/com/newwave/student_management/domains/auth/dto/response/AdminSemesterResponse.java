@@ -22,5 +22,7 @@ public class AdminSemesterResponse {
     private LocalDate endDate;
     @JsonProperty("isCurrent")
     private boolean isCurrent;
+    private String enrollmentStatus;
+    private LocalDateTime publishedAt;
     private LocalDateTime createdAt;
 }

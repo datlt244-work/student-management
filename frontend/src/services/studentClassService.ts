@@ -32,6 +32,21 @@ export interface StudentEnrolledClass {
   enrollmentDate: string
 }
 
+export async function getEnrollmentDeadline(): Promise<{
+  semesterName?: string
+  enrollmentStatus?: string
+  isOpen: boolean
+  publishedAt?: string
+  deadline: string
+}> {
+  const response = await apiFetch('/student/classes/enrollment-deadline')
+  if (response.ok) {
+    const data = await response.json()
+    return data.result
+  }
+  return { isOpen: false, deadline: '' }
+}
+
 export async function getAvailableClasses(): Promise<StudentAvailableClass[]> {
   const response = await apiFetch('/student/classes/available')
   if (response.ok) {

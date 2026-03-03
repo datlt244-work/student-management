@@ -18,7 +18,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.newwave.student_management.domains.profile.repository.SemesterRepository;
+import com.newwave.student_management.domains.profile.entity.EnrollmentStatus;
+
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -29,6 +34,7 @@ import java.util.UUID;
 public class StudentClassController {
 
     private final IStudentClassService studentClassService;
+    private final SemesterRepository semesterRepository;
 
     @GetMapping("/available")
     @Operation(summary = "Lấy danh sách lớp có thể đăng ký", description = "Trả về danh sách lớp học thuộc khoa của sinh viên, trong học kỳ hiện tại, "
@@ -38,6 +44,32 @@ public class StudentClassController {
             @AuthenticationPrincipal Jwt jwt) {
         UUID userId = UUID.fromString(jwt.getClaim("userId"));
         return ApiResponse.success(studentClassService.getAvailableClasses(userId));
+    }
+
+    @GetMapping("/enrollment-deadline")
+    @Operation(summary = "Lấy thời gian đóng đăng ký tín chỉ của học kỳ hiện tại")
+    public ApiResponse<Map<String, Object>> getEnrollmentDeadline() {
+        return semesterRepository.findByIsCurrentTrue()
+                .map(semester -> {
+                    LocalDateTime deadline = semester.getPublishedAt() != null
+                            ? semester.getPublishedAt().plusHours(72)
+                            : null;
+                    boolean isOpen = semester.getEnrollmentStatus() == EnrollmentStatus.PUBLISHED;
+                    Map<String, Object> result = new java.util.HashMap<>();
+                    result.put("semesterName", semester.getDisplayName());
+                    result.put("enrollmentStatus", semester.getEnrollmentStatus().name());
+                    result.put("isOpen", isOpen);
+                    result.put("publishedAt",
+                            semester.getPublishedAt() != null ? semester.getPublishedAt().toString() : "");
+                    result.put("deadline", deadline != null ? deadline.toString() : "");
+                    return ApiResponse.<Map<String, Object>>success(result);
+                })
+                .orElseGet(() -> {
+                    Map<String, Object> result = new java.util.HashMap<>();
+                    result.put("isOpen", false);
+                    result.put("deadline", "");
+                    return ApiResponse.<Map<String, Object>>success(result);
+                });
     }
 
     @GetMapping("/enrolled")

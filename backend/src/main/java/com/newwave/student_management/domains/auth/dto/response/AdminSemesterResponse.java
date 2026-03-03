@@ -24,5 +24,7 @@ public class AdminSemesterResponse {
     private boolean isCurrent;
     private String enrollmentStatus;
     private LocalDateTime publishedAt;
+    /** Phút mà enrollment sẽ tự động đóng = publishedAt + 72h */
+    private LocalDateTime enrollmentDeadline;
     private LocalDateTime createdAt;
 }

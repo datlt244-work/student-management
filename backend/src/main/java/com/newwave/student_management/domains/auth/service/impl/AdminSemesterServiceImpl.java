@@ -214,11 +214,11 @@ public class AdminSemesterServiceImpl implements AdminSemesterService {
     public void autoCloseExpiredSemesters() {
         java.util.List<Semester> publishedSemesters = semesterRepository
                 .findByEnrollmentStatus(EnrollmentStatus.PUBLISHED);
-        java.time.LocalDateTime threshold = java.time.LocalDateTime.now().minusHours(48);
+        java.time.LocalDateTime threshold = java.time.LocalDateTime.now().minusHours(72);
 
         for (Semester semester : publishedSemesters) {
             if (semester.getPublishedAt() != null && semester.getPublishedAt().isBefore(threshold)) {
-                log.info("Cron: Auto closing semester {} because 48 hours have passed since it was published at {}",
+                log.info("Cron: Auto closing semester {} because 72 hours (3 days) have passed since published at {}",
                         semester.getDisplayName(), semester.getPublishedAt());
                 try {
                     closeSemesterEnrollment(semester.getSemesterId());
@@ -242,6 +242,9 @@ public class AdminSemesterServiceImpl implements AdminSemesterService {
                         ? semester.getEnrollmentStatus().name()
                         : "DRAFT")
                 .publishedAt(semester.getPublishedAt())
+                .enrollmentDeadline(semester.getPublishedAt() != null
+                        ? semester.getPublishedAt().plusHours(72)
+                        : null)
                 .createdAt(semester.getCreatedAt())
                 .build();
     }

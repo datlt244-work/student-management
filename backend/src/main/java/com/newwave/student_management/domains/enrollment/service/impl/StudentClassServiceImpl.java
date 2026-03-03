@@ -281,9 +281,22 @@ public class StudentClassServiceImpl implements IStudentClassService {
                 enrollment.setScheduledClass(scheduledClass);
                 enrollment.setEnrollmentDate(java.time.LocalDate.now());
 
-                enrollmentRepository.save(enrollment);
-                log.info("Student {} enrolled in class {} (Redis reservation: {})",
-                                student.getStudentId(), classId, usedRedisReservation);
+                try {
+                        enrollmentRepository.save(enrollment);
+                        log.info("Student {} enrolled in class {} (Redis reservation: {})",
+                                        student.getStudentId(), classId, usedRedisReservation);
+                } catch (RuntimeException ex) {
+                        if (usedRedisReservation) {
+                                try {
+                                        classCacheService.releaseSlot(classId);
+                                        log.debug("Released Redis slot for class {} due to DB save failure", classId);
+                                } catch (Exception innerEx) {
+                                        log.error("Failed to release Redis slot for class {}: {}", classId,
+                                                        innerEx.getMessage());
+                                }
+                        }
+                        throw ex;
+                }
         }
 
         @Override

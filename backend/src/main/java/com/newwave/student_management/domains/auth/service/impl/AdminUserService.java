@@ -84,11 +84,11 @@ public class AdminUserService implements IAdminUserService {
                     UUID uid = user.getUserId();
                     if (rId == ROLE_TEACHER) {
                         fullName = teacherRepository.findByUser_UserIdAndDeletedAtIsNull(uid)
-                                .map(t -> (t.getFirstName() + " " + t.getLastName()).trim())
+                                .map(teacher -> (teacher.getFirstName() + " " + teacher.getLastName()).trim())
                                 .orElse(null);
                     } else if (rId == ROLE_STUDENT) {
                         fullName = studentRepository.findByUser_UserIdAndDeletedAtIsNull(uid)
-                                .map(s -> (s.getFirstName() + " " + s.getLastName()).trim())
+                                .map(student -> (student.getFirstName() + " " + student.getLastName()).trim())
                                 .orElse(null);
                     }
 
@@ -367,8 +367,8 @@ public class AdminUserService implements IAdminUserService {
                 student.setDob(request.getDob());
             }
             if (request.getGender() != null) {
-                String g = request.getGender();
-                student.setGender(g == null || g.isBlank() ? null : g.trim().toUpperCase());
+                String genderStr = request.getGender();
+                student.setGender(genderStr == null || genderStr.isBlank() ? null : genderStr.trim().toUpperCase());
             }
             if (request.getMajor() != null) {
                 student.setMajor(trimToNull(request.getMajor(), 100));
@@ -460,13 +460,13 @@ public class AdminUserService implements IAdminUserService {
         userRepository.save(user);
 
         // Soft delete related profiles if exist
-        teacherRepository.findByUser_UserIdAndDeletedAtIsNull(targetUserId).ifPresent(t -> {
-            t.setDeletedAt(java.time.LocalDateTime.now());
-            teacherRepository.save(t);
+        teacherRepository.findByUser_UserIdAndDeletedAtIsNull(targetUserId).ifPresent(teacher -> {
+            teacher.setDeletedAt(java.time.LocalDateTime.now());
+            teacherRepository.save(teacher);
         });
-        studentRepository.findByUser_UserIdAndDeletedAtIsNull(targetUserId).ifPresent(s -> {
-            s.setDeletedAt(java.time.LocalDateTime.now());
-            studentRepository.save(s);
+        studentRepository.findByUser_UserIdAndDeletedAtIsNull(targetUserId).ifPresent(student -> {
+            student.setDeletedAt(java.time.LocalDateTime.now());
+            studentRepository.save(student);
         });
 
         // Force logout: invalidate tokens
@@ -477,23 +477,23 @@ public class AdminUserService implements IAdminUserService {
     @Override
     public List<TeacherSimpleResponse> getTeachersByDepartment(Integer departmentId) {
         return teacherRepository.findByDepartment_DepartmentIdAndDeletedAtIsNull(departmentId).stream()
-                .map(t -> {
+                .map(teacher -> {
                     // Lookup assigned room for this teacher
                     Integer roomId = null;
                     String roomName = null;
-                    if (t.getOfficeRoom() != null && !t.getOfficeRoom().isBlank()) {
-                        var roomOpt = roomRepository.findByNameAndDeletedAtIsNull(t.getOfficeRoom());
+                    if (teacher.getOfficeRoom() != null && !teacher.getOfficeRoom().isBlank()) {
+                        var roomOpt = roomRepository.findByNameAndDeletedAtIsNull(teacher.getOfficeRoom());
                         if (roomOpt.isPresent()) {
                             roomId = roomOpt.get().getRoomId();
                             roomName = roomOpt.get().getName();
                         }
                     }
                     return TeacherSimpleResponse.builder()
-                            .teacherId(t.getTeacherId())
-                            .teacherCode(t.getTeacherCode())
-                            .firstName(t.getFirstName())
-                            .lastName(t.getLastName())
-                            .fullName((t.getFirstName() + " " + t.getLastName()).trim())
+                            .teacherId(teacher.getTeacherId())
+                            .teacherCode(teacher.getTeacherCode())
+                            .firstName(teacher.getFirstName())
+                            .lastName(teacher.getLastName())
+                            .fullName((teacher.getFirstName() + " " + teacher.getLastName()).trim())
                             .officeRoomId(roomId)
                             .officeRoomName(roomName)
                             .build();
@@ -502,32 +502,32 @@ public class AdminUserService implements IAdminUserService {
     }
 
     private static String generateRandomPassword() {
-        SecureRandom r = new SecureRandom();
+        SecureRandom random = new SecureRandom();
         StringBuilder sb = new StringBuilder(PASSWORD_LENGTH);
-        sb.append(PASSWORD_CHARS_UPPER.charAt(r.nextInt(PASSWORD_CHARS_UPPER.length())));
-        sb.append(PASSWORD_CHARS_LOWER.charAt(r.nextInt(PASSWORD_CHARS_LOWER.length())));
-        sb.append(PASSWORD_CHARS_DIGIT.charAt(r.nextInt(PASSWORD_CHARS_DIGIT.length())));
-        sb.append(PASSWORD_CHARS_SPECIAL.charAt(r.nextInt(PASSWORD_CHARS_SPECIAL.length())));
+        sb.append(PASSWORD_CHARS_UPPER.charAt(random.nextInt(PASSWORD_CHARS_UPPER.length())));
+        sb.append(PASSWORD_CHARS_LOWER.charAt(random.nextInt(PASSWORD_CHARS_LOWER.length())));
+        sb.append(PASSWORD_CHARS_DIGIT.charAt(random.nextInt(PASSWORD_CHARS_DIGIT.length())));
+        sb.append(PASSWORD_CHARS_SPECIAL.charAt(random.nextInt(PASSWORD_CHARS_SPECIAL.length())));
         String all = PASSWORD_CHARS_UPPER + PASSWORD_CHARS_LOWER + PASSWORD_CHARS_DIGIT + PASSWORD_CHARS_SPECIAL;
         for (int i = 4; i < PASSWORD_LENGTH; i++) {
-            sb.append(all.charAt(r.nextInt(all.length())));
+            sb.append(all.charAt(random.nextInt(all.length())));
         }
         // Shuffle
-        char[] a = sb.toString().toCharArray();
-        for (int i = a.length - 1; i > 0; i--) {
-            int j = r.nextInt(i + 1);
-            char t = a[i];
-            a[i] = a[j];
-            a[j] = t;
+        char[] passwordChars = sb.toString().toCharArray();
+        for (int i = passwordChars.length - 1; i > 0; i--) {
+            int j = random.nextInt(i + 1);
+            char temp = passwordChars[i];
+            passwordChars[i] = passwordChars[j];
+            passwordChars[j] = temp;
         }
-        return new String(a);
+        return new String(passwordChars);
     }
 
     private static String trimToNull(String s, int maxLen) {
         if (s == null || s.isBlank())
             return null;
-        String t = s.trim();
-        return t.length() > maxLen ? t.substring(0, maxLen) : t;
+        String trimmed = s.trim();
+        return trimmed.length() > maxLen ? trimmed.substring(0, maxLen) : trimmed;
     }
 
     private static String buildDisplayNameFromEmail(String email) {
@@ -538,13 +538,13 @@ public class AdminUserService implements IAdminUserService {
             return email;
         String[] parts = local.split("[._]");
         StringBuilder sb = new StringBuilder();
-        for (String p : parts) {
-            if (p == null || p.isBlank())
+        for (String part : parts) {
+            if (part == null || part.isBlank())
                 continue;
             if (sb.length() > 0)
                 sb.append(' ');
-            sb.append(Character.toUpperCase(p.charAt(0)))
-                    .append(p.substring(1));
+            sb.append(Character.toUpperCase(part.charAt(0)))
+                    .append(part.substring(1));
         }
         return sb.length() > 0 ? sb.toString() : email;
     }
@@ -552,11 +552,11 @@ public class AdminUserService implements IAdminUserService {
     private static String trimRequired(String s, int maxLen, String errorMessage) {
         if (s == null)
             return null;
-        String t = s.trim();
-        if (t.isBlank()) {
+        String trimmed = s.trim();
+        if (trimmed.isBlank()) {
             throw new AppException(ErrorCode.VALIDATION_ERROR, errorMessage);
         }
-        return t.length() > maxLen ? t.substring(0, maxLen) : t;
+        return trimmed.length() > maxLen ? trimmed.substring(0, maxLen) : trimmed;
     }
 
     /**
@@ -577,51 +577,51 @@ public class AdminUserService implements IAdminUserService {
         });
     }
 
-    private AdminUserDetailResponse.StudentProfilePart toStudentProfilePart(Student s) {
-        Department d = s.getDepartment();
-        AdminUserDetailResponse.DepartmentSummary dept = d != null
+    private AdminUserDetailResponse.StudentProfilePart toStudentProfilePart(Student student) {
+        Department department = student.getDepartment();
+        AdminUserDetailResponse.DepartmentSummary dept = department != null
                 ? AdminUserDetailResponse.DepartmentSummary.builder()
-                        .departmentId(d.getDepartmentId())
-                        .name(d.getName())
+                        .departmentId(department.getDepartmentId())
+                        .name(department.getName())
                         .build()
                 : null;
         return AdminUserDetailResponse.StudentProfilePart.builder()
-                .studentId(s.getStudentId())
-                .studentCode(s.getStudentCode())
-                .firstName(s.getFirstName())
-                .lastName(s.getLastName())
-                .dob(s.getDob())
-                .gender(s.getGender())
-                .major(s.getMajor())
-                .email(s.getEmail())
-                .phone(s.getPhone())
-                .address(s.getAddress())
-                .gpa(s.getGpa())
-                .year(s.getYear())
-                .manageClass(s.getManageClass())
+                .studentId(student.getStudentId())
+                .studentCode(student.getStudentCode())
+                .firstName(student.getFirstName())
+                .lastName(student.getLastName())
+                .dob(student.getDob())
+                .gender(student.getGender())
+                .major(student.getMajor())
+                .email(student.getEmail())
+                .phone(student.getPhone())
+                .address(student.getAddress())
+                .gpa(student.getGpa())
+                .year(student.getYear())
+                .manageClass(student.getManageClass())
                 .department(dept)
                 .build();
     }
 
-    private AdminUserDetailResponse.TeacherProfilePart toTeacherProfilePart(Teacher t) {
-        Department d = t.getDepartment();
-        AdminUserDetailResponse.DepartmentSummary dept = d != null
+    private AdminUserDetailResponse.TeacherProfilePart toTeacherProfilePart(Teacher teacher) {
+        Department department = teacher.getDepartment();
+        AdminUserDetailResponse.DepartmentSummary dept = department != null
                 ? AdminUserDetailResponse.DepartmentSummary.builder()
-                        .departmentId(d.getDepartmentId())
-                        .name(d.getName())
+                        .departmentId(department.getDepartmentId())
+                        .name(department.getName())
                         .build()
                 : null;
         return AdminUserDetailResponse.TeacherProfilePart.builder()
-                .teacherId(t.getTeacherId())
-                .teacherCode(t.getTeacherCode())
-                .firstName(t.getFirstName())
-                .lastName(t.getLastName())
-                .email(t.getEmail())
-                .phone(t.getPhone())
-                .specialization(t.getSpecialization())
-                .academicRank(t.getAcademicRank())
-                .officeRoom(t.getOfficeRoom())
-                .degreesQualification(t.getDegreesQualification())
+                .teacherId(teacher.getTeacherId())
+                .teacherCode(teacher.getTeacherCode())
+                .firstName(teacher.getFirstName())
+                .lastName(teacher.getLastName())
+                .email(teacher.getEmail())
+                .phone(teacher.getPhone())
+                .specialization(teacher.getSpecialization())
+                .academicRank(teacher.getAcademicRank())
+                .officeRoom(teacher.getOfficeRoom())
+                .degreesQualification(teacher.getDegreesQualification())
                 .department(dept)
                 .build();
     }

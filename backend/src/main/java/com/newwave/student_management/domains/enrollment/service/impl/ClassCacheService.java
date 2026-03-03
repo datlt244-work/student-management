@@ -5,6 +5,8 @@ import com.newwave.student_management.domains.enrollment.entity.ScheduledClass;
 import com.newwave.student_management.domains.enrollment.entity.ScheduledClassStatus;
 import com.newwave.student_management.domains.enrollment.repository.EnrollmentRepository;
 import com.newwave.student_management.domains.enrollment.repository.ScheduledClassRepository;
+import com.newwave.student_management.domains.profile.entity.Semester;
+import com.newwave.student_management.domains.profile.repository.SemesterRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -43,6 +45,7 @@ public class ClassCacheService {
     private final RedisTemplate<String, Object> redisTemplate;
     private final ScheduledClassRepository scheduledClassRepository;
     private final EnrollmentRepository enrollmentRepository;
+    private final SemesterRepository semesterRepository;
 
     /**
      * Prefix cho Redis keys.
@@ -82,33 +85,33 @@ public class ClassCacheService {
 
         // 3. Sync từng lớp lên Redis
         int count = 0;
-        for (ScheduledClass sc : openClasses) {
-            String classKey = CLASS_KEY_PREFIX + sc.getClassId();
+        for (ScheduledClass scheduledClass : openClasses) {
+            String classKey = CLASS_KEY_PREFIX + scheduledClass.getClassId();
 
             // Đếm SV đã đăng ký (snapshot hiện tại từ DB)
             long currentEnrolled = enrollmentRepository
-                    .countByScheduledClassClassId(sc.getClassId());
+                    .countByScheduledClassClassId(scheduledClass.getClassId());
 
             // Build hash data
             Map<String, String> classData = new HashMap<>();
-            classData.put("classId", String.valueOf(sc.getClassId()));
-            classData.put("courseCode", sc.getCourse().getCode());
-            classData.put("courseName", sc.getCourse().getName());
-            classData.put("credits", String.valueOf(sc.getCourse().getCredits()));
-            classData.put("teacherName", getTeacherName(sc));
-            classData.put("maxSlot", String.valueOf(sc.getMaxStudents()));
+            classData.put("classId", String.valueOf(scheduledClass.getClassId()));
+            classData.put("courseCode", scheduledClass.getCourse().getCode());
+            classData.put("courseName", scheduledClass.getCourse().getName());
+            classData.put("credits", String.valueOf(scheduledClass.getCourse().getCredits()));
+            classData.put("teacherName", getTeacherName(scheduledClass));
+            classData.put("maxSlot", String.valueOf(scheduledClass.getMaxStudents()));
             classData.put("currentSlot", String.valueOf(currentEnrolled));
-            classData.put("departmentId", sc.getCourse().getDepartment() != null
-                    ? String.valueOf(sc.getCourse().getDepartment().getDepartmentId())
+            classData.put("departmentId", scheduledClass.getCourse().getDepartment() != null
+                    ? String.valueOf(scheduledClass.getCourse().getDepartment().getDepartmentId())
                     : "");
             classData.put("status", "OPEN");
-            classData.put("sessions", serializeSessions(sc.getSessions()));
+            classData.put("sessions", serializeSessions(scheduledClass.getSessions()));
 
             // 4. Lưu Hash vào Redis
             redisTemplate.opsForHash().putAll(classKey, classData);
 
             // 5. Thêm classId vào SET của semester
-            redisTemplate.opsForSet().add(semesterSetKey, String.valueOf(sc.getClassId()));
+            redisTemplate.opsForSet().add(semesterSetKey, String.valueOf(scheduledClass.getClassId()));
 
             count++;
         }
@@ -239,6 +242,110 @@ public class ClassCacheService {
         log.debug("Slot released for class {}, currentSlot: {}", classId, newSlot);
     }
 
+    // ===== Phase 4: Enrollment Stats from Redis =====
+
+    /**
+     * Lấy thống kê enrollment real-time từ Redis cho admin dashboard.
+     * Toàn bộ dữ liệu đọc từ Redis, KHÔNG query DB.
+     *
+     * @param semesterId ID semester cần thống kê
+     * @return EnrollmentStatsResponse hoặc null nếu cache chưa active
+     */
+    public com.newwave.student_management.domains.enrollment.dto.response.EnrollmentStatsResponse getEnrollmentStats(
+            Integer semesterId) {
+
+        // Check DB first to see if it is published
+        Semester semester = semesterRepository.findById(semesterId).orElse(null);
+        boolean isPublished = semester != null && semester
+                .getEnrollmentStatus() == com.newwave.student_management.domains.profile.entity.EnrollmentStatus.PUBLISHED;
+
+        String semesterSetKey = SEMESTER_KEY_PREFIX + semesterId + ":classes";
+        Set<Object> classIds = redisTemplate.opsForSet().members(semesterSetKey);
+
+        if (!isPublished) {
+            return null; // Trả về null để Controller biết là Cache Not Active
+        }
+
+        if (classIds == null || classIds.isEmpty()) {
+            // Đã publish nhưng không có class nào được tạo hoặc có class nhưng chưa open
+            return com.newwave.student_management.domains.enrollment.dto.response.EnrollmentStatsResponse.builder()
+                    .totalClasses(0)
+                    .totalSlots(0)
+                    .filledSlots(0)
+                    .fillRate("0%")
+                    .cacheActive(true) // Set to true since it IS published
+                    .classes(java.util.List.of())
+                    .build();
+        }
+
+        List<com.newwave.student_management.domains.enrollment.dto.response.ClassEnrollmentStatResponse> classStats = new ArrayList<>();
+        int totalSlots = 0;
+        int filledSlots = 0;
+
+        for (Object classIdObj : classIds) {
+            String classKey = CLASS_KEY_PREFIX + classIdObj.toString();
+            Map<Object, Object> classData = redisTemplate.opsForHash().entries(classKey);
+            if (classData.isEmpty())
+                continue;
+
+            int maxSlot = parseIntSafe(classData.get("maxSlot"), 0);
+            int currentSlot = parseIntSafe(classData.get("currentSlot"), 0);
+
+            totalSlots += maxSlot;
+            filledSlots += currentSlot;
+
+            String fillRate = maxSlot > 0
+                    ? String.format("%.1f%%", (currentSlot * 100.0 / maxSlot))
+                    : "0%";
+
+            classStats.add(
+                    com.newwave.student_management.domains.enrollment.dto.response.ClassEnrollmentStatResponse.builder()
+                            .classId(parseIntSafe(classData.get("classId"), 0))
+                            .courseCode(getStringSafe(classData.get("courseCode")))
+                            .courseName(getStringSafe(classData.get("courseName")))
+                            .teacherName(getStringSafe(classData.get("teacherName")))
+                            .maxSlot(maxSlot)
+                            .currentSlot(currentSlot)
+                            .fillRate(fillRate)
+                            .status(getStringSafe(classData.get("status")))
+                            .build());
+        }
+
+        // Sắp xếp theo fill rate giảm dần (lớp đầy nhất ở trên)
+        classStats.sort((a, b) -> {
+            double rateA = a.getMaxSlot() > 0 ? (double) a.getCurrentSlot() / a.getMaxSlot() : 0;
+            double rateB = b.getMaxSlot() > 0 ? (double) b.getCurrentSlot() / b.getMaxSlot() : 0;
+            return Double.compare(rateB, rateA);
+        });
+
+        String overallFillRate = totalSlots > 0
+                ? String.format("%.1f%%", (filledSlots * 100.0 / totalSlots))
+                : "0%";
+
+        return com.newwave.student_management.domains.enrollment.dto.response.EnrollmentStatsResponse.builder()
+                .totalClasses(classStats.size())
+                .totalSlots(totalSlots)
+                .filledSlots(filledSlots)
+                .fillRate(overallFillRate)
+                .cacheActive(true)
+                .classes(classStats)
+                .build();
+    }
+
+    private int parseIntSafe(Object val, int defaultVal) {
+        if (val == null)
+            return defaultVal;
+        try {
+            return Integer.parseInt(val.toString());
+        } catch (NumberFormatException ex) {
+            return defaultVal;
+        }
+    }
+
+    private String getStringSafe(Object val) {
+        return val != null ? val.toString() : "";
+    }
+
     // ===== Helper methods =====
 
     private String getTeacherName(ScheduledClass sc) {
@@ -256,13 +363,13 @@ public class ClassCacheService {
             return "[]";
 
         return "[" + sessions.stream()
-                .map(s -> String.format(
+                .map(session -> String.format(
                         "{\"dayOfWeek\":%d,\"startTime\":\"%s\",\"endTime\":\"%s\",\"roomName\":\"%s\",\"roomId\":%s}",
-                        s.getDayOfWeek(),
-                        s.getStartTime(),
-                        s.getEndTime(),
-                        s.getRoom() != null ? s.getRoom().getName() : "N/A",
-                        s.getRoom() != null ? s.getRoom().getRoomId() : "null"))
+                        session.getDayOfWeek(),
+                        session.getStartTime(),
+                        session.getEndTime(),
+                        session.getRoom() != null ? session.getRoom().getName() : "N/A",
+                        session.getRoom() != null ? session.getRoom().getRoomId() : "null"))
                 .collect(Collectors.joining(",")) + "]";
     }
 

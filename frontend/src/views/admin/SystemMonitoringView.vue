@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import {
+  getEnrollmentStats,
+  type EnrollmentStatsResponse,
+  type ClassEnrollmentStat,
+} from '@/services/enrollmentStatsService'
+import {
+  getAdminSemesterList,
+  type AdminSemesterListItem,
+} from '@/services/adminUserService'
 
 // ===== Tab Management =====
 type TabName = 'system-logs' | 'audit-logs' | 'redis-analytics'
@@ -95,26 +104,85 @@ const mockAuditLogs: AuditEntry[] = [
   { timestamp: 'Mar 02, 02:30 PM', user: 'admin@school.edu', action: 'Reset password for user ID: 5521', ip: '10.0.0.15', status: 'Failed' },
 ]
 
-// ===== Redis Analytics =====
-interface ClassCapacity {
-  name: string
-  courseCode: string
-  current: number
-  max: number
+// ===== Redis Analytics (Real API) =====
+const semesters = ref<AdminSemesterListItem[]>([])
+const selectedSemesterId = ref<number | null>(null)
+const statsLoading = ref(false)
+const statsError = ref<string | null>(null)
+const enrollmentStats = ref<EnrollmentStatsResponse | null>(null)
+let refreshInterval: ReturnType<typeof setInterval> | null = null
+
+// Computed from real data
+const classCapacities = computed<ClassEnrollmentStat[]>(() => enrollmentStats.value?.classes ?? [])
+const totalSlots = computed(() => enrollmentStats.value?.totalSlots ?? 0)
+const filledSlots = computed(() => enrollmentStats.value?.filledSlots ?? 0)
+const fillRate = computed(() =>
+  totalSlots.value > 0 ? Math.round((filledSlots.value / totalSlots.value) * 100) : 0,
+)
+const cacheActive = computed(() => enrollmentStats.value?.cacheActive ?? false)
+
+async function loadSemesters() {
+  try {
+    const result = await getAdminSemesterList({ page: 0, size: 100 })
+    semesters.value = result.content
+    // Tự động chọn semester current
+    const current = semesters.value.find((s) => s.isCurrent)
+    if (current) {
+      selectedSemesterId.value = current.semesterId
+    } else if (semesters.value.length > 0) {
+      selectedSemesterId.value = semesters.value[0]?.semesterId || null
+    }
+  } catch (e) {
+    console.error('Failed to load semesters:', e)
+  }
 }
 
-const mockClassCapacities: ClassCapacity[] = [
-  { name: 'CS101.01', courseCode: 'CS101', current: 40, max: 40 },
-  { name: 'CS102.01', courseCode: 'CS102', current: 34, max: 40 },
-  { name: 'CS201.02', courseCode: 'CS201', current: 28, max: 35 },
-  { name: 'MATH101.01', courseCode: 'MATH101', current: 18, max: 40 },
-  { name: 'ENG201.01', courseCode: 'ENG201', current: 12, max: 30 },
-  { name: 'PHY101.01', courseCode: 'PHY101', current: 5, max: 35 },
-]
+async function loadStats() {
+  if (!selectedSemesterId.value) return
+  try {
+    statsLoading.value = true
+    statsError.value = null
+    enrollmentStats.value = await getEnrollmentStats(selectedSemesterId.value)
+  } catch (e: unknown) {
+    statsError.value = e instanceof Error ? e.message : 'Failed to load stats'
+    console.error('Failed to load enrollment stats:', e)
+  } finally {
+    statsLoading.value = false
+  }
+}
 
-const totalSlots = computed(() => mockClassCapacities.reduce((s, c) => s + c.max, 0))
-const filledSlots = computed(() => mockClassCapacities.reduce((s, c) => s + c.current, 0))
-const fillRate = computed(() => Math.round((filledSlots.value / totalSlots.value) * 100))
+function startAutoRefresh() {
+  stopAutoRefresh()
+  refreshInterval = setInterval(loadStats, 10000) // Refresh every 10s
+}
+
+function stopAutoRefresh() {
+  if (refreshInterval) {
+    clearInterval(refreshInterval)
+    refreshInterval = null
+  }
+}
+
+watch(selectedSemesterId, () => {
+  loadStats()
+})
+
+watch(activeTab, (tab) => {
+  if (tab === 'redis-analytics') {
+    loadStats()
+    startAutoRefresh()
+  } else {
+    stopAutoRefresh()
+  }
+})
+
+onMounted(async () => {
+  await loadSemesters()
+})
+
+onUnmounted(() => {
+  stopAutoRefresh()
+})
 
 function getCapacityColor(current: number, max: number) {
   const pct = (current / max) * 100
@@ -125,6 +193,7 @@ function getCapacityColor(current: number, max: number) {
 }
 
 function getCapacityTextColor(current: number, max: number) {
+  if (max === 0) return 'text-slate-500'
   const pct = (current / max) * 100
   if (pct >= 100) return 'text-red-500'
   if (pct >= 75) return 'text-primary'
@@ -376,17 +445,57 @@ function getCapacityTextColor(current: number, max: number) {
         v-if="activeTab === 'redis-analytics'"
         class="absolute inset-0 overflow-y-auto"
       >
-        <!-- Summary Cards -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-          <div
-            class="bg-surface-light dark:bg-surface-dark p-5 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm"
-          >
-            <p class="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">
-              Total Classes Cached
-            </p>
-            <p class="text-2xl font-bold text-slate-900 dark:text-white">
-              {{ mockClassCapacities.length }}
-            </p>
+        <!-- Semester Selector -->
+        <div class="mb-6 flex justify-between items-center bg-surface-light dark:bg-surface-dark p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm">
+          <div>
+            <h3 class="text-base font-bold text-slate-900 dark:text-white">Live Registration Status</h3>
+            <p class="text-sm text-slate-500">Monitor Redis cache fill rates in real-time</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <label class="text-sm font-medium text-slate-700 dark:text-slate-300">Semester</label>
+            <select
+              v-model="selectedSemesterId"
+              class="h-9 py-0 pl-3 pr-8 text-sm w-48 bg-stone-50 dark:bg-[#1a1a1a] border-stone-200 dark:border-stone-800 rounded-lg"
+            >
+              <option v-for="s in semesters" :key="s.semesterId" :value="s.semesterId">
+                {{ s.displayName || `${s.name} ${s.year}` }}
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <div v-if="statsLoading && !enrollmentStats" class="flex items-center gap-2 justify-center py-12 text-primary">
+          <span class="material-symbols-outlined animate-spin">progress_activity</span>
+          <span>Loading Redis metrics...</span>
+        </div>
+        
+        <div v-else-if="statsError" class="py-12 text-center text-red-500 bg-red-50 dark:bg-red-900/10 rounded-xl border border-red-200 dark:border-red-900/30">
+          <span class="material-symbols-outlined text-4xl mb-2">error</span>
+          <p class="font-bold">Failed to load analytics</p>
+          <p class="text-sm opacity-80">{{ statsError }}</p>
+          <button class="mt-4 px-4 py-2 border border-red-200 dark:border-red-800 rounded-lg text-sm font-medium hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors" @click="loadStats">
+            Retry
+          </button>
+        </div>
+
+        <div v-else-if="!cacheActive" class="py-16 text-center text-slate-500 bg-stone-50 dark:bg-[#1e1e1e] rounded-xl border border-stone-200 dark:border-stone-800 flex flex-col items-center justify-center">
+          <span class="material-symbols-outlined text-4xl mb-3 text-slate-300 dark:text-slate-600">cloud_off</span>
+          <h3 class="text-lg font-bold text-slate-700 dark:text-slate-300 mb-1">Cache Not Active</h3>
+          <p class="text-sm max-w-sm">Registration is not currently open for this semester. Publish the semester using the Admin tools to sync class data to Redis.</p>
+        </div>
+
+        <template v-else>
+          <!-- Summary Cards -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div
+              class="bg-surface-light dark:bg-surface-dark p-5 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm"
+            >
+              <p class="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">
+                Total Classes Cached
+              </p>
+              <p class="text-2xl font-bold text-slate-900 dark:text-white">
+                {{ classCapacities.length }}
+              </p>
           </div>
           <div
             class="bg-surface-light dark:bg-surface-dark p-5 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm"
@@ -448,26 +557,26 @@ function getCapacityTextColor(current: number, max: number) {
             <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4">
               Class Capacity Status
             </h3>
-            <div class="space-y-4">
-              <div v-for="cls in mockClassCapacities" :key="cls.name">
+            <div class="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+              <div v-for="cls in classCapacities" :key="cls.classId">
                 <div class="flex justify-between text-sm mb-1">
-                  <span class="text-slate-700 dark:text-slate-300">
-                    {{ cls.name }}
-                    <span class="text-xs text-slate-400">({{ cls.courseCode }})</span>
+                  <span class="text-slate-700 dark:text-slate-300 font-medium">
+                    {{ cls.courseName }}
+                    <span class="text-xs text-slate-400">({{ cls.courseCode }} - ID: {{ cls.classId }})</span>
                   </span>
                   <span
-                    :class="[getCapacityTextColor(cls.current, cls.max), 'font-bold']"
+                    :class="[getCapacityTextColor(cls.currentSlot, cls.maxSlot), 'font-bold']"
                   >
-                    {{ cls.current >= cls.max ? 'Full' : '' }}
-                    ({{ Math.round((cls.current / cls.max) * 100) }}%)
+                    {{ cls.currentSlot >= cls.maxSlot && cls.maxSlot > 0 ? 'Full' : '' }}
+                    {{ cls.currentSlot }} / {{ cls.maxSlot }} ({{ Math.round((cls.maxSlot > 0 ? cls.currentSlot / cls.maxSlot : 0) * 100) }}%)
                   </span>
                 </div>
                 <div
                   class="w-full bg-stone-100 dark:bg-stone-800 rounded-full h-2.5"
                 >
                   <div
-                    :class="[getCapacityColor(cls.current, cls.max), 'h-2.5 rounded-full transition-all duration-500']"
-                    :style="{ width: Math.min((cls.current / cls.max) * 100, 100) + '%' }"
+                    :class="[getCapacityColor(cls.currentSlot, cls.maxSlot), 'h-2.5 rounded-full transition-all duration-500']"
+                    :style="{ width: Math.min((cls.maxSlot > 0 ? cls.currentSlot / cls.maxSlot : 0) * 100, 100) + '%' }"
                   ></div>
                 </div>
               </div>
@@ -496,11 +605,12 @@ function getCapacityTextColor(current: number, max: number) {
               <span class="text-gray-500"> → </span>
               <span class="text-yellow-300">HASH</span>
               <span class="text-green-400">
-                { courseCode, courseName, maxSlot, currentSlot, sessions, ... }</span
+                { courseCode, courseName, maxSlot, currentSlot, status, ... }</span
               >
             </div>
           </div>
         </div>
+        </template>
       </div>
     </div>
   </div>

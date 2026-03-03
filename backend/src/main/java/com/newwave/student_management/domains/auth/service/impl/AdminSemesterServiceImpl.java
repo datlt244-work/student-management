@@ -124,9 +124,9 @@ public class AdminSemesterServiceImpl implements AdminSemesterService {
                 .orElseThrow(() -> new AppException(ErrorCode.SEMESTER_NOT_FOUND));
 
         // Unset previous current
-        semesterRepository.findByIsCurrentTrue().ifPresent(s -> {
-            s.setCurrent(false);
-            semesterRepository.save(s);
+        semesterRepository.findByIsCurrentTrue().ifPresent(semester -> {
+            semester.setCurrent(false);
+            semesterRepository.save(semester);
         });
 
         target.setCurrent(true);
@@ -183,9 +183,6 @@ public class AdminSemesterServiceImpl implements AdminSemesterService {
         return mapToResponse(semester);
     }
 
-    /**
-     * Đóng cổng đăng ký: xóa cache Redis, đổi status = CLOSED.
-     */
     @Override
     @Transactional
     public AdminSemesterResponse closeSemesterEnrollment(Integer id) {
@@ -204,6 +201,32 @@ public class AdminSemesterServiceImpl implements AdminSemesterService {
         semester = semesterRepository.save(semester);
 
         return mapToResponse(semester);
+    }
+
+    /**
+     * Tự động quét mỗi 5 phút. Nếu semester PUBLISHED đã được quá 48h, đóng tự
+     * động.
+     * Đây là cách mô phỏng "đặt lịch 48h" an toàn và đáng tin cậy kể cả khi server
+     * rớt mạng/khởi động lại.
+     */
+    @org.springframework.scheduling.annotation.Scheduled(fixedRate = 300000)
+    @Transactional
+    public void autoCloseExpiredSemesters() {
+        java.util.List<Semester> publishedSemesters = semesterRepository
+                .findByEnrollmentStatus(EnrollmentStatus.PUBLISHED);
+        java.time.LocalDateTime threshold = java.time.LocalDateTime.now().minusHours(48);
+
+        for (Semester semester : publishedSemesters) {
+            if (semester.getPublishedAt() != null && semester.getPublishedAt().isBefore(threshold)) {
+                log.info("Cron: Auto closing semester {} because 48 hours have passed since it was published at {}",
+                        semester.getDisplayName(), semester.getPublishedAt());
+                try {
+                    closeSemesterEnrollment(semester.getSemesterId());
+                } catch (Exception ex) {
+                    log.error("Failed to auto close semester {}", semester.getSemesterId(), ex);
+                }
+            }
+        }
     }
 
     private AdminSemesterResponse mapToResponse(Semester semester) {

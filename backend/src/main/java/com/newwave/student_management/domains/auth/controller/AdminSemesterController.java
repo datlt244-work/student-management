@@ -6,6 +6,8 @@ import com.newwave.student_management.domains.auth.dto.request.AdminUpdateSemest
 import com.newwave.student_management.domains.auth.dto.response.AdminSemesterListResponse;
 import com.newwave.student_management.domains.auth.dto.response.AdminSemesterResponse;
 import com.newwave.student_management.domains.auth.service.AdminSemesterService;
+import com.newwave.student_management.domains.enrollment.dto.response.EnrollmentStatsResponse;
+import com.newwave.student_management.domains.enrollment.service.impl.ClassCacheService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 public class AdminSemesterController {
 
     private final AdminSemesterService adminSemesterService;
+    private final ClassCacheService classCacheService;
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
@@ -89,6 +92,32 @@ public class AdminSemesterController {
     public ApiResponse<AdminSemesterResponse> closeSemesterEnrollment(@PathVariable Integer id) {
         return ApiResponse.<AdminSemesterResponse>builder()
                 .result(adminSemesterService.closeSemesterEnrollment(id))
+                .build();
+    }
+
+    /**
+     * Real-time enrollment stats đọc từ Redis.
+     * GET /admin/semesters/{id}/enrollment-stats
+     *
+     * Nếu cache chưa active (chưa publish) → trả về cacheActive=false.
+     */
+    @GetMapping("/{id}/enrollment-stats")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<EnrollmentStatsResponse> getEnrollmentStats(@PathVariable Integer id) {
+        EnrollmentStatsResponse stats = classCacheService.getEnrollmentStats(id);
+        if (stats == null) {
+            // Cache chưa active — trả response rỗng
+            stats = EnrollmentStatsResponse.builder()
+                    .totalClasses(0)
+                    .totalSlots(0)
+                    .filledSlots(0)
+                    .fillRate("0%")
+                    .cacheActive(false)
+                    .classes(java.util.List.of())
+                    .build();
+        }
+        return ApiResponse.<EnrollmentStatsResponse>builder()
+                .result(stats)
                 .build();
     }
 }

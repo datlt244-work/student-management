@@ -50,13 +50,18 @@ public class StudentClassServiceImpl implements IStudentClassService {
                         return List.of();
                 }
 
+                if (currentSemester
+                                .getEnrollmentStatus() != com.newwave.student_management.domains.profile.entity.EnrollmentStatus.PUBLISHED) {
+                        return List.of();
+                }
+
                 // Phase 2: Redis-first → fallback DB
                 List<StudentAvailableClassResponse> cachedResult = null;
                 try {
                         cachedResult = classCacheService.getAvailableClassesFromCache(
                                         currentSemester.getSemesterId(), departmentId, student.getStudentId());
-                } catch (Exception e) {
-                        log.warn("Redis cache read failed, falling back to DB: {}", e.getMessage());
+                } catch (Exception ex) {
+                        log.warn("Redis cache read failed, falling back to DB: {}", ex.getMessage());
                 }
 
                 if (cachedResult != null) {
@@ -112,17 +117,23 @@ public class StudentClassServiceImpl implements IStudentClassService {
                                 .credits(scheduledClass.getCourse().getCredits())
                                 .teacherName(teacherName)
                                 .sessions(scheduledClass.getSessions() != null
-                                                ? scheduledClass.getSessions().stream().map(s -> ClassSessionResponse
-                                                                .builder()
-                                                                .sessionId(s.getSessionId())
-                                                                .roomId(s.getRoom() != null ? s.getRoom().getRoomId()
-                                                                                : null)
-                                                                .roomName(s.getRoom() != null ? s.getRoom().getName()
-                                                                                : null)
-                                                                .dayOfWeek(s.getDayOfWeek())
-                                                                .startTime(s.getStartTime())
-                                                                .endTime(s.getEndTime())
-                                                                .build()).collect(Collectors.toList())
+                                                ? scheduledClass.getSessions().stream()
+                                                                .map(session -> ClassSessionResponse
+                                                                                .builder()
+                                                                                .sessionId(session.getSessionId())
+                                                                                .roomId(session.getRoom() != null
+                                                                                                ? session.getRoom()
+                                                                                                                .getRoomId()
+                                                                                                : null)
+                                                                                .roomName(session.getRoom() != null
+                                                                                                ? session.getRoom()
+                                                                                                                .getName()
+                                                                                                : null)
+                                                                                .dayOfWeek(session.getDayOfWeek())
+                                                                                .startTime(session.getStartTime())
+                                                                                .endTime(session.getEndTime())
+                                                                                .build())
+                                                                .collect(Collectors.toList())
                                                 : new java.util.ArrayList<>())
                                 .enrollmentDate(enrollment.getEnrollmentDate())
                                 .build();
@@ -145,17 +156,23 @@ public class StudentClassServiceImpl implements IStudentClassService {
                                 .credits(scheduledClass.getCourse().getCredits())
                                 .teacherName(teacherName)
                                 .sessions(scheduledClass.getSessions() != null
-                                                ? scheduledClass.getSessions().stream().map(s -> ClassSessionResponse
-                                                                .builder()
-                                                                .sessionId(s.getSessionId())
-                                                                .roomId(s.getRoom() != null ? s.getRoom().getRoomId()
-                                                                                : null)
-                                                                .roomName(s.getRoom() != null ? s.getRoom().getName()
-                                                                                : null)
-                                                                .dayOfWeek(s.getDayOfWeek())
-                                                                .startTime(s.getStartTime())
-                                                                .endTime(s.getEndTime())
-                                                                .build()).collect(Collectors.toList())
+                                                ? scheduledClass.getSessions().stream()
+                                                                .map(session -> ClassSessionResponse
+                                                                                .builder()
+                                                                                .sessionId(session.getSessionId())
+                                                                                .roomId(session.getRoom() != null
+                                                                                                ? session.getRoom()
+                                                                                                                .getRoomId()
+                                                                                                : null)
+                                                                                .roomName(session.getRoom() != null
+                                                                                                ? session.getRoom()
+                                                                                                                .getName()
+                                                                                                : null)
+                                                                                .dayOfWeek(session.getDayOfWeek())
+                                                                                .startTime(session.getStartTime())
+                                                                                .endTime(session.getEndTime())
+                                                                                .build())
+                                                                .collect(Collectors.toList())
                                                 : new java.util.ArrayList<>())
                                 .maxStudents(scheduledClass.getMaxStudents())
                                 .currentStudents((int) currentStudents)
@@ -172,10 +189,17 @@ public class StudentClassServiceImpl implements IStudentClassService {
                 ScheduledClass scheduledClass = scheduledClassRepository.findByClassIdAndDeletedAtIsNull(classId)
                                 .orElseThrow(() -> new AppException(ErrorCode.CLASS_NOT_FOUND));
 
-                // 1. Check if class is OPEN
+                // 1. Check if class is OPEN and Semester is PUBLISHED
                 if (scheduledClass
                                 .getStatus() != com.newwave.student_management.domains.enrollment.entity.ScheduledClassStatus.OPEN) {
                         throw new AppException(ErrorCode.CLASS_NOT_OPEN);
+                }
+
+                if (scheduledClass.getSemester()
+                                .getEnrollmentStatus() != com.newwave.student_management.domains.profile.entity.EnrollmentStatus.PUBLISHED) {
+                        throw new AppException(ErrorCode.CLASS_NOT_OPEN); // Reusing CLASS_NOT_OPEN or create a new one,
+                                                                          // but for now this works to prevent
+                                                                          // registration
                 }
 
                 // 2. Check if already enrolled in THIS class
@@ -211,11 +235,11 @@ public class StudentClassServiceImpl implements IStudentClassService {
                                         throw new AppException(ErrorCode.CLASS_FULL);
                                 }
                         }
-                } catch (AppException e) {
-                        throw e; // Re-throw business exceptions
-                } catch (Exception e) {
+                } catch (AppException ex) {
+                        throw ex; // Re-throw business exceptions
+                } catch (Exception ex) {
                         // Redis error → fallback DB
-                        log.warn("Redis slot check failed, falling back to DB: {}", e.getMessage());
+                        log.warn("Redis slot check failed, falling back to DB: {}", ex.getMessage());
                         long currentEnrolled = enrollmentRepository.countByScheduledClassClassId(classId);
                         if (currentEnrolled >= scheduledClass.getMaxStudents()) {
                                 throw new AppException(ErrorCode.CLASS_FULL);
@@ -237,18 +261,18 @@ public class StudentClassServiceImpl implements IStudentClassService {
                                         }
                                 }
                         }
-                } catch (AppException e) {
+                } catch (AppException ex) {
                         // Validation failed AFTER Redis reservation → release slot
                         if (usedRedisReservation) {
                                 try {
                                         classCacheService.releaseSlot(classId);
                                         log.debug("Released Redis slot for class {} due to schedule conflict", classId);
-                                } catch (Exception ex) {
+                                } catch (Exception innerEx) {
                                         log.error("Failed to release Redis slot for class {}: {}", classId,
-                                                        ex.getMessage());
+                                                        innerEx.getMessage());
                                 }
                         }
-                        throw e;
+                        throw ex;
                 }
 
                 // 6. Create enrollment (sync → DB)
@@ -290,9 +314,9 @@ public class StudentClassServiceImpl implements IStudentClassService {
                                 classCacheService.releaseSlot(classId);
                                 log.debug("Released Redis slot for class {} after unenroll", classId);
                         }
-                } catch (Exception e) {
+                } catch (Exception ex) {
                         log.warn("Failed to release Redis slot for class {} after unenroll: {}", classId,
-                                        e.getMessage());
+                                        ex.getMessage());
                 }
         }
 

@@ -55,8 +55,8 @@ public class GradeServiceImpl implements IGradeService {
 
         BigDecimal cumulativeGpa = calculateGpa(allGrades);
         int totalCredits = allGrades.stream()
-                .filter(g -> g.getGradeValue() != null)
-                .mapToInt(g -> g.getEnrollment().getScheduledClass().getCourse().getCredits())
+                .filter(grade -> grade.getGradeValue() != null)
+                .mapToInt(grade -> grade.getEnrollment().getScheduledClass().getCourse().getCredits())
                 .sum();
 
         return StudentTranscriptResponse.builder()

@@ -34,7 +34,7 @@ public class AdminRoomServiceImpl implements AdminRoomService {
         if (roomType != null && !roomType.isBlank()) {
             try {
                 typeEnum = com.newwave.student_management.domains.facility.entity.RoomType.valueOf(roomType);
-            } catch (IllegalArgumentException e) {
+            } catch (IllegalArgumentException ex) {
                 // Ignore invalid room type, or throw exception. We pass null to skip filter or
                 // we could throw error.
             }
@@ -118,7 +118,7 @@ public class AdminRoomServiceImpl implements AdminRoomService {
 
     private Room getRoomEntity(Integer roomId) {
         return roomRepository.findById(roomId)
-                .filter(r -> r.getDeletedAt() == null)
+                .filter(room -> room.getDeletedAt() == null)
                 .orElseThrow(() -> new AppException(ErrorCode.ROOM_NOT_FOUND));
     }
 

@@ -62,10 +62,10 @@ public class NotificationInternalService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         fcmTokenRepository.findByToken(token).ifPresentOrElse(
-                t -> {
-                    t.setUser(user);
-                    t.setDeviceType(deviceType);
-                    fcmTokenRepository.save(t);
+                existingToken -> {
+                    existingToken.setUser(user);
+                    existingToken.setDeviceType(deviceType);
+                    fcmTokenRepository.save(existingToken);
                 },
                 () -> {
                     FcmToken fcmToken = FcmToken.builder()
@@ -151,15 +151,15 @@ public class NotificationInternalService {
             try {
                 fcmService.sendNotification(fcmToken.getToken(), notif.getTitle(), notif.getBody(),
                         notif.getActionUrl());
-            } catch (Exception e) {
-                System.err.println("Failed to send FCM: " + e.getMessage());
+            } catch (Exception ex) {
+                System.err.println("Failed to send FCM: " + ex.getMessage());
             }
         }
 
         // Save to per-user notification table
         List<User> users = userRepository.findAllByRoleNameNot("ADMIN");
-        List<Notification> items = users.stream().map(u -> Notification.builder()
-                .user(u)
+        List<Notification> items = users.stream().map(systemUser -> Notification.builder()
+                .user(systemUser)
                 .title(notif.getTitle())
                 .body(notif.getBody())
                 .actionUrl(notif.getActionUrl())
@@ -229,16 +229,16 @@ public class NotificationInternalService {
             try {
                 fcmService.sendNotification(fcmToken.getToken(), notif.getTitle(), notif.getBody(),
                         notif.getActionUrl());
-            } catch (Exception e) {
-                System.err.println("Failed to send FCM: " + e.getMessage());
+            } catch (Exception ex) {
+                System.err.println("Failed to send FCM: " + ex.getMessage());
             }
         }
 
         // Save to per-user notification table
         List<User> recipients = userRepository.findUsersByCriteria(roleParam, notif.getTargetDepartmentId(),
                 classCodeParam);
-        List<Notification> items = recipients.stream().map(u -> Notification.builder()
-                .user(u)
+        List<Notification> items = recipients.stream().map(systemUser -> Notification.builder()
+                .user(systemUser)
                 .title(notif.getTitle())
                 .body(notif.getBody())
                 .actionUrl(notif.getActionUrl())
@@ -271,18 +271,18 @@ public class NotificationInternalService {
 
         // 1. Search Students
         results.addAll(studentRepository.searchRecipients(query, limit).stream()
-                .map(s -> RecipientSearchResponse.builder()
-                        .name(s.getFirstName() + " " + s.getLastName())
-                        .identifier(s.getStudentCode() != null ? s.getStudentCode() : s.getEmail())
+                .map(student -> RecipientSearchResponse.builder()
+                        .name(student.getFirstName() + " " + student.getLastName())
+                        .identifier(student.getStudentCode() != null ? student.getStudentCode() : student.getEmail())
                         .role("STUDENT")
                         .build())
                 .collect(Collectors.toList()));
 
         // 2. Search Teachers
         results.addAll(teacherRepository.searchRecipients(query, limit).stream()
-                .map(t -> RecipientSearchResponse.builder()
-                        .name(t.getFirstName() + " " + t.getLastName())
-                        .identifier(t.getTeacherCode() != null ? t.getTeacherCode() : t.getEmail())
+                .map(teacher -> RecipientSearchResponse.builder()
+                        .name(teacher.getFirstName() + " " + teacher.getLastName())
+                        .identifier(teacher.getTeacherCode() != null ? teacher.getTeacherCode() : teacher.getEmail())
                         .role("TEACHER")
                         .build())
                 .collect(Collectors.toList()));
@@ -385,11 +385,11 @@ public class NotificationInternalService {
             fresh.setStatus("SENT");
             fresh.setSentAt(java.time.LocalDateTime.now());
             sentNotificationRepository.save(fresh);
-        } catch (Exception e) {
-            log.error("Failed to process Scheduled Notification", e);
+        } catch (Exception ex) {
+            log.error("Failed to process Scheduled Notification", ex);
             fresh.setStatus("FAILED");
             fresh.setBody(
-                    fresh.getBody() + "\n\n[System Error]: " + e.getClass().getSimpleName() + " - " + e.getMessage());
+                    fresh.getBody() + "\n\n[System Error]: " + ex.getClass().getSimpleName() + " - " + ex.getMessage());
             sentNotificationRepository.save(fresh);
         }
     }

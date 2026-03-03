@@ -73,10 +73,10 @@ public class SemesterAutomationService {
                 targetSemester.getDisplayName());
 
         // Hủy kích hoạt học kỳ hiện tại cũ
-        semesterRepository.findByIsCurrentTrue().ifPresent(old -> {
-            old.setCurrent(false);
-            semesterRepository.save(old);
-            log.info("Deactivated old current semester: {}", old.getDisplayName());
+        semesterRepository.findByIsCurrentTrue().ifPresent(oldSemester -> {
+            oldSemester.setCurrent(false);
+            semesterRepository.save(oldSemester);
+            log.info("Deactivated old current semester: {}", oldSemester.getDisplayName());
         });
 
         // Kích hoạt học kỳ mới

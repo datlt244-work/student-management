@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import {
   getAvailableClasses,
   getEnrolledClasses,
   enrollInClass,
   dropClass,
+  getEnrollmentDeadline,
   type StudentAvailableClass,
   type StudentEnrolledClass,
 } from '@/services/studentClassService'
@@ -25,12 +26,51 @@ const classToDropName = ref('')
 
 const { toast, showToast } = useToast()
 
+// === Enrollment Deadline Countdown ===
+const deadlineInfo = ref<{ isOpen: boolean; deadline: string; semesterName?: string } | null>(null)
+const countdown = ref({ days: 0, hours: 0, minutes: 0, seconds: 0, expired: false })
+let countdownTimer: ReturnType<typeof setInterval> | null = null
+
+function updateCountdown() {
+  if (!deadlineInfo.value?.deadline || !deadlineInfo.value.isOpen) {
+    countdown.value = { days: 0, hours: 0, minutes: 0, seconds: 0, expired: true }
+    return
+  }
+  const diff = new Date(deadlineInfo.value.deadline).getTime() - Date.now()
+  if (diff <= 0) {
+    countdown.value = { days: 0, hours: 0, minutes: 0, seconds: 0, expired: true }
+    return
+  }
+  countdown.value = {
+    days: Math.floor(diff / 86400000),
+    hours: Math.floor((diff % 86400000) / 3600000),
+    minutes: Math.floor((diff % 3600000) / 60000),
+    seconds: Math.floor((diff % 60000) / 1000),
+    expired: false,
+  }
+}
+
+const showCountdown = computed(
+  () => deadlineInfo.value?.isOpen && !countdown.value.expired
+)
+
 // Default placeholder for courses
 const DEFAULT_COURSE_IMAGE =
   'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?q=80&w=2073&auto=format&fit=crop'
 
 onMounted(async () => {
   await fetchAllData()
+  try {
+    deadlineInfo.value = await getEnrollmentDeadline()
+    updateCountdown()
+    countdownTimer = setInterval(updateCountdown, 1000)
+  } catch (e) {
+    console.error('Failed to load deadline info', e)
+  }
+})
+
+onUnmounted(() => {
+  if (countdownTimer) clearInterval(countdownTimer)
 })
 
 async function fetchAllData() {
@@ -174,6 +214,61 @@ function formatRoom(cls: StudentAvailableClass | StudentEnrolledClass): string {
           </router-link>
         </div>
       </div>
+
+      <!-- Enrollment Countdown Banner -->
+      <Transition name="slide-down">
+        <div
+          v-if="showCountdown"
+          class="relative flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl overflow-hidden border border-primary/30"
+          style="background: linear-gradient(135deg, rgba(var(--color-primary-rgb, 99,102,241), 0.08) 0%, rgba(var(--color-primary-rgb, 99,102,241), 0.02) 100%)"
+        >
+          <!-- Glow accent -->
+          <div class="absolute inset-0 pointer-events-none">
+            <div class="absolute -top-10 -left-10 w-40 h-40 bg-primary/10 rounded-full blur-3xl"></div>
+            <div class="absolute -bottom-10 -right-10 w-40 h-40 bg-primary/10 rounded-full blur-3xl"></div>
+          </div>
+          <div class="relative flex items-center gap-3">
+            <span class="material-symbols-outlined text-primary !text-[28px] animate-pulse">timer</span>
+            <div>
+              <p class="text-text-main-light dark:text-text-main-dark font-bold text-sm">
+                Registration closes in
+              </p>
+              <p class="text-text-muted-light dark:text-text-muted-dark text-xs">
+                {{ deadlineInfo?.semesterName }} &mdash; Enrollment ends automatically after 3 days
+              </p>
+            </div>
+          </div>
+          <!-- Countdown clock boxes -->
+          <div class="relative flex items-center gap-2">
+            <div
+              v-for="(item, idx) in [
+                { label: 'Days', value: countdown.days },
+                { label: 'Hrs', value: countdown.hours },
+                { label: 'Min', value: countdown.minutes },
+                { label: 'Sec', value: countdown.seconds },
+              ]"
+              :key="idx"
+              class="flex flex-col items-center"
+            >
+              <div
+                class="w-14 h-14 rounded-xl flex items-center justify-center font-black text-2xl bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark shadow-sm text-primary tabular-nums"
+              >
+                {{ String(item.value).padStart(2, '0') }}
+              </div>
+              <span class="text-text-muted-light dark:text-text-muted-dark text-[10px] font-semibold mt-1 uppercase tracking-wider">{{
+                item.label
+              }}</span>
+            </div>
+            <template v-for="(_, idx) in [0, 1, 2]" :key="'sep' + idx">
+              <span
+                v-if="idx < 3"
+                class="text-primary font-black text-xl self-start mt-2.5 -mx-1 select-none"
+                :style="{ order: (idx + 1) * 2 - 1 }"
+              ></span>
+            </template>
+          </div>
+        </div>
+      </Transition>
 
       <!-- Tabs -->
       <div class="flex gap-1 p-1 rounded-xl bg-input-bg-light dark:bg-input-bg-dark w-fit">
@@ -653,5 +748,20 @@ function formatRoom(cls: StudentAvailableClass | StudentEnrolledClass): string {
 }
 .modal-leave-to > div {
   transform: scale(0.97);
+}
+
+.slide-down-enter-active {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.slide-down-leave-active {
+  transition: all 0.3s ease;
+}
+.slide-down-enter-from {
+  opacity: 0;
+  transform: translateY(-16px);
+}
+.slide-down-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
 }
 </style>

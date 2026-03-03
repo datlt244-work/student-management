@@ -43,8 +43,8 @@ public class JwtService {
         try {
             jweObject.sign(new MACSigner(signerKey.getBytes()));
             return jweObject.serialize();
-        }catch (JOSEException e){
-            throw new RuntimeException("Error generate token: ", e);
+        } catch (JOSEException ex) {
+            throw new RuntimeException("Error generate token: ", ex);
         }
     }
 

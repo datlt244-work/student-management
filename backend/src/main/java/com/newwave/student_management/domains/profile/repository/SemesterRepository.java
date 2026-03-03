@@ -23,4 +23,7 @@ public interface SemesterRepository extends JpaRepository<Semester, Integer>, Jp
     @org.springframework.data.jpa.repository.Query("SELECT s FROM Semester s WHERE s.semesterId <> :id AND " +
             "((s.startDate <= :end AND s.endDate >= :start))")
     java.util.List<Semester> findOverlappingSemesters(Integer id, java.time.LocalDate start, java.time.LocalDate end);
+
+    java.util.List<Semester> findByEnrollmentStatus(
+            com.newwave.student_management.domains.profile.entity.EnrollmentStatus status);
 }

@@ -34,22 +34,31 @@ public class ScheduleServiceImpl implements IScheduleService {
                                                 student.getStudentId(), semesterId);
 
                 return enrollments.stream()
-                                .map(enrollment -> StudentScheduleResponse.builder()
-                                                .courseCode(enrollment.getScheduledClass().getCourse().getCode())
-                                                .courseName(enrollment.getScheduledClass().getCourse().getName())
-                                                .teacherName(enrollment.getScheduledClass().getTeacher() != null
-                                                                ? enrollment.getScheduledClass().getTeacher()
-                                                                                .getFirstName() + " "
-                                                                                + enrollment.getScheduledClass()
-                                                                                                .getTeacher()
-                                                                                                .getLastName()
-                                                                : "TBA")
-                                                .roomNumber(enrollment.getScheduledClass().getRoomNumber())
-                                                .dayOfWeek(enrollment.getScheduledClass().getDayOfWeek())
-                                                .startTime(enrollment.getScheduledClass().getStartTime())
-                                                .endTime(enrollment.getScheduledClass().getEndTime())
-                                                .classStatus(enrollment.getScheduledClass().getStatus().name())
-                                                .build())
+                                .flatMap(enrollment -> enrollment.getScheduledClass().getSessions().stream()
+                                                .map(session -> StudentScheduleResponse.builder()
+                                                                .courseCode(enrollment.getScheduledClass().getCourse()
+                                                                                .getCode())
+                                                                .courseName(enrollment.getScheduledClass().getCourse()
+                                                                                .getName())
+                                                                .teacherName(enrollment.getScheduledClass()
+                                                                                .getTeacher() != null
+                                                                                                ? enrollment.getScheduledClass()
+                                                                                                                .getTeacher()
+                                                                                                                .getFirstName()
+                                                                                                                + " "
+                                                                                                                + enrollment.getScheduledClass()
+                                                                                                                                .getTeacher()
+                                                                                                                                .getLastName()
+                                                                                                : "TBA")
+                                                                .roomNumber(session.getRoom() != null
+                                                                                ? session.getRoom().getName()
+                                                                                : "N/A")
+                                                                .dayOfWeek(session.getDayOfWeek())
+                                                                .startTime(session.getStartTime())
+                                                                .endTime(session.getEndTime())
+                                                                .classStatus(enrollment.getScheduledClass().getStatus()
+                                                                                .name())
+                                                                .build()))
                                 .collect(Collectors.toList());
         }
 }

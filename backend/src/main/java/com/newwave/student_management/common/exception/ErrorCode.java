@@ -71,6 +71,15 @@ public enum ErrorCode {
                         HttpStatus.BAD_REQUEST),
         CLASS_NOT_OPEN(1272, "Class is not open for enrollment", HttpStatus.BAD_REQUEST),
         ENROLLMENT_NOT_FOUND(1270, "Enrollment record not found", HttpStatus.NOT_FOUND),
+        ROOM_NOT_FOUND(1273, "Room not found", HttpStatus.NOT_FOUND),
+        CLASS_SLOT_EXCEEDS_ROOM_CAPACITY(1274, "Class slot exceeds room capacity", HttpStatus.BAD_REQUEST),
+        ROOM_SCHEDULE_CONFLICT(1275, "Room is scheduled for another class at this time", HttpStatus.CONFLICT),
+        ROOM_EXISTS(1276, "Room name already exists", HttpStatus.CONFLICT),
+        ROOM_ALREADY_ASSIGNED(1277, "Room is already assigned to another teacher", HttpStatus.CONFLICT),
+        ROOM_HAS_ASSIGNED_TEACHER(1278,
+                        "Cannot delete room that is assigned to a teacher. Please unassign the teacher first.",
+                        HttpStatus.BAD_REQUEST),
+        INVALID_ROOM_TYPE(1279, "Invalid room type", HttpStatus.BAD_REQUEST),
 
         // Business errors - Address (1250-1269)
         ADDRESS_NOT_FOUND(1250, "Address not found", HttpStatus.NOT_FOUND),

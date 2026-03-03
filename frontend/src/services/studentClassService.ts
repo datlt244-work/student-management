@@ -1,13 +1,21 @@
 import { apiFetch } from '@/utils/api'
 
+export interface ClassSessionResponse {
+  sessionId: number
+  roomId: number
+  roomName: string
+  dayOfWeek: number
+  startTime: string
+  endTime: string
+}
+
 export interface StudentAvailableClass {
   classId: number
   courseCode: string
   courseName: string
   credits: number
   teacherName: string
-  schedule: string
-  roomNumber: string
+  sessions: ClassSessionResponse[]
   maxStudents: number
   currentStudents: number
   status: 'OPEN' | 'CLOSED' | 'CANCELLED'
@@ -20,8 +28,7 @@ export interface StudentEnrolledClass {
   courseName: string
   credits: number
   teacherName: string
-  schedule: string
-  roomNumber: string
+  sessions: ClassSessionResponse[]
   enrollmentDate: string
 }
 

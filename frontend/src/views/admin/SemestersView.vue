@@ -7,6 +7,8 @@ import {
   updateAdminSemester,
   deleteAdminSemester,
   setCurrentAdminSemester,
+  publishAdminSemester,
+  closeAdminSemesterEnrollment,
   type AdminSemesterListItem,
   type AdminCreateSemesterRequest,
   type SemesterName,
@@ -188,6 +190,37 @@ async function handleSetCurrent(sem: AdminSemesterListItem) {
   }
 }
 
+// ─── Publish / Close Enrollment ───────────────────────────
+const publishLoading = ref<number | null>(null)
+
+async function handlePublish(sem: AdminSemesterListItem) {
+  publishLoading.value = sem.semesterId
+  try {
+    await publishAdminSemester(sem.semesterId)
+    await fetchSemesters()
+    showToast(`${sem.displayName} published! Classes synced to Redis.`)
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to publish semester.'
+    showToast(msg, 'error')
+  } finally {
+    publishLoading.value = null
+  }
+}
+
+async function handleCloseEnrollment(sem: AdminSemesterListItem) {
+  publishLoading.value = sem.semesterId
+  try {
+    await closeAdminSemesterEnrollment(sem.semesterId)
+    await fetchSemesters()
+    showToast(`${sem.displayName} enrollment closed. Redis cache cleared.`)
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to close enrollment.'
+    showToast(msg, 'error')
+  } finally {
+    publishLoading.value = null
+  }
+}
+
 // ─── Fetch ────────────────────────────────────────────────
 async function fetchSemesters() {
   isLoading.value = true
@@ -287,27 +320,27 @@ function clearSemesterFilters() {
     </div>
   </Transition>
 
-  <div class="max-w-[1200px] w-full mx-auto p-6 md:p-10 flex flex-col gap-8">
+  <div class="max-w-[1400px] w-full mx-auto p-6 md:p-10 flex flex-col gap-8">
     <!-- ── Page Header ───────────────────────────────────── -->
-    <div
-      class="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-4 border-b border-stone-200 dark:border-stone-800"
-    >
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div>
         <h1 class="text-slate-900 dark:text-white text-3xl font-bold leading-tight tracking-tight">
           Semester Management
         </h1>
-        <p class="text-slate-500 dark:text-slate-400 mt-2 text-sm">
+        <p class="text-slate-500 dark:text-slate-400 mt-1 text-sm">
           Organize academic periods, start dates, and term statuses.
         </p>
       </div>
-      <button
-        id="btn-add-semester"
-        class="inline-flex items-center gap-2 rounded-xl bg-primary hover:bg-primary-dark text-white px-5 py-2.5 text-sm font-bold shadow-md shadow-orange-500/20 transition-all active:scale-95 whitespace-nowrap"
-        @click="openAddModal"
-      >
-        <span class="material-symbols-outlined text-[20px]">add_circle</span>
-        Add New Semester
-      </button>
+      <div class="flex items-center gap-3">
+        <button
+          id="btn-add-semester"
+          @click="openAddModal"
+          class="flex items-center gap-2 px-6 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-lg font-bold shadow-lg shadow-primary/20 transition-all active:scale-95"
+        >
+          <span class="material-symbols-outlined text-[20px]">add_circle</span>
+          Add New Semester
+        </button>
+      </div>
     </div>
 
     <!-- ── Stats Cards ───────────────────────────────────── -->
@@ -421,6 +454,11 @@ function clearSemesterFilters() {
                   Created At
                 </th>
                 <th
+                  class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                >
+                  Enrollment
+                </th>
+                <th
                   class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right"
                 >
                   Actions
@@ -515,6 +553,32 @@ function clearSemesterFilters() {
                   </p>
                 </td>
 
+                <!-- Enrollment Status -->
+                <td class="p-4">
+                  <span
+                    :class="[
+                      'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold',
+                      sem.enrollmentStatus === 'PUBLISHED'
+                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                        : sem.enrollmentStatus === 'CLOSED'
+                          ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                          : 'bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-400',
+                    ]"
+                  >
+                    <span class="material-symbols-outlined text-[14px]">{{
+                      sem.enrollmentStatus === 'PUBLISHED'
+                        ? 'cloud_done'
+                        : sem.enrollmentStatus === 'CLOSED'
+                          ? 'lock'
+                          : 'edit_note'
+                    }}</span>
+                    {{ sem.enrollmentStatus || 'DRAFT' }}
+                  </span>
+                  <p v-if="sem.publishedAt" class="text-[10px] text-slate-400 mt-0.5">
+                    Published: {{ formatDate(sem.publishedAt) }}
+                  </p>
+                </td>
+
                 <!-- Actions -->
                 <td class="p-4 text-right">
                   <div
@@ -558,6 +622,52 @@ function clearSemesterFilters() {
                       @click="openDeleteModal(sem)"
                     >
                       <span class="material-symbols-outlined text-[18px]">delete</span>
+                    </button>
+
+                    <!-- Publish -->
+                    <button
+                      v-if="sem.isCurrent && (!sem.enrollmentStatus || sem.enrollmentStatus === 'DRAFT')"
+                      :disabled="publishLoading === sem.semesterId"
+                      class="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-all disabled:opacity-40"
+                      title="Publish: Sync classes to Redis for enrollment"
+                      @click="handlePublish(sem)"
+                    >
+                      <span
+                        v-if="publishLoading === sem.semesterId"
+                        class="material-symbols-outlined text-[16px] animate-spin"
+                        >progress_activity</span
+                      >
+                      <span v-else class="material-symbols-outlined text-[16px]">rocket_launch</span>
+                      <span class="hidden lg:inline">Publish</span>
+                    </button>
+
+                    <!-- Re-publish -->
+                    <button
+                      v-if="sem.isCurrent && sem.enrollmentStatus === 'PUBLISHED'"
+                      :disabled="publishLoading === sem.semesterId"
+                      class="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-all disabled:opacity-40"
+                      title="Re-publish: Re-sync classes to Redis"
+                      @click="handlePublish(sem)"
+                    >
+                      <span
+                        v-if="publishLoading === sem.semesterId"
+                        class="material-symbols-outlined text-[16px] animate-spin"
+                        >progress_activity</span
+                      >
+                      <span v-else class="material-symbols-outlined text-[16px]">sync</span>
+                      <span class="hidden lg:inline">Re-sync</span>
+                    </button>
+
+                    <!-- Close enrollment -->
+                    <button
+                      v-if="sem.enrollmentStatus === 'PUBLISHED'"
+                      :disabled="publishLoading === sem.semesterId"
+                      class="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:text-white hover:bg-red-600 rounded-lg transition-all disabled:opacity-40"
+                      title="Close enrollment: Clear Redis cache"
+                      @click="handleCloseEnrollment(sem)"
+                    >
+                      <span class="material-symbols-outlined text-[16px]">block</span>
+                      <span class="hidden lg:inline">Close</span>
                     </button>
                   </div>
                 </td>

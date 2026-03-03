@@ -25,6 +25,7 @@ spring:
     baseline-version: 0
     locations: classpath:db/migration
     validate-on-migrate: true
+    repair-on-migrate: true
 
   data:
     redis:
@@ -66,4 +67,3 @@ springdoc:
     enabled: true
   swagger-ui:
     enabled: true
-

@@ -10,8 +10,6 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalTime;
-
 @Entity
 @Table(name = "scheduled_classes", indexes = {
                 @Index(name = "idx_scheduled_classes_course_id", columnList = "course_id"),
@@ -54,29 +52,8 @@ public class ScheduledClass extends JpaBaseEntity {
         @JoinColumn(name = "semester_id")
         private Semester semester;
 
-        /**
-         * Phòng học, ví dụ: "A-101".
-         */
-        @Column(name = "room_number", length = 20)
-        private String roomNumber;
-
-        /**
-         * Thứ trong tuần (1-7 = Thứ 2 - Chủ Nhật).
-         */
-        @Column(name = "day_of_week", nullable = false)
-        private Integer dayOfWeek;
-
-        /**
-         * Giờ bắt đầu.
-         */
-        @Column(name = "start_time", nullable = false)
-        private LocalTime startTime;
-
-        /**
-         * Giờ kết thúc.
-         */
-        @Column(name = "end_time", nullable = false)
-        private LocalTime endTime;
+        @OneToMany(mappedBy = "scheduledClass", cascade = CascadeType.ALL, orphanRemoval = true)
+        private java.util.List<ClassSession> sessions = new java.util.ArrayList<>();
 
         /**
          * Trạng thái lớp: OPEN | CLOSED | CANCELLED.

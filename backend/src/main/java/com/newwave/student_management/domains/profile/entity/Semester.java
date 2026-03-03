@@ -8,6 +8,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "semesters", uniqueConstraints = {
@@ -41,6 +42,22 @@ public class Semester extends JpaBaseEntity {
 
     @Column(name = "is_current")
     private boolean isCurrent;
+
+    /**
+     * Trạng thái đăng ký tín chỉ: DRAFT → PUBLISHED → CLOSED.
+     * DRAFT: chưa publish, SV chưa thể đăng ký.
+     * PUBLISHED: đã sync Redis, SV có thể đăng ký.
+     * CLOSED: đã đóng đăng ký.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "enrollment_status", length = 20, nullable = false)
+    private EnrollmentStatus enrollmentStatus = EnrollmentStatus.DRAFT;
+
+    /**
+     * Thời điểm Admin publish semester (sync Redis).
+     */
+    @Column(name = "published_at")
+    private LocalDateTime publishedAt;
 
     /**
      * Display format: "Spring 2026", "Summer 2025", etc.

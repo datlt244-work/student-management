@@ -92,6 +92,10 @@ async function handleDrop() {
   }
 }
 
+const daysMap: Record<string, number> = {
+  'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6, 'Sun': 7
+}
+
 const filteredClasses = computed(() => {
   return availableClasses.value.filter((c) => {
     const matchesSearch =
@@ -101,7 +105,7 @@ const filteredClasses = computed(() => {
       c.teacherName.toLowerCase().includes(searchQuery.value.toLowerCase())
 
     const matchesCredits = selectedCredits.value === null || c.credits === selectedCredits.value
-    const matchesDay = !selectedDay.value || c.schedule.includes(selectedDay.value)
+    const matchesDay = !selectedDay.value || c.sessions?.some(s => s.dayOfWeek === daysMap[selectedDay.value!])
 
     return matchesSearch && matchesCredits && matchesDay
   })
@@ -132,6 +136,16 @@ function clearFilters() {
   searchQuery.value = ''
   selectedCredits.value = null
   selectedDay.value = null
+}
+
+function formatSchedule(cls: StudentAvailableClass | StudentEnrolledClass): string {
+  if (!cls.sessions || cls.sessions.length === 0) return 'N/A'
+  return cls.sessions.map(s => `T${s.dayOfWeek} ${s.startTime.slice(0, 5)}-${s.endTime.slice(0, 5)}`).join(', ')
+}
+
+function formatRoom(cls: StudentAvailableClass | StudentEnrolledClass): string {
+  if (!cls.sessions || cls.sessions.length === 0) return 'TBD'
+  return Array.from(new Set(cls.sessions.map(s => s.roomName))).join(', ')
 }
 </script>
 
@@ -331,13 +345,13 @@ function clearFilters() {
                   class="flex items-center gap-2 text-text-muted-light dark:text-text-muted-dark text-xs"
                 >
                   <span class="material-symbols-outlined !text-[16px]">schedule</span>
-                  <span>{{ cls.schedule }}</span>
+                  <span>{{ formatSchedule(cls) }}</span>
                 </div>
                 <div
                   class="flex items-center gap-2 text-text-muted-light dark:text-text-muted-dark text-xs"
                 >
                   <span class="material-symbols-outlined !text-[16px]">location_on</span>
-                  <span>{{ cls.roomNumber || 'TBD' }}</span>
+                  <span>{{ formatRoom(cls) }}</span>
                 </div>
               </div>
               <div
@@ -485,7 +499,7 @@ function clearFilters() {
                       >
                       <span
                         class="text-text-muted-light dark:text-text-muted-dark text-xs sm:hidden"
-                        >{{ cls.schedule }} · {{ cls.roomNumber || 'TBD' }}</span
+                        >{{ formatSchedule(cls) }} · {{ formatRoom(cls) }}</span
                       >
                     </div>
                   </td>
@@ -497,10 +511,10 @@ function clearFilters() {
                   <td class="px-6 py-4 hidden sm:table-cell">
                     <div class="flex flex-col gap-0.5">
                       <span class="text-text-main-light dark:text-text-main-dark text-sm">{{
-                        cls.schedule
+                        formatSchedule(cls)
                       }}</span>
                       <span class="text-text-muted-light dark:text-text-muted-dark text-xs">{{
-                        cls.roomNumber || 'TBD'
+                        formatRoom(cls)
                       }}</span>
                     </div>
                   </td>

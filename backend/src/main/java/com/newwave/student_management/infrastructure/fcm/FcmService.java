@@ -29,8 +29,8 @@ public class FcmService {
             Message message = builder.build();
             String response = FirebaseMessaging.getInstance().send(message);
             log.info("Successfully sent message: " + response);
-        } catch (Exception e) {
-            log.error("Error sending FCM message", e);
+        } catch (Exception ex) {
+            log.error("Error sending FCM message", ex);
         }
     }
 }

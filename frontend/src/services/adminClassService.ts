@@ -3,6 +3,22 @@ import { apiFetch } from '@/utils/api';
 /**
  * UC-14.1: Danh sách Lớp học (Admin)
  */
+export interface ClassSessionResponse {
+  sessionId: number;
+  roomId: number;
+  roomName: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+}
+
+export interface ClassSessionRequest {
+  roomId: number;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+}
+
 export interface AdminClassListItem {
   classId: number;
   courseName: string;
@@ -10,11 +26,7 @@ export interface AdminClassListItem {
   teacherName: string;
   teacherId: string;
   semesterName: string;
-  roomNumber: string;
-  schedule: string;
-  dayOfWeek?: number;
-  startTime?: string;
-  endTime?: string;
+  sessions: ClassSessionResponse[];
   status: 'OPEN' | 'CLOSED' | 'CANCELLED';
   maxStudents: number;
   studentCount: number;
@@ -41,11 +53,8 @@ export interface AdminCreateClassRequest {
   courseId: number;
   teacherId: string;
   semesterId: number;
-  roomNumber: string;
-  dayOfWeek: number;
-  startTime: string;
-  endTime: string;
   maxStudents: number;
+  sessions: ClassSessionRequest[];
 }
 
 /**

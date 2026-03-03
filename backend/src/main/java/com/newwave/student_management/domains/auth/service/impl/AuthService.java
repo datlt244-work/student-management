@@ -88,7 +88,8 @@ public class AuthService implements IAuthService {
         user.setLoginCount(user.getLoginCount() + 1);
         userRepository.save(user);
 
-        // 9. Generate tokens (with current token version so change-password can invalidate all)
+        // 9. Generate tokens (with current token version so change-password can
+        // invalidate all)
         long tokenVersion = tokenRedisService.getTokenVersion(user.getUserId());
         String accessToken = jwtService.generateToken(user, tokenVersion);
         String refreshToken = tokenRedisService.createAndStoreRefreshToken(user.getUserId());
@@ -178,8 +179,8 @@ public class AuthService implements IAuthService {
                 long remainingSeconds = Math.max(0, (exp.getTime() - nowMillis) / 1000);
                 tokenRedisService.blacklistAccessToken(jti, remainingSeconds);
             }
-        } catch (ParseException e) {
-            log.warn("Failed to parse access token on logout", e);
+        } catch (ParseException ex) {
+            log.warn("Failed to parse access token on logout", ex);
         }
     }
 
@@ -276,7 +277,8 @@ public class AuthService implements IAuthService {
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
 
-        // 6. Invalidate all access tokens (current + other devices/tabs): increment token version
+        // 6. Invalidate all access tokens (current + other devices/tabs): increment
+        // token version
         tokenRedisService.incrementTokenVersion(userId);
 
         // 7. Handle logoutOtherDevices option: delete all refresh tokens
@@ -313,8 +315,10 @@ public class AuthService implements IAuthService {
     }
 
     private String toFullAvatarUrl(String profilePictureUrl) {
-        if (profilePictureUrl == null || profilePictureUrl.isBlank()) return null;
-        if (profilePictureUrl.startsWith("http://") || profilePictureUrl.startsWith("https://")) return profilePictureUrl;
+        if (profilePictureUrl == null || profilePictureUrl.isBlank())
+            return null;
+        if (profilePictureUrl.startsWith("http://") || profilePictureUrl.startsWith("https://"))
+            return profilePictureUrl;
         return storageService.getPublicUrl(profilePictureUrl);
     }
 }

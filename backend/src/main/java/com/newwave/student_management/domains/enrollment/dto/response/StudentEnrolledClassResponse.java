@@ -18,7 +18,6 @@ public class StudentEnrolledClassResponse {
     private String courseName;
     private Integer credits;
     private String teacherName;
-    private String schedule;
-    private String roomNumber;
+    private java.util.List<ClassSessionResponse> sessions;
     private LocalDate enrollmentDate;
 }

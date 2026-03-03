@@ -40,99 +40,84 @@ import java.util.Map;
 @Tag(name = "Admin - Departments", description = "API quản lý khoa (Admin) - UC-13")
 public class AdminDepartmentController {
 
-    private final IAdminDepartmentService adminDepartmentService;
-    private final DepartmentRepository departmentRepository;
+        private final IAdminDepartmentService adminDepartmentService;
+        private final DepartmentRepository departmentRepository;
 
-    @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(
-            summary = "UC-13.1 - Danh sách Khoa (Admin)",
-            description = "Trả về danh sách khoa với phân trang, search theo tên. " +
-                    "Pattern: ?page=0&size=20&sort=createdAt,desc&search=Computer"
-    )
-    public ApiResponse<AdminDepartmentListResponse> getDepartments(
-            @RequestParam(required = false) String search,
-            @RequestParam(required = false) DepartmentStatus status,
-            @ParameterObject Pageable pageable
-    ) {
-        AdminDepartmentListResponse response = adminDepartmentService.getDepartments(search, status, pageable);
-        return ApiResponse.success(response);
-    }
-
-    @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(
-            summary = "UC-13.2 - Tạo Khoa (Admin)",
-            description = "Tạo khoa mới. Validation: name required (max 100, unique case-insensitive), officeLocation optional (max 100)."
-    )
-    public ApiResponse<AdminDepartmentDetailResponse> createDepartment(
-            @Valid @RequestBody AdminCreateDepartmentRequest request
-    ) {
-        AdminDepartmentDetailResponse response = adminDepartmentService.createDepartment(request);
-        return ApiResponse.success(response);
-    }
-
-    @PutMapping("/{departmentId}")
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(
-            summary = "UC-13.3 - Cập Nhật Khoa (Admin)",
-            description = "Cập nhật thông tin khoa. Validation: name optional (max 100, unique case-insensitive), officeLocation optional (max 100)."
-    )
-    public ApiResponse<AdminDepartmentDetailResponse> updateDepartment(
-            @PathVariable Integer departmentId,
-            @Valid @RequestBody AdminUpdateDepartmentRequest request
-    ) {
-        AdminDepartmentDetailResponse response = adminDepartmentService.updateDepartment(departmentId, request);
-        return ApiResponse.success(response);
-    }
-
-    @PatchMapping("/{departmentId}/status")
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Update Department Status (Active/Inactive)")
-    public ApiResponse<AdminDepartmentDetailResponse> updateDepartmentStatus(
-            @PathVariable Integer departmentId,
-            @RequestBody Map<String, String> request
-    ) {
-        String statusStr = request.get("status");
-        if (statusStr == null) {
-            throw new com.newwave.student_management.common.exception.AppException(com.newwave.student_management.common.exception.ErrorCode.VALIDATION_ERROR);
-        }
-        DepartmentStatus status;
-        try {
-            status = DepartmentStatus.valueOf(statusStr.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new com.newwave.student_management.common.exception.AppException(com.newwave.student_management.common.exception.ErrorCode.VALIDATION_ERROR);
+        @GetMapping
+        @PreAuthorize("hasRole('ADMIN')")
+        @Operation(summary = "UC-13.1 - Danh sách Khoa (Admin)", description = "Trả về danh sách khoa với phân trang, search theo tên. "
+                        +
+                        "Pattern: ?page=0&size=20&sort=createdAt,desc&search=Computer")
+        public ApiResponse<AdminDepartmentListResponse> getDepartments(
+                        @RequestParam(required = false) String search,
+                        @RequestParam(required = false) DepartmentStatus status,
+                        @ParameterObject Pageable pageable) {
+                AdminDepartmentListResponse response = adminDepartmentService.getDepartments(search, status, pageable);
+                return ApiResponse.success(response);
         }
 
-        AdminDepartmentDetailResponse response = adminDepartmentService.updateDepartmentStatus(departmentId, status);
-        return ApiResponse.success(response);
-    }
+        @PostMapping
+        @PreAuthorize("hasRole('ADMIN')")
+        @Operation(summary = "UC-13.2 - Tạo Khoa (Admin)", description = "Tạo khoa mới. Validation: name required (max 100, unique case-insensitive), officeLocation optional (max 100).")
+        public ApiResponse<AdminDepartmentDetailResponse> createDepartment(
+                        @Valid @RequestBody AdminCreateDepartmentRequest request) {
+                AdminDepartmentDetailResponse response = adminDepartmentService.createDepartment(request);
+                return ApiResponse.success(response);
+        }
 
-    @DeleteMapping("/{departmentId}")
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(
-            summary = "UC-13.4 - Xóa Khoa (Soft Delete)",
-            description = "Xóa mềm khoa. Không cho phép xóa nếu còn teacher/student active thuộc khoa này."
-    )
-    public ResponseEntity<ApiResponse<Void>> deleteDepartment(
-            @PathVariable Integer departmentId
-    ) {
-        adminDepartmentService.deleteDepartment(departmentId);
-        return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.success(null));
-    }
+        @PutMapping("/{departmentId}")
+        @PreAuthorize("hasRole('ADMIN')")
+        @Operation(summary = "UC-13.3 - Cập Nhật Khoa (Admin)", description = "Cập nhật thông tin khoa. Validation: name optional (max 100, unique case-insensitive), officeLocation optional (max 100).")
+        public ApiResponse<AdminDepartmentDetailResponse> updateDepartment(
+                        @PathVariable Integer departmentId,
+                        @Valid @RequestBody AdminUpdateDepartmentRequest request) {
+                AdminDepartmentDetailResponse response = adminDepartmentService.updateDepartment(departmentId, request);
+                return ApiResponse.success(response);
+        }
 
-    @GetMapping("/simple")
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(
-            summary = "Danh sách Departments (Simple)",
-            description = "Trả về danh sách khoa đơn giản (chưa xóa) để dùng cho select khi tạo/sửa user. " +
-                    "Endpoint này giữ lại để tương thích với frontend hiện tại."
-    )
-    public ApiResponse<List<DepartmentResponse>> getDepartmentsSimple() {
-        List<Department> all = departmentRepository.findAllByStatusAndDeletedAtIsNull(DepartmentStatus.ACTIVE);
-        List<DepartmentResponse> result = all.stream()
-                .map(DepartmentResponse::fromEntity)
-                .toList();
-        return ApiResponse.success(result);
-    }
+        @PatchMapping("/{departmentId}/status")
+        @PreAuthorize("hasRole('ADMIN')")
+        @Operation(summary = "Update Department Status (Active/Inactive)")
+        public ApiResponse<AdminDepartmentDetailResponse> updateDepartmentStatus(
+                        @PathVariable Integer departmentId,
+                        @RequestBody Map<String, String> request) {
+                String statusStr = request.get("status");
+                if (statusStr == null) {
+                        throw new com.newwave.student_management.common.exception.AppException(
+                                        com.newwave.student_management.common.exception.ErrorCode.VALIDATION_ERROR);
+                }
+                DepartmentStatus status;
+                try {
+                        status = DepartmentStatus.valueOf(statusStr.toUpperCase());
+                } catch (IllegalArgumentException ex) {
+                        throw new com.newwave.student_management.common.exception.AppException(
+                                        com.newwave.student_management.common.exception.ErrorCode.VALIDATION_ERROR);
+                }
+
+                AdminDepartmentDetailResponse response = adminDepartmentService.updateDepartmentStatus(departmentId,
+                                status);
+                return ApiResponse.success(response);
+        }
+
+        @DeleteMapping("/{departmentId}")
+        @PreAuthorize("hasRole('ADMIN')")
+        @Operation(summary = "UC-13.4 - Xóa Khoa (Soft Delete)", description = "Xóa mềm khoa. Không cho phép xóa nếu còn teacher/student active thuộc khoa này.")
+        public ResponseEntity<ApiResponse<Void>> deleteDepartment(
+                        @PathVariable Integer departmentId) {
+                adminDepartmentService.deleteDepartment(departmentId);
+                return ResponseEntity.status(HttpStatus.OK).body(ApiResponse.success(null));
+        }
+
+        @GetMapping("/simple")
+        @PreAuthorize("hasRole('ADMIN')")
+        @Operation(summary = "Danh sách Departments (Simple)", description = "Trả về danh sách khoa đơn giản (chưa xóa) để dùng cho select khi tạo/sửa user. "
+                        +
+                        "Endpoint này giữ lại để tương thích với frontend hiện tại.")
+        public ApiResponse<List<DepartmentResponse>> getDepartmentsSimple() {
+                List<Department> all = departmentRepository.findAllByStatusAndDeletedAtIsNull(DepartmentStatus.ACTIVE);
+                List<DepartmentResponse> result = all.stream()
+                                .map(DepartmentResponse::fromEntity)
+                                .toList();
+                return ApiResponse.success(result);
+        }
 }

@@ -17,4 +17,6 @@ public class TeacherSimpleResponse {
     private String firstName;
     private String lastName;
     private String fullName;
+    private Integer officeRoomId;
+    private String officeRoomName;
 }

@@ -36,8 +36,7 @@ public class AdminCourseController {
             @RequestParam(required = false) String search,
             @RequestParam(required = false) CourseStatus status,
             @RequestParam(required = false) Integer departmentId,
-            @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
-    ) {
+            @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         return ApiResponse.success(adminCourseService.getCourses(search, status, departmentId, pageable));
     }
 
@@ -45,8 +44,7 @@ public class AdminCourseController {
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Create a new course")
     public ApiResponse<AdminCourseDetailResponse> createCourse(
-            @RequestBody @Valid AdminCreateCourseRequest request
-    ) {
+            @RequestBody @Valid AdminCreateCourseRequest request) {
         return ApiResponse.success(adminCourseService.createCourse(request));
     }
 
@@ -55,8 +53,7 @@ public class AdminCourseController {
     @Operation(summary = "Update course status")
     public ApiResponse<AdminCourseListItemResponse> updateCourseStatus(
             @PathVariable Integer courseId,
-            @RequestBody Map<String, String> request
-    ) {
+            @RequestBody Map<String, String> request) {
         String statusStr = request.get("status");
         if (statusStr == null) {
             throw new AppException(ErrorCode.VALIDATION_ERROR);
@@ -64,8 +61,8 @@ public class AdminCourseController {
         CourseStatus status;
         try {
             status = CourseStatus.valueOf(statusStr.toUpperCase());
-        } catch (IllegalArgumentException e) {
-             throw new AppException(ErrorCode.VALIDATION_ERROR);
+        } catch (IllegalArgumentException ex) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR);
         }
 
         return ApiResponse.success(adminCourseService.updateCourseStatus(courseId, status));
@@ -74,7 +71,8 @@ public class AdminCourseController {
     @GetMapping("/{courseId}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Get course details")
-    public ApiResponse<com.newwave.student_management.domains.auth.dto.response.AdminCourseDetailResponse> getCourseDetail(@PathVariable Integer courseId) {
+    public ApiResponse<com.newwave.student_management.domains.auth.dto.response.AdminCourseDetailResponse> getCourseDetail(
+            @PathVariable Integer courseId) {
         return ApiResponse.success(adminCourseService.getCourseDetail(courseId));
     }
 
@@ -83,10 +81,10 @@ public class AdminCourseController {
     @Operation(summary = "Update course details")
     public ApiResponse<AdminCourseDetailResponse> updateCourse(
             @PathVariable Integer courseId,
-            @RequestBody @Valid AdminUpdateCourseRequest request
-    ) {
+            @RequestBody @Valid AdminUpdateCourseRequest request) {
         return ApiResponse.success(adminCourseService.updateCourse(courseId, request));
     }
+
     @DeleteMapping("/{courseId}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Delete course (soft delete)")

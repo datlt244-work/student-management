@@ -24,9 +24,9 @@ public class UserImportProducer {
             String payload = objectMapper.writeValueAsString(event);
             kafkaTemplate.send(TOPIC, event.getJobId().toString(), payload);
             log.info("Sent UserImportEvent to Kafka for job {}, row {}", event.getJobId(), event.getRowNumber());
-        } catch (JsonProcessingException e) {
-            log.error("Error serializing UserImportEvent", e);
-            throw new RuntimeException("Error processing import event", e);
+        } catch (JsonProcessingException ex) {
+            log.error("Error serializing UserImportEvent", ex);
+            throw new RuntimeException("Error processing import event", ex);
         }
     }
 }

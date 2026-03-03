@@ -37,10 +37,10 @@ public class TokenRedisService implements ITokenRedisService {
     @Value("${auth.login.fail-window-seconds:900}")
     private long failWindowSeconds;
 
-    @Value("${auth.login.lock-seconds:900}") 
+    @Value("${auth.login.lock-seconds:900}")
     private long lockSeconds;
 
-    @Value("${spring.security.jwt.refresh-expiration-seconds:604800}") 
+    @Value("${spring.security.jwt.refresh-expiration-seconds:604800}")
     private long refreshExpirationSeconds;
 
     @Override
@@ -87,7 +87,8 @@ public class TokenRedisService implements ITokenRedisService {
         String tokenKey = REFRESH_TOKEN_TO_USER_PREFIX + refreshToken;
 
         Duration ttl = Duration.ofSeconds(refreshExpirationSeconds);
-        // User -> ZSET (score = expiry timestamp) tránh "rò rỉ bộ nhớ" khi Token Key hết TTL trước Set
+        // User -> ZSET (score = expiry timestamp) tránh "rò rỉ bộ nhớ" khi Token Key
+        // hết TTL trước Set
         long expiryTime = System.currentTimeMillis() + ttl.toMillis();
         stringRedisTemplate.opsForZSet().add(userKey, refreshToken, expiryTime);
         // Token -> userId (để validate nhanh)
@@ -108,7 +109,7 @@ public class TokenRedisService implements ITokenRedisService {
         }
         try {
             return UUID.fromString(userIdStr);
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException ex) {
             log.warn("Invalid UUID stored for refresh token={}, value={}", refreshToken, userIdStr);
             return null;
         }
@@ -202,7 +203,7 @@ public class TokenRedisService implements ITokenRedisService {
         }
         try {
             return UUID.fromString(userIdStr);
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException ex) {
             log.warn("Invalid UUID for reset token, value={}", userIdStr);
             return null;
         }
@@ -210,7 +211,8 @@ public class TokenRedisService implements ITokenRedisService {
 
     @Override
     public String createActivationToken(UUID userId, long ttlSeconds) {
-        if (userId == null) return null;
+        if (userId == null)
+            return null;
         String token = UUID.randomUUID().toString();
         Duration ttl = Duration.ofSeconds(ttlSeconds);
         String userKey = ACTIVATION_TOKEN_PREFIX + userId;
@@ -222,13 +224,15 @@ public class TokenRedisService implements ITokenRedisService {
 
     @Override
     public UUID getUserIdByActivationToken(String token) {
-        if (token == null || token.isBlank()) return null;
+        if (token == null || token.isBlank())
+            return null;
         String key = ACTIVATION_TOKEN_TO_USER_PREFIX + token;
         String userIdStr = stringRedisTemplate.opsForValue().get(key);
-        if (userIdStr == null || userIdStr.isBlank()) return null;
+        if (userIdStr == null || userIdStr.isBlank())
+            return null;
         try {
             return UUID.fromString(userIdStr);
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException ex) {
             log.warn("Invalid UUID for activation token, value={}", userIdStr);
             return null;
         }
@@ -236,7 +240,8 @@ public class TokenRedisService implements ITokenRedisService {
 
     @Override
     public void deleteActivationToken(UUID userId) {
-        if (userId == null) return;
+        if (userId == null)
+            return;
         String userKey = ACTIVATION_TOKEN_PREFIX + userId;
         String token = stringRedisTemplate.opsForValue().get(userKey);
         stringRedisTemplate.delete(userKey);
@@ -265,27 +270,31 @@ public class TokenRedisService implements ITokenRedisService {
 
     @Override
     public long getTokenVersion(UUID userId) {
-        if (userId == null) return 0L;
+        if (userId == null)
+            return 0L;
         String key = TOKEN_VERSION_PREFIX + userId;
         String val = stringRedisTemplate.opsForValue().get(key);
-        if (val == null || val.isBlank()) return 0L;
+        if (val == null || val.isBlank())
+            return 0L;
         try {
             return Long.parseLong(val);
-        } catch (NumberFormatException e) {
+        } catch (NumberFormatException ex) {
             return 0L;
         }
     }
 
     @Override
     public void incrementTokenVersion(UUID userId) {
-        if (userId == null) return;
+        if (userId == null)
+            return;
         String key = TOKEN_VERSION_PREFIX + userId;
         stringRedisTemplate.opsForValue().increment(key);
     }
 
     /**
      * Tự dọn các token đã hết hạn khỏi ZSET (score &lt; now).
-     * Giải quyết lệch pha TTL: Token Key mất trước khi có thể xóa khỏi Set → rò rỉ bộ nhớ.
+     * Giải quyết lệch pha TTL: Token Key mất trước khi có thể xóa khỏi Set → rò rỉ
+     * bộ nhớ.
      */
     private void cleanupExpiredTokensFromUserZSet(String userKey) {
         if (userKey == null || userKey.isBlank()) {

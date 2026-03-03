@@ -676,6 +676,8 @@ export interface AdminSemesterListItem {
   startDate: string | null
   endDate: string | null
   isCurrent: boolean
+  enrollmentStatus: 'DRAFT' | 'PUBLISHED' | 'CLOSED'
+  publishedAt: string | null
   createdAt: string
 }
 
@@ -693,6 +695,8 @@ export interface TeacherSimpleResponse {
   firstName: string;
   lastName: string;
   fullName: string;
+  officeRoomId?: number | null;
+  officeRoomName?: string | null;
 }
 
 export interface AdminCreateSemesterRequest {
@@ -801,6 +805,30 @@ export async function deleteAdminSemester(id: number): Promise<void> {
     const errorData = await response.json().catch(() => null)
     throw new Error(errorData?.message || `Failed to delete semester (${response.status})`)
   }
+}
+
+export async function publishAdminSemester(id: number): Promise<AdminSemesterListItem> {
+  const response = await apiFetch(`/admin/semesters/${id}/publish`, {
+    method: 'PATCH',
+  })
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    throw new Error(errorData?.message || `Failed to publish semester (${response.status})`)
+  }
+  const data = await response.json()
+  return (data.result || data) as AdminSemesterListItem
+}
+
+export async function closeAdminSemesterEnrollment(id: number): Promise<AdminSemesterListItem> {
+  const response = await apiFetch(`/admin/semesters/${id}/close-enrollment`, {
+    method: 'PATCH',
+  })
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null)
+    throw new Error(errorData?.message || `Failed to close enrollment (${response.status})`)
+  }
+  const data = await response.json()
+  return (data.result || data) as AdminSemesterListItem
 }
 
 // ========== UC-12.1: Excel Templates ==========

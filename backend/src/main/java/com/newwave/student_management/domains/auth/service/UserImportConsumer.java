@@ -44,19 +44,19 @@ public class UserImportConsumer {
             importJobRepository.incrementSuccessCount(event.getJobId());
             checkAndCompleteJob(event);
 
-        } catch (AppException e) {
-            log.error("Validation error processing row in UserImportEvent", e);
+        } catch (AppException ex) {
+            log.error("Validation error processing row in UserImportEvent", ex);
             if (event != null) {
-                String errMsg = e.getErrorCode().getMessage();
-                if (e.getMessage() != null && !e.getMessage().equals(errMsg)) {
-                    errMsg += ": " + e.getMessage();
+                String errMsg = ex.getErrorCode().getMessage();
+                if (ex.getMessage() != null && !ex.getMessage().equals(errMsg)) {
+                    errMsg += ": " + ex.getMessage();
                 }
                 saveErrorAndIncrementFailure(event, errMsg);
             }
-        } catch (Exception e) {
-            log.error("System error processing UserImportEvent", e);
+        } catch (Exception ex) {
+            log.error("System error processing UserImportEvent", ex);
             if (event != null) {
-                saveErrorAndIncrementFailure(event, e.getMessage());
+                saveErrorAndIncrementFailure(event, ex.getMessage());
             }
         }
     }
@@ -123,8 +123,8 @@ public class UserImportConsumer {
                             .build();
 
                     notificationProducer.sendNotificationEvent(notifyEvent);
-                } catch (Exception e) {
-                    log.error("Failed to push UC-12.4 Notification to Admin for Job {}", job.getId(), e);
+                } catch (Exception ex) {
+                    log.error("Failed to push UC-12.4 Notification to Admin for Job {}", job.getId(), ex);
                 }
             }
         });

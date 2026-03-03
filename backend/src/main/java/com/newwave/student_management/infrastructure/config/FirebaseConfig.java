@@ -15,7 +15,7 @@ public class FirebaseConfig {
     public FirebaseApp firebaseApp() {
         try {
             InputStream serviceAccount;
-            
+
             // 1. Thử đọc từ biến môi trường (Hữu ích cho CI/CD hoặc Docker)
             String jsonConfig = System.getenv("FIREBASE_CONFIG_JSON");
             if (jsonConfig != null && !jsonConfig.isEmpty()) {
@@ -24,14 +24,14 @@ public class FirebaseConfig {
                 // 2. Nếu không có biến môi trường, thử đọc từ file trong resources
                 serviceAccount = getClass().getClassLoader().getResourceAsStream("firebase-service-account.json");
             }
-            
+
             if (serviceAccount == null) {
                 // 3. Fallback cuối cùng: dùng Google Application Default Credentials
                 // Nếu chạy trên GCP (Google Cloud) thì nó sẽ tự động nhận diện
                 FirebaseOptions options = FirebaseOptions.builder()
                         .setCredentials(GoogleCredentials.getApplicationDefault())
                         .build();
-                
+
                 if (FirebaseApp.getApps().isEmpty()) {
                     return FirebaseApp.initializeApp(options);
                 }
@@ -46,8 +46,8 @@ public class FirebaseConfig {
                 return FirebaseApp.initializeApp(options);
             }
             return FirebaseApp.getInstance();
-        } catch (Exception e) {
-            throw new RuntimeException("Lỗi khởi tạo Firebase: " + e.getMessage());
+        } catch (Exception ex) {
+            throw new RuntimeException("Lỗi khởi tạo Firebase: " + ex.getMessage());
         }
     }
 }

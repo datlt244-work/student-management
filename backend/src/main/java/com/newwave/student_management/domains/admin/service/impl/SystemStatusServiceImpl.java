@@ -80,7 +80,7 @@ public class SystemStatusServiceImpl implements SystemStatusService {
     public ComponentStatusDto checkDatabase() {
         Instant start = Instant.now();
         try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement("SELECT 1")) {
+                PreparedStatement ps = conn.prepareStatement("SELECT 1")) {
             ps.execute();
             long ms = Duration.between(start, Instant.now()).toMillis();
             return ComponentStatusDto.builder()
@@ -88,11 +88,11 @@ public class SystemStatusServiceImpl implements SystemStatusService {
                     .message("Database reachable")
                     .latencyMs(ms)
                     .build();
-        } catch (Exception e) {
-            log.warn("Database health check failed: {}", e.getMessage());
+        } catch (Exception ex) {
+            log.warn("Database health check failed: {}", ex.getMessage());
             return ComponentStatusDto.builder()
                     .status("DOWN")
-                    .message(e.getMessage())
+                    .message(ex.getMessage())
                     .latencyMs(null)
                     .build();
         }
@@ -102,7 +102,8 @@ public class SystemStatusServiceImpl implements SystemStatusService {
     public ComponentStatusDto checkRedis() {
         Instant start = Instant.now();
         try {
-            // simple read/write using tokenRedisService via rate-limit key; nếu có vấn đề Redis sẽ ném exception
+            // simple read/write using tokenRedisService via rate-limit key; nếu có vấn đề
+            // Redis sẽ ném exception
             tokenRedisService.isRateLimited("__healthcheck@example.com");
             long ms = Duration.between(start, Instant.now()).toMillis();
             return ComponentStatusDto.builder()
@@ -110,11 +111,11 @@ public class SystemStatusServiceImpl implements SystemStatusService {
                     .message("Redis reachable")
                     .latencyMs(ms)
                     .build();
-        } catch (Exception e) {
-            log.warn("Redis health check failed: {}", e.getMessage());
+        } catch (Exception ex) {
+            log.warn("Redis health check failed: {}", ex.getMessage());
             return ComponentStatusDto.builder()
                     .status("DOWN")
-                    .message(e.getMessage())
+                    .message(ex.getMessage())
                     .latencyMs(null)
                     .build();
         }
@@ -131,11 +132,11 @@ public class SystemStatusServiceImpl implements SystemStatusService {
                     .message("Mail service bean: " + impl)
                     .latencyMs(ms)
                     .build();
-        } catch (Exception e) {
-            log.warn("Mail health check failed: {}", e.getMessage());
+        } catch (Exception ex) {
+            log.warn("Mail health check failed: {}", ex.getMessage());
             return ComponentStatusDto.builder()
                     .status("DOWN")
-                    .message(e.getMessage())
+                    .message(ex.getMessage())
                     .latencyMs(null)
                     .build();
         }
@@ -148,8 +149,7 @@ public class SystemStatusServiceImpl implements SystemStatusService {
             boolean exists = minioClient.bucketExists(
                     BucketExistsArgs.builder()
                             .bucket(minioBucket)
-                            .build()
-            );
+                            .build());
             long ms = Duration.between(start, Instant.now()).toMillis();
 
             if (exists) {
@@ -165,11 +165,11 @@ public class SystemStatusServiceImpl implements SystemStatusService {
                         .latencyMs(ms)
                         .build();
             }
-        } catch (Exception e) {
-            log.warn("MinIO health check failed: {}", e.getMessage());
+        } catch (Exception ex) {
+            log.warn("MinIO health check failed: {}", ex.getMessage());
             return ComponentStatusDto.builder()
                     .status("DOWN")
-                    .message(e.getMessage())
+                    .message(ex.getMessage())
                     .latencyMs(null)
                     .build();
         }
@@ -193,5 +193,3 @@ public class SystemStatusServiceImpl implements SystemStatusService {
                 .build();
     }
 }
-
-

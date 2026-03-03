@@ -64,7 +64,7 @@ public class AdminRoomServiceImpl implements AdminRoomService {
     public AdminRoomResponse createRoom(AdminCreateRoomRequest request) {
         log.info("Creating new room: {}", request.getRoomName());
 
-        if (roomRepository.findByName(request.getRoomName()).isPresent()) {
+        if (roomRepository.findByNameAndDeletedAtIsNull(request.getRoomName()).isPresent()) {
             throw new AppException(ErrorCode.ROOM_EXISTS);
         }
 
@@ -89,7 +89,7 @@ public class AdminRoomServiceImpl implements AdminRoomService {
 
         // Check name clash if name is changed
         if (!room.getName().equals(request.getRoomName()) &&
-                roomRepository.findByName(request.getRoomName()).isPresent()) {
+                roomRepository.findByNameAndDeletedAtIsNull(request.getRoomName()).isPresent()) {
             throw new AppException(ErrorCode.ROOM_EXISTS);
         }
 

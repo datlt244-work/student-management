@@ -32,8 +32,8 @@ public class NotificationScheduler {
             for (SentNotification notif : pending) {
                 try {
                     notificationService.processScheduledNotification(notif);
-                } catch (Exception e) {
-                    log.error("Failed to process notification {}: {}", notif.getSentId(), e.getMessage());
+                } catch (Exception ex) {
+                    log.error("Failed to process notification {}: {}", notif.getSentId(), ex.getMessage());
                 }
             }
         }

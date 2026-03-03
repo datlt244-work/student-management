@@ -41,8 +41,7 @@ public class ProfileService implements IProfileService {
 
     private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
-            "image/jpeg", "image/jpg", "image/png", "image/webp"
-    );
+            "image/jpeg", "image/jpg", "image/png", "image/webp");
     private static final int MAX_AVATAR_DIMENSION = 500;
 
     private final UserRepository userRepository;
@@ -58,7 +57,8 @@ public class ProfileService implements IProfileService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
-        // 2. Build base response from User (profilePictureUrl: relative path in DB → full URL for frontend)
+        // 2. Build base response from User (profilePictureUrl: relative path in DB →
+        // full URL for frontend)
         String rawAvatar = user.getProfilePictureUrl();
         String profilePictureUrl = (rawAvatar != null && !rawAvatar.isBlank())
                 ? storageService.getPublicUrl(rawAvatar)
@@ -198,8 +198,8 @@ public class ProfileService implements IProfileService {
                     .outputQuality(0.85)
                     .toOutputStream(outputStream);
             processedImage = outputStream.toByteArray();
-        } catch (IOException e) {
-            log.error("Failed to process avatar image for user {}: {}", userId, e.getMessage());
+        } catch (IOException ex) {
+            log.error("Failed to process avatar image for user {}: {}", userId, ex.getMessage());
             throw new AppException(ErrorCode.FILE_PROCESSING_FAILED);
         }
 
@@ -211,14 +211,14 @@ public class ProfileService implements IProfileService {
                     objectName,
                     new ByteArrayInputStream(processedImage),
                     processedImage.length,
-                    "image/jpeg"
-            );
-        } catch (Exception e) {
-            log.error("Failed to upload avatar to MinIO for user {}: {}", userId, e.getMessage());
+                    "image/jpeg");
+        } catch (Exception ex) {
+            log.error("Failed to upload avatar to MinIO for user {}: {}", userId, ex.getMessage());
             throw new AppException(ErrorCode.FILE_UPLOAD_FAILED);
         }
 
-        // 5. Update DB with new avatar relative path; schedule MinIO cleanup after commit/rollback
+        // 5. Update DB with new avatar relative path; schedule MinIO cleanup after
+        // commit/rollback
         user.setProfilePictureUrl(objectName);
         userRepository.save(user);
 

@@ -11,8 +11,10 @@ import org.springframework.stereotype.Component;
 import java.util.UUID;
 
 /**
- * Reject JWTs whose token version ("tv") is older than the current version in Redis.
- * When user changes password we increment the version, so all existing tokens (all devices/tabs) become invalid.
+ * Reject JWTs whose token version ("tv") is older than the current version in
+ * Redis.
+ * When user changes password we increment the version, so all existing tokens
+ * (all devices/tabs) become invalid.
  */
 @Component
 @RequiredArgsConstructor
@@ -29,7 +31,7 @@ public class JwtTokenVersionValidator implements OAuth2TokenValidator<Jwt> {
         UUID userId;
         try {
             userId = UUID.fromString(userIdStr);
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException ex) {
             return OAuth2TokenValidatorResult.success();
         }
 
@@ -44,8 +46,7 @@ public class JwtTokenVersionValidator implements OAuth2TokenValidator<Jwt> {
             OAuth2Error error = new OAuth2Error(
                     "token_version_invalid",
                     "Token has been invalidated (e.g. after password change). Please login again.",
-                    null
-            );
+                    null);
             return OAuth2TokenValidatorResult.failure(error);
         }
         return OAuth2TokenValidatorResult.success();

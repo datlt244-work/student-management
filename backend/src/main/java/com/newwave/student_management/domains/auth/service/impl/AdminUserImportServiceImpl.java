@@ -164,8 +164,8 @@ public class AdminUserImportServiceImpl implements IAdminUserImportService {
 
             workbook.write(out);
             return out.toByteArray();
-        } catch (IOException e) {
-            log.error("Error generating Excel template", e);
+        } catch (IOException ex) {
+            log.error("Error generating Excel template", ex);
             throw new AppException(ErrorCode.EXCEL_PROCESSING_ERROR);
         }
     }
@@ -228,10 +228,10 @@ public class AdminUserImportServiceImpl implements IAdminUserImportService {
                 userImportProducer.sendImportEvent(event);
             }
 
-        } catch (AppException e) {
-            throw e; // re-throw AppException so it's not swallowed by generic Exception catch
-        } catch (Exception e) {
-            log.error("Failed to read Excel file", e);
+        } catch (AppException ex) {
+            throw ex; // re-throw AppException so it's not swallowed by generic Exception catch
+        } catch (Exception ex) {
+            log.error("Failed to read Excel file", ex);
             throw new AppException(ErrorCode.EXCEL_PROCESSING_ERROR);
         }
     }

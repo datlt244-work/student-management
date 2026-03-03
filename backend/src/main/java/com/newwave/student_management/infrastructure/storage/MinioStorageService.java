@@ -34,18 +34,16 @@ public class MinioStorageService implements IStorageService {
                             .stream(inputStream, size, -1)
                             .contentType(contentType)
                             .headers(java.util.Map.of(
-                                    "Cache-Control", "public, max-age=31536000, immutable"
-                            ))
-                            .build()
-            );
+                                    "Cache-Control", "public, max-age=31536000, immutable"))
+                            .build());
 
             // Construct public URL (dùng publicUrl để browser truy cập được)
             String fullUrl = publicUrl + "/" + bucket + "/" + objectName;
             log.info("Uploaded file to MinIO: {}", fullUrl);
             return fullUrl;
-        } catch (Exception e) {
-            log.error("Failed to upload file to MinIO: {}", e.getMessage(), e);
-            throw new RuntimeException("Failed to upload file to storage", e);
+        } catch (Exception ex) {
+            log.error("Failed to upload file to MinIO: {}", ex.getMessage(), ex);
+            throw new RuntimeException("Failed to upload file to storage", ex);
         }
     }
 
@@ -56,18 +54,18 @@ public class MinioStorageService implements IStorageService {
                     RemoveObjectArgs.builder()
                             .bucket(bucket)
                             .object(objectName)
-                            .build()
-            );
+                            .build());
             log.info("Deleted file from MinIO: {}", objectName);
-        } catch (Exception e) {
+        } catch (Exception ex) {
             // Log warning but don't throw — orphan files are acceptable
-            log.warn("Failed to delete file from MinIO: {} - {}", objectName, e.getMessage());
+            log.warn("Failed to delete file from MinIO: {} - {}", objectName, ex.getMessage());
         }
     }
 
     @Override
     public String getPublicUrl(String objectName) {
-        if (objectName == null || objectName.isBlank()) return null;
+        if (objectName == null || objectName.isBlank())
+            return null;
         String base = publicUrl.endsWith("/") ? publicUrl : publicUrl + "/";
         return base + bucket + "/" + objectName;
     }

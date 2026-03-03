@@ -155,6 +155,90 @@ public class ClassCacheService {
         return size != null ? size : 0;
     }
 
+    // ===== Phase 3: Atomic slot reservation =====
+
+    /**
+     * Kiểm tra class có trong Redis cache không.
+     */
+    public boolean isClassCached(Integer classId) {
+        return Boolean.TRUE.equals(redisTemplate.hasKey(CLASS_KEY_PREFIX + classId));
+    }
+
+    /**
+     * Lấy maxSlot từ Redis cache.
+     * 
+     * @return maxSlot, hoặc null nếu cache miss
+     */
+    public Integer getMaxSlot(Integer classId) {
+        Object val = redisTemplate.opsForHash().get(CLASS_KEY_PREFIX + classId, "maxSlot");
+        if (val == null)
+            return null;
+        return Integer.parseInt(val.toString());
+    }
+
+    /**
+     * Atomic slot reservation bằng Redis HINCRBY.
+     *
+     * <p>
+     * Flow:
+     * </p>
+     * <ol>
+     * <li>HINCRBY class:{id} currentSlot 1 → trả về newSlot</li>
+     * <li>HGET class:{id} maxSlot</li>
+     * <li>Nếu newSlot > maxSlot → HINCRBY -1 (rollback) → return false</li>
+     * <li>Nếu newSlot <= maxSlot → return true (đã giữ chỗ thành công)</li>
+     * </ol>
+     *
+     * <p>
+     * Tại sao atomic?
+     * </p>
+     * Redis HINCRBY là single-threaded, O(1), không race condition.
+     * Dù 5000 SV gọi đồng thời, mỗi HINCRBY đều sequential →
+     * chỉ đúng maxSlot SV được accepted, phần còn lại bị reject ngay lập tức.
+     *
+     * @param classId ID lớp cần reserve
+     * @return true nếu reserve thành công, false nếu hết chỗ
+     */
+    public boolean reserveSlot(Integer classId) {
+        String classKey = CLASS_KEY_PREFIX + classId;
+
+        // 1. Atomic increment
+        Long newSlot = redisTemplate.opsForHash().increment(classKey, "currentSlot", 1);
+
+        // 2. Lấy maxSlot
+        Object maxSlotObj = redisTemplate.opsForHash().get(classKey, "maxSlot");
+        if (maxSlotObj == null) {
+            // Cache miss — rollback và return false
+            redisTemplate.opsForHash().increment(classKey, "currentSlot", -1);
+            return false;
+        }
+        long maxSlot = Long.parseLong(maxSlotObj.toString());
+
+        // 3. Check vượt quá → rollback
+        if (newSlot > maxSlot) {
+            redisTemplate.opsForHash().increment(classKey, "currentSlot", -1);
+            log.debug("Slot reservation REJECTED for class {}: {}/{}", classId, newSlot, maxSlot);
+            return false;
+        }
+
+        log.debug("Slot reservation OK for class {}: {}/{}", classId, newSlot, maxSlot);
+        return true;
+    }
+
+    /**
+     * Giải phóng slot khi SV hủy đăng ký hoặc khi validation fail sau reserve.
+     * HINCRBY class:{id} currentSlot -1
+     */
+    public void releaseSlot(Integer classId) {
+        String classKey = CLASS_KEY_PREFIX + classId;
+        Long newSlot = redisTemplate.opsForHash().increment(classKey, "currentSlot", -1);
+        // Đảm bảo không xuống dưới 0
+        if (newSlot != null && newSlot < 0) {
+            redisTemplate.opsForHash().put(classKey, "currentSlot", "0");
+        }
+        log.debug("Slot released for class {}, currentSlot: {}", classId, newSlot);
+    }
+
     // ===== Helper methods =====
 
     private String getTeacherName(ScheduledClass sc) {

@@ -193,34 +193,73 @@ public class StudentClassServiceImpl implements IStudentClassService {
                         throw new AppException(ErrorCode.COURSE_ALREADY_ENROLLED);
                 }
 
-                // 4. Check capacity
-                long currentEnrolled = enrollmentRepository.countByScheduledClassClassId(classId);
-                if (currentEnrolled >= scheduledClass.getMaxStudents()) {
-                        throw new AppException(ErrorCode.CLASS_FULL);
-                }
-
-                // 5. Check schedule conflicts
-                if (scheduledClass.getSessions() != null) {
-                        for (ClassSession session : scheduledClass.getSessions()) {
-                                long conflicts = enrollmentRepository.countStudentConflicts(
-                                                student.getStudentId(),
-                                                scheduledClass.getSemester().getSemesterId(),
-                                                session.getDayOfWeek(),
-                                                session.getStartTime(),
-                                                session.getEndTime());
-                                if (conflicts > 0) {
-                                        throw new AppException(ErrorCode.STUDENT_SCHEDULE_CONFLICT);
+                // 4. Check capacity — Redis-first (atomic), fallback DB
+                boolean usedRedisReservation = false;
+                try {
+                        if (classCacheService.isClassCached(classId)) {
+                                // Redis path: HINCRBY atomic — race-condition-free
+                                boolean reserved = classCacheService.reserveSlot(classId);
+                                if (!reserved) {
+                                        throw new AppException(ErrorCode.CLASS_FULL);
                                 }
+                                usedRedisReservation = true;
+                                log.debug("Slot reserved via Redis for class {}", classId);
+                        } else {
+                                // DB fallback: COUNT query
+                                long currentEnrolled = enrollmentRepository.countByScheduledClassClassId(classId);
+                                if (currentEnrolled >= scheduledClass.getMaxStudents()) {
+                                        throw new AppException(ErrorCode.CLASS_FULL);
+                                }
+                        }
+                } catch (AppException e) {
+                        throw e; // Re-throw business exceptions
+                } catch (Exception e) {
+                        // Redis error → fallback DB
+                        log.warn("Redis slot check failed, falling back to DB: {}", e.getMessage());
+                        long currentEnrolled = enrollmentRepository.countByScheduledClassClassId(classId);
+                        if (currentEnrolled >= scheduledClass.getMaxStudents()) {
+                                throw new AppException(ErrorCode.CLASS_FULL);
                         }
                 }
 
-                // 6. Create enrollment
+                // 5. Check schedule conflicts (always DB — nhẹ, chỉ chạy khi slot OK)
+                try {
+                        if (scheduledClass.getSessions() != null) {
+                                for (ClassSession session : scheduledClass.getSessions()) {
+                                        long conflicts = enrollmentRepository.countStudentConflicts(
+                                                        student.getStudentId(),
+                                                        scheduledClass.getSemester().getSemesterId(),
+                                                        session.getDayOfWeek(),
+                                                        session.getStartTime(),
+                                                        session.getEndTime());
+                                        if (conflicts > 0) {
+                                                throw new AppException(ErrorCode.STUDENT_SCHEDULE_CONFLICT);
+                                        }
+                                }
+                        }
+                } catch (AppException e) {
+                        // Validation failed AFTER Redis reservation → release slot
+                        if (usedRedisReservation) {
+                                try {
+                                        classCacheService.releaseSlot(classId);
+                                        log.debug("Released Redis slot for class {} due to schedule conflict", classId);
+                                } catch (Exception ex) {
+                                        log.error("Failed to release Redis slot for class {}: {}", classId,
+                                                        ex.getMessage());
+                                }
+                        }
+                        throw e;
+                }
+
+                // 6. Create enrollment (sync → DB)
                 com.newwave.student_management.domains.enrollment.entity.Enrollment enrollment = new com.newwave.student_management.domains.enrollment.entity.Enrollment();
                 enrollment.setStudent(student);
                 enrollment.setScheduledClass(scheduledClass);
                 enrollment.setEnrollmentDate(java.time.LocalDate.now());
 
                 enrollmentRepository.save(enrollment);
+                log.info("Student {} enrolled in class {} (Redis reservation: {})",
+                                student.getStudentId(), classId, usedRedisReservation);
         }
 
         @Override
@@ -244,6 +283,17 @@ public class StudentClassServiceImpl implements IStudentClassService {
                 }
 
                 enrollmentRepository.delete(enrollment);
+
+                // Release Redis slot (nếu cache đang active)
+                try {
+                        if (classCacheService.isClassCached(classId)) {
+                                classCacheService.releaseSlot(classId);
+                                log.debug("Released Redis slot for class {} after unenroll", classId);
+                        }
+                } catch (Exception e) {
+                        log.warn("Failed to release Redis slot for class {} after unenroll: {}", classId,
+                                        e.getMessage());
+                }
         }
 
 }

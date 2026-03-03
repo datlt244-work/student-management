@@ -92,9 +92,9 @@ const router = createRouter({
           component: () => import('@/views/admin/ClassDetailView.vue'),
         },
         {
-          path: 'logs',
-          name: 'admin-logs',
-          component: () => import('@/views/admin/DashboardView.vue'), // TODO: create SystemLogs page
+          path: 'monitoring',
+          name: 'admin-monitoring',
+          component: () => import('@/views/admin/SystemMonitoringView.vue'),
         },
         {
           path: 'notifications',

@@ -2,8 +2,8 @@ package com.newwave.student_management.domains.facility.service;
 
 import com.newwave.student_management.domains.facility.dto.request.AdminCreateRoomRequest;
 import com.newwave.student_management.domains.facility.dto.request.AdminUpdateRoomRequest;
-import com.newwave.student_management.domains.facility.dto.response.AdminRoomResponse;
 import com.newwave.student_management.domains.facility.dto.response.AdminRoomListResponse;
+import com.newwave.student_management.domains.facility.dto.response.AdminRoomResponse;
 import org.springframework.data.domain.Pageable;
 
 public interface AdminRoomService {

@@ -1,108 +1,89 @@
-import { apiFetch } from '@/utils/api';
+import { apiFetch } from '@/utils/api'
 
 export interface AdminRoomResponse {
-  roomId: number;
-  roomName: string;
-  capacity?: number;
-  roomType?: string;
-  assignedTeacherId?: string;
-  assignedTeacherName?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface AdminRoomListResponse {
-  content: AdminRoomResponse[];
-  page: number;
-  size: number;
-  totalElements: number;
-  totalPages: number;
+  roomId: number
+  roomName: string
+  capacity: number
+  roomType: string
+  notes: string | null
+  status: boolean
+  assignedTeacherId: string | null
+  assignedTeacherName: string | null
+  createdAt: string
+  updatedAt: string
 }
 
 export interface AdminCreateRoomRequest {
-  roomName: string;
-  capacity: number;
-  roomType: string;
+  roomName: string
+  capacity: number
+  roomType: string
+  notes?: string
 }
 
 export interface AdminUpdateRoomRequest {
-  roomName: string;
-  capacity: number;
-  roomType: string;
+  roomName?: string
+  capacity?: number
+  roomType?: string
+  notes?: string
+  status?: boolean
+}
+
+interface PaginatedResponse {
+  content: AdminRoomResponse[]
+  totalElements: number
+  totalPages: number
+  number: number
+  size: number
 }
 
 export const adminRoomService = {
-  getRooms: async (
+  async getRooms(
     page: number = 1,
     size: number = 10,
     search?: string,
-    roomType?: string
-  ): Promise<AdminRoomListResponse> => {
-    const params = new URLSearchParams({
-      page: (page - 1).toString(), // Backend expects 0-indexed page
-      size: size.toString(),
-    });
-    if (search) params.append('search', search);
-    if (roomType) params.append('roomType', roomType);
+    roomType?: string,
+  ): Promise<PaginatedResponse> {
+    const params = new URLSearchParams()
+    params.append('page', String(page - 1))
+    params.append('size', String(size))
+    if (search) params.append('search', search)
+    if (roomType) params.append('roomType', roomType)
 
-    const response = await apiFetch(`/api/v1/admin/rooms?${params.toString()}`);
-    if (!response.ok) throw new Error('Failed to fetch rooms');
-    const result = await response.json();
-    return result.result;
+    const res = await apiFetch(`/admin/rooms?${params.toString()}`)
+    const json = await res.json()
+    return json.result
   },
 
-  getRoomDetails: async (id: number): Promise<AdminRoomResponse> => {
-    const response = await apiFetch(`/api/v1/admin/rooms/${id}`);
-    if (!response.ok) throw new Error('Failed to fetch room details');
-    const result = await response.json();
-    return result.result;
-  },
-
-  createRoom: async (data: AdminCreateRoomRequest): Promise<AdminRoomResponse> => {
-    const response = await apiFetch('/api/v1/admin/rooms', {
+  async createRoom(request: AdminCreateRoomRequest): Promise<AdminRoomResponse> {
+    const res = await apiFetch('/admin/rooms', {
       method: 'POST',
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.message || 'Failed to create room');
-    }
-    const result = await response.json();
-    return result.result;
+      body: JSON.stringify(request),
+    })
+    const json = await res.json()
+    return json.result
   },
 
-  updateRoom: async (id: number, data: AdminUpdateRoomRequest): Promise<AdminRoomResponse> => {
-    const response = await apiFetch(`/api/v1/admin/rooms/${id}`, {
+  async updateRoom(id: number, request: AdminUpdateRoomRequest): Promise<AdminRoomResponse> {
+    const res = await apiFetch(`/admin/rooms/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.message || 'Failed to update room');
-    }
-    const result = await response.json();
-    return result.result;
+      body: JSON.stringify(request),
+    })
+    const json = await res.json()
+    return json.result
   },
 
-  deleteRoom: async (id: number): Promise<void> => {
-    const response = await apiFetch(`/api/v1/admin/rooms/${id}`, {
+  async deleteRoom(id: number): Promise<void> {
+    await apiFetch(`/admin/rooms/${id}`, {
       method: 'DELETE',
-    });
-    if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.message || 'Failed to delete room');
-    }
+    })
   },
 
-  /**
-   * Fetch all rooms (no pagination) for dropdown/select usage.
-   * Uses a large page size to get all rooms in one call.
-   */
-  getAllRoomsSimple: async (): Promise<AdminRoomResponse[]> => {
-    const response = await apiFetch('/api/v1/admin/rooms?page=0&size=1000');
-    if (!response.ok) throw new Error('Failed to fetch rooms');
-    const result = await response.json();
-    return result.result?.content ?? [];
+  async getAllRoomsSimple(): Promise<AdminRoomResponse[]> {
+    const params = new URLSearchParams()
+    params.append('page', '0')
+    params.append('size', '1000')
+    const res = await apiFetch(`/admin/rooms?${params.toString()}`)
+    const json = await res.json()
+    return json.result?.content || []
   },
-};
-
+}

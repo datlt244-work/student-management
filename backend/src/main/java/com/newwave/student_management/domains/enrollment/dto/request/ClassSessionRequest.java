@@ -18,7 +18,7 @@ public class ClassSessionRequest {
     private Integer roomId;
 
     @NotNull(message = "Day of week is required")
-    private Integer dayOfWeek; // 1-7 (Monday-Sunday)
+    private Integer dayOfWeek;
 
     @NotNull(message = "Start time is required")
     private LocalTime startTime;

@@ -11,18 +11,23 @@ import java.time.LocalTime;
 @Repository
 public interface ClassSessionRepository extends JpaRepository<ClassSession, Long> {
 
-        @Query("SELECT COUNT(s) FROM ClassSession s " +
-                        "WHERE s.room.roomId = :roomId " +
-                        "AND s.dayOfWeek = :dayOfWeek " +
-                        "AND (s.startTime < :endTime AND s.endTime > :startTime) " +
-                        "AND s.scheduledClass.semester.semesterId = :semesterId " +
-                        "AND (:excludeClassId IS NULL OR s.scheduledClass.classId <> :excludeClassId) " +
-                        "AND s.scheduledClass.deletedAt IS NULL")
-        long countRoomConflicts(
-                        @Param("roomId") Integer roomId,
-                        @Param("dayOfWeek") Integer dayOfWeek,
-                        @Param("startTime") LocalTime startTime,
-                        @Param("endTime") LocalTime endTime,
-                        @Param("semesterId") Integer semesterId,
-                        @Param("excludeClassId") Integer excludeClassId);
+    /**
+     * Count room conflicts: checks if a room is already booked for overlapping time
+     * in the same semester (optionally excluding a given class).
+     */
+    @Query("SELECT COUNT(cs) FROM ClassSession cs " +
+            "WHERE cs.room.roomId = :roomId " +
+            "AND cs.dayOfWeek = :dayOfWeek " +
+            "AND cs.startTime < :endTime " +
+            "AND cs.endTime > :startTime " +
+            "AND cs.scheduledClass.semester.semesterId = :semesterId " +
+            "AND cs.scheduledClass.deletedAt IS NULL " +
+            "AND (:excludeClassId IS NULL OR cs.scheduledClass.classId <> :excludeClassId)")
+    long countRoomConflicts(
+            @Param("roomId") Integer roomId,
+            @Param("dayOfWeek") Integer dayOfWeek,
+            @Param("startTime") LocalTime startTime,
+            @Param("endTime") LocalTime endTime,
+            @Param("semesterId") Integer semesterId,
+            @Param("excludeClassId") Integer excludeClassId);
 }

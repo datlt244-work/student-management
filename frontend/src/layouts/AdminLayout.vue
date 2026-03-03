@@ -20,6 +20,7 @@ function closeMobileMenu() {
 
 const navItems = [
   { name: 'Dashboard', icon: 'dashboard', routeName: 'admin-dashboard' },
+  { name: 'System Monitoring', icon: 'monitoring', routeName: 'admin-monitoring' },
   { name: 'User Management', icon: 'group', routeName: 'admin-users' },
   { name: 'Department Management', icon: 'account_tree', routeName: 'admin-departments' },
   { name: 'Course Management', icon: 'menu_book', routeName: 'admin-courses' },
@@ -27,7 +28,6 @@ const navItems = [
   { name: 'Class Management', icon: 'school', routeName: 'admin-classes' },
   { name: 'Room Management', icon: 'meeting_room', routeName: 'admin-rooms' },
   { name: 'Notifications', icon: 'notifications', routeName: 'admin-notifications' },
-  { name: 'System Logs', icon: 'description', routeName: 'admin-logs' },
 ]
 
 function isActive(routeName: string): boolean {

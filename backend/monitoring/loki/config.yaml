@@ -5,13 +5,12 @@ server:
   grpc_listen_port: 9096
 
 common:
-  instance_addr: 127.0.0.1
   path_prefix: /loki
+  replication_factor: 1
   storage:
     filesystem:
       chunks_directory: /loki/chunks
       rules_directory: /loki/rules
-  replication_factor: 1
   ring:
     kvstore:
       store: inmemory
@@ -25,7 +24,7 @@ query_range:
 
 schema_config:
   configs:
-    - from: 2024-01-01
+    - from: "2024-01-01"
       store: tsdb
       object_store: filesystem
       schema: v13
@@ -46,5 +45,4 @@ compactor:
   retention_enabled: true
   retention_delete_delay: 2h
   retention_delete_worker_count: 150
-
-# In Loki 3.x, retention is handled by the compactor, table_manager is no longer required for basic retention
+  delete_request_store: filesystem # QUAN TRỌNG: Loki 3.x yêu cầu khai báo này khi bật retention

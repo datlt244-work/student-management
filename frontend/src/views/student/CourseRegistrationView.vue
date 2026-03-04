@@ -54,6 +54,11 @@ const showCountdown = computed(
   () => deadlineInfo.value?.isOpen && !countdown.value.expired
 )
 
+// Cổng đăng ký có đang mở không (PUBLISHED + chưa hết deadline)
+const isEnrollmentOpen = computed(
+  () => deadlineInfo.value?.isOpen === true && !countdown.value.expired
+)
+
 // Default placeholder for courses
 const DEFAULT_COURSE_IMAGE =
   'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?q=80&w=2073&auto=format&fit=crop'
@@ -115,6 +120,14 @@ function cancelDrop() {
 
 async function handleDrop() {
   if (!classToDropId.value) return
+
+  // Frontend guard: block nếu cổng đã đóng
+  if (!isEnrollmentOpen.value) {
+    showDropConfirm.value = false
+    showToast('Enrollment period is closed. You can no longer drop classes.', 'error')
+    return
+  }
+
   const classId = classToDropId.value
   showDropConfirm.value = false
   droppingId.value = classId
@@ -488,6 +501,17 @@ function formatRoom(cls: StudentAvailableClass | StudentEnrolledClass): string {
 
       <!-- ==================== ENROLLED CLASSES TAB ==================== -->
       <template v-else>
+        <!-- Enrollment Closed Banner -->
+        <div
+          v-if="!isEnrollmentOpen && enrolledClasses.length > 0"
+          class="flex items-center gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800"
+        >
+          <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 !text-[20px]">lock</span>
+          <p class="text-amber-800 dark:text-amber-300 text-sm font-semibold">
+            Enrollment period is closed — you can view your classes but cannot drop them.
+          </p>
+        </div>
+
         <!-- Summary Bar -->
         <div
           v-if="enrolledClasses.length > 0"
@@ -620,6 +644,7 @@ function formatRoom(cls: StudentAvailableClass | StudentEnrolledClass): string {
                   </td>
                   <td class="px-6 py-4 text-right">
                     <button
+                      v-if="isEnrollmentOpen"
                       @click="confirmDrop(cls.classId, cls.courseName)"
                       :disabled="droppingId === cls.classId"
                       class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -631,6 +656,14 @@ function formatRoom(cls: StudentAvailableClass | StudentEnrolledClass): string {
                       <span class="material-symbols-outlined !text-[16px]" v-else>close</span>
                       Drop
                     </button>
+                    <span
+                      v-else
+                      class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold border border-border-light dark:border-border-dark text-text-muted-light dark:text-text-muted-dark bg-input-bg-light dark:bg-input-bg-dark cursor-not-allowed"
+                      title="Enrollment period is closed"
+                    >
+                      <span class="material-symbols-outlined !text-[16px]">lock</span>
+                      Closed
+                    </span>
                   </td>
                 </tr>
               </tbody>

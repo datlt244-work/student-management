@@ -339,6 +339,12 @@ public class StudentClassServiceImpl implements IStudentClassService {
                         throw new AppException(ErrorCode.SEMESTER_NOT_CURRENT);
                 }
 
+                // Guard: Chỉ cho phép hủy khi cổng đăng ký đang mở (PUBLISHED)
+                if (currentSemester
+                                .getEnrollmentStatus() != com.newwave.student_management.domains.profile.entity.EnrollmentStatus.PUBLISHED) {
+                        throw new AppException(ErrorCode.ENROLLMENT_CLOSED);
+                }
+
                 enrollmentRepository.delete(enrollment);
 
                 // Release Redis slot (nếu cache đang active)

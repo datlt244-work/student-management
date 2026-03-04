@@ -59,8 +59,19 @@ public class EnrollRateLimitFilter extends OncePerRequestFilter {
         String redisKey = KEY_PREFIX + limitKey;
 
         Long count = stringRedisTemplate.opsForValue().increment(redisKey);
-        if (count != null && count == 1) {
+
+        if (count != null && count == 1L) {
+            // Lần đầu tiên trong window: set TTL
             stringRedisTemplate.expire(redisKey, Duration.ofSeconds(WINDOW_SECONDS));
+        } else if (count != null) {
+            // Safety net: nếu TTL bị mất (server crash giữa INCR và EXPIRE lần trước)
+            // getExpire trả về -1 khi key tồn tại nhưng KHÔNG có TTL
+            // → re-set TTL để tránh user bị block vĩnh viễn
+            Long ttl = stringRedisTemplate.getExpire(redisKey);
+            if (ttl != null && ttl == -1L) {
+                log.warn("Rate limit key {} has no TTL (possible crash recovery), resetting TTL", redisKey);
+                stringRedisTemplate.expire(redisKey, Duration.ofSeconds(WINDOW_SECONDS));
+            }
         }
 
         if (count != null && count > MAX_REQUESTS) {

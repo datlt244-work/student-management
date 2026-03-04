@@ -76,8 +76,23 @@ public class StudentClassServiceImpl implements IStudentClassService {
                                 currentSemester.getSemesterId(),
                                 student.getStudentId());
 
+                if (availableClasses.isEmpty()) {
+                        return List.of();
+                }
+
+                // Batch count — 1 query duy nhất thay vì N query
+                List<Integer> classIds = availableClasses.stream()
+                                .map(ScheduledClass::getClassId)
+                                .collect(Collectors.toList());
+                List<Object[]> countRows = scheduledClassRepository.countEnrollmentsByClassIds(classIds);
+                java.util.Map<Integer, Long> enrollCountMap = new java.util.HashMap<>();
+                for (Object[] row : countRows) {
+                        enrollCountMap.put((Integer) row[0], (Long) row[1]);
+                }
+
                 return availableClasses.stream()
-                                .map(this::mapToAvailableClassResponse)
+                                .map(sc -> mapToAvailableClassResponse(sc,
+                                                enrollCountMap.getOrDefault(sc.getClassId(), 0L)))
                                 .collect(Collectors.toList());
         }
 
@@ -139,15 +154,14 @@ public class StudentClassServiceImpl implements IStudentClassService {
                                 .build();
         }
 
-        private StudentAvailableClassResponse mapToAvailableClassResponse(ScheduledClass scheduledClass) {
+        private StudentAvailableClassResponse mapToAvailableClassResponse(ScheduledClass scheduledClass,
+                        long currentStudents) {
                 String teacherName = "N/A";
                 if (scheduledClass.getTeacher() != null) {
                         teacherName = (scheduledClass.getTeacher().getFirstName() + " "
                                         + scheduledClass.getTeacher().getLastName())
                                         .trim();
                 }
-
-                long currentStudents = enrollmentRepository.countByScheduledClassClassId(scheduledClass.getClassId());
 
                 return StudentAvailableClassResponse.builder()
                                 .classId(scheduledClass.getClassId())
@@ -217,7 +231,7 @@ public class StudentClassServiceImpl implements IStudentClassService {
                         throw new AppException(ErrorCode.COURSE_ALREADY_ENROLLED);
                 }
 
-                // 4. Check capacity — Redis-first (atomic), fallback DB
+                // 4. Check capacity — Redis-first (atomic), fallback DB with Pessimistic Lock
                 boolean usedRedisReservation = false;
                 try {
                         if (classCacheService.isClassCached(classId)) {
@@ -229,19 +243,25 @@ public class StudentClassServiceImpl implements IStudentClassService {
                                 usedRedisReservation = true;
                                 log.debug("Slot reserved via Redis for class {}", classId);
                         } else {
-                                // DB fallback: COUNT query
+                                // DB fallback: SELECT ... FOR UPDATE (Pessimistic Lock)
+                                ScheduledClass lockedClass = scheduledClassRepository
+                                                .findByClassIdWithLock(classId)
+                                                .orElseThrow(() -> new AppException(ErrorCode.CLASS_NOT_FOUND));
                                 long currentEnrolled = enrollmentRepository.countByScheduledClassClassId(classId);
-                                if (currentEnrolled >= scheduledClass.getMaxStudents()) {
+                                if (currentEnrolled >= lockedClass.getMaxStudents()) {
                                         throw new AppException(ErrorCode.CLASS_FULL);
                                 }
                         }
                 } catch (AppException ex) {
                         throw ex; // Re-throw business exceptions
                 } catch (Exception ex) {
-                        // Redis error → fallback DB
-                        log.warn("Redis slot check failed, falling back to DB: {}", ex.getMessage());
+                        // Redis error → fallback DB with lock
+                        log.warn("Redis slot check failed, falling back to DB with lock: {}", ex.getMessage());
+                        ScheduledClass lockedClass = scheduledClassRepository
+                                        .findByClassIdWithLock(classId)
+                                        .orElseThrow(() -> new AppException(ErrorCode.CLASS_NOT_FOUND));
                         long currentEnrolled = enrollmentRepository.countByScheduledClassClassId(classId);
-                        if (currentEnrolled >= scheduledClass.getMaxStudents()) {
+                        if (currentEnrolled >= lockedClass.getMaxStudents()) {
                                 throw new AppException(ErrorCode.CLASS_FULL);
                         }
                 }

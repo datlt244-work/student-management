@@ -47,7 +47,14 @@ public class AuthService implements IAuthService {
     public LoginResponse authenticate(LoginRequest loginRequest, String clientIp) {
         String email = loginRequest.getEmail() != null ? loginRequest.getEmail().trim().toLowerCase() : null;
 
-        // 2. Rate limit by email
+        // 1. Rate limit by IP (Password Spraying defense) — check TRƯỚC email để chặn
+        // sớm nhất
+        if (tokenRedisService.isIpRateLimited(clientIp)) {
+            log.warn("Login blocked: IP rate limited, ip={}", clientIp);
+            throw new AppException(ErrorCode.RATE_LIMITED);
+        }
+
+        // 2. Rate limit by email (Brute Force defense)
         if (tokenRedisService.isRateLimited(email)) {
             throw new AppException(ErrorCode.RATE_LIMITED);
         }
@@ -56,6 +63,7 @@ public class AuthService implements IAuthService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> {
                     tokenRedisService.recordFailedAttempt(email);
+                    tokenRedisService.recordIpFailedAttempt(clientIp);
                     return new AppException(ErrorCode.UNAUTHENTICATED);
                 });
 
@@ -74,13 +82,18 @@ public class AuthService implements IAuthService {
         // 5. Verify password
         boolean ok = passwordEncoder.matches(loginRequest.getPassword(), user.getPasswordHash());
         if (!ok) {
-            int remaining = tokenRedisService.recordFailedAttempt(email);
-            log.warn("Login failed for email={}, remainingAttempts={}, ip={}", email, remaining, clientIp);
+            int emailRemaining = tokenRedisService.recordFailedAttempt(email);
+            int ipRemaining = tokenRedisService.recordIpFailedAttempt(clientIp);
+            log.warn("Login failed: email={}, emailRemaining={}, ipRemaining={}, ip={}",
+                    email, emailRemaining, ipRemaining, clientIp);
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
 
-        // 6. Reset failed attempts
+        // 6. Reset counters (login thành công)
         tokenRedisService.resetFailedAttempts(email);
+        // Chỉ reset IP fail counter, KHÔNG reset IP lock (tự hết TTL)
+        // → Tránh attacker dùng account hợp lệ để "rửa" IP block
+        tokenRedisService.resetIpFailedAttempts(clientIp);
 
         // 7. Update login tracking
         user.setLastLoginAt(LocalDateTime.now());

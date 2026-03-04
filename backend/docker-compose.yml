@@ -42,7 +42,7 @@ services:
 
     volumes:
       - ./logs:/app/logs
-      
+
     depends_on:
       db:
         condition: service_healthy

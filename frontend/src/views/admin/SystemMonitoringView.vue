@@ -15,74 +15,13 @@ type TabName = 'system-logs' | 'audit-logs' | 'redis-analytics'
 const activeTab = ref<TabName>('system-logs')
 
 const tabs: { name: TabName; label: string }[] = [
-  { name: 'system-logs', label: 'System Logs (Loki)' },
+  { name: 'system-logs', label: 'System Logs' },
   { name: 'audit-logs', label: 'Audit Logs' },
   { name: 'redis-analytics', label: 'Redis Analytics' },
 ]
 
-// ===== System Logs =====
-const logFilter = ref('')
-const logLevel = ref('all')
-const isPaused = ref(false)
-
-interface LogEntry {
-  time: string
-  level: 'INFO' | 'WARN' | 'ERROR'
-  service: string
-  message: string
-}
-
-const mockLogs: LogEntry[] = [
-  { time: '10:42:15', level: 'INFO', service: 'auth-service', message: 'User logged in successfully (ID: 8842)' },
-  { time: '10:42:18', level: 'INFO', service: 'course-manager', message: 'Cache hit for course_list_v2' },
-  { time: '10:42:22', level: 'WARN', service: 'payment-gateway', message: 'Response time deviation detected (>500ms)' },
-  { time: '10:42:25', level: 'INFO', service: 'auth-service', message: 'Token refreshed for session_id_9921' },
-  { time: '10:42:29', level: 'ERROR', service: 'notification-worker', message: 'Failed to send FCM message. Reason: InvalidToken' },
-  { time: '10:42:33', level: 'INFO', service: 'course-manager', message: 'New material uploaded for Class 10-A' },
-  { time: '10:42:34', level: 'INFO', service: 'api-gateway', message: 'GET /api/v1/students/profile 200 OK 45ms' },
-  { time: '10:42:38', level: 'INFO', service: 'api-gateway', message: 'POST /api/v1/attendance/mark 201 Created 120ms' },
-  { time: '10:42:41', level: 'WARN', service: 'redis-cache', message: 'Memory usage approaching 85% threshold' },
-  { time: '10:42:45', level: 'INFO', service: 'auth-service', message: 'Rate limit quota updated for tenant: school_01' },
-  { time: '10:42:47', level: 'ERROR', service: 'db-connector', message: 'Connection timeout while acquiring pool connection' },
-  { time: '10:42:50', level: 'INFO', service: 'api-gateway', message: 'GET /health 200 OK 2ms' },
-  { time: '10:42:52', level: 'INFO', service: 'enrollment-service', message: 'Redis slot reserved for class 101 (35/40)' },
-  { time: '10:42:55', level: 'WARN', service: 'redis-cache', message: 'Key TTL expiring soon: semester:5:classes' },
-  { time: '10:42:58', level: 'INFO', service: 'enrollment-service', message: 'Student enrolled in class 103 (Redis reservation: true)' },
-]
-
-const filteredLogs = computed(() => {
-  return mockLogs.filter((log) => {
-    const matchLevel = logLevel.value === 'all' || log.level.toLowerCase() === logLevel.value
-    const matchFilter =
-      !logFilter.value ||
-      log.service.toLowerCase().includes(logFilter.value.toLowerCase()) ||
-      log.message.toLowerCase().includes(logFilter.value.toLowerCase())
-    return matchLevel && matchFilter
-  })
-})
-
-function getLevelClass(level: string) {
-  switch (level) {
-    case 'INFO':
-      return 'text-green-400'
-    case 'WARN':
-      return 'text-yellow-400'
-    case 'ERROR':
-      return 'text-red-500'
-    default:
-      return 'text-gray-400'
-  }
-}
-
-function getServiceClass(service: string) {
-  if (service.includes('auth')) return 'text-purple-400'
-  if (service.includes('course') || service.includes('enrollment')) return 'text-blue-400'
-  if (service.includes('api')) return 'text-cyan-400'
-  if (service.includes('redis')) return 'text-orange-300'
-  if (service.includes('notification')) return 'text-red-300'
-  if (service.includes('db')) return 'text-red-300'
-  return 'text-yellow-200'
-}
+// ===== Grafana =====
+const grafanaUrl = import.meta.env.VITE_GRAFANA_URL || 'http://localhost:3001'
 
 // ===== Audit Logs =====
 interface AuditEntry {
@@ -253,106 +192,69 @@ function getCapacityTextColor(current: number, max: number) {
 
     <!-- Tab Content -->
     <div class="flex-1 min-h-0 relative">
-      <!-- ===== System Logs Tab ===== -->
+      <!-- ===== System Logs Tab (Grafana Link) ===== -->
       <div
         v-if="activeTab === 'system-logs'"
-        class="absolute inset-0 flex flex-col gap-4"
+        class="absolute inset-0 flex flex-col items-center justify-center gap-6"
       >
-        <!-- Filters -->
         <div
-          class="flex flex-col sm:flex-row gap-4 items-center justify-between bg-surface-light dark:bg-surface-dark p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm flex-shrink-0"
+          class="w-full max-w-2xl bg-surface-light dark:bg-surface-dark rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm p-8 md:p-12 text-center"
         >
-          <div class="flex items-center gap-4 w-full sm:w-auto">
-            <div class="relative w-full sm:w-64">
-              <span
-                class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]"
-                >search</span
+          <!-- Grafana Icon -->
+          <div class="mx-auto w-20 h-20 rounded-2xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center mb-6 shadow-lg shadow-orange-500/20">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" class="w-10 h-10">
+              <path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12s4.477 10 10 10 10-4.477 10-10zm-10 8a8 8 0 110-16 8 8 0 010 16zm0-14a6 6 0 100 12 6 6 0 000-12zm0 2a4 4 0 110 8 4 4 0 010-8zm0 2a2 2 0 100 4 2 2 0 000-4z"/>
+            </svg>
+          </div>
+
+          <h2 class="text-xl md:text-2xl font-bold text-slate-900 dark:text-white mb-2">
+            Grafana Log Dashboard
+          </h2>
+          <p class="text-slate-500 dark:text-slate-400 text-sm md:text-base max-w-md mx-auto mb-8">
+            System logs are managed via <strong>Grafana + Loki</strong>. Click the button below to open the Grafana dashboard for real-time log monitoring, filtering, and alerting.
+          </p>
+
+          <a
+            :href="grafanaUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold rounded-xl shadow-md shadow-orange-500/20 transition-all duration-200 hover:shadow-lg hover:shadow-orange-500/30 hover:-translate-y-0.5"
+          >
+            <span class="material-symbols-outlined text-[20px]">open_in_new</span>
+            Open Grafana Dashboard
+          </a>
+
+          <!-- Quick Links -->
+          <div class="mt-8 pt-6 border-t border-stone-200 dark:border-stone-800">
+            <p class="text-xs font-bold uppercase text-slate-400 mb-4 tracking-wider">Quick Links</p>
+            <div class="flex flex-wrap justify-center gap-3">
+              <a
+                :href="`${grafanaUrl}/explore`"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-lg transition-colors"
               >
-              <input
-                v-model="logFilter"
-                class="w-full pl-9 pr-4 h-9 text-sm"
-                placeholder="Filter by service name..."
-                type="text"
-              />
-            </div>
-            <select v-model="logLevel" class="h-9 py-0 pl-3 pr-8 text-sm">
-              <option value="all">All Levels</option>
-              <option value="info">Info</option>
-              <option value="warn">Warning</option>
-              <option value="error">Error</option>
-            </select>
-          </div>
-          <div class="flex gap-2">
-            <button
-              class="p-2 transition-colors"
-              :class="isPaused ? 'text-primary' : 'text-slate-500 hover:text-primary'"
-              title="Pause Live Stream"
-              @click="isPaused = !isPaused"
-            >
-              <span class="material-symbols-outlined">{{
-                isPaused ? 'play_circle' : 'pause_circle'
-              }}</span>
-            </button>
-            <button
-              class="p-2 text-slate-500 hover:text-primary transition-colors"
-              title="Clear Logs"
-            >
-              <span class="material-symbols-outlined">delete_sweep</span>
-            </button>
-            <button
-              class="p-2 text-slate-500 hover:text-primary transition-colors"
-              title="Download Logs"
-            >
-              <span class="material-symbols-outlined">download</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Terminal -->
-        <div
-          class="flex-1 bg-[#1e1e1e] rounded-xl border border-stone-800 shadow-inner overflow-hidden flex flex-col font-mono text-sm"
-        >
-          <div
-            class="flex items-center justify-between px-4 py-2 bg-[#2d2d2d] border-b border-[#3e3e3e]"
-          >
-            <div class="flex gap-2">
-              <div class="w-3 h-3 rounded-full bg-red-500"></div>
-              <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
-              <div class="w-3 h-3 rounded-full bg-green-500"></div>
-            </div>
-            <div class="text-xs text-gray-400">loki-promtail-stream</div>
-          </div>
-          <div
-            class="flex-1 overflow-y-auto p-4 terminal-scroll text-gray-300 leading-relaxed"
-          >
-            <div
-              v-for="(log, idx) in filteredLogs"
-              :key="idx"
-              class="pb-1 hover:bg-white/5 px-2 -mx-2 rounded"
-            >
-              <span class="text-gray-500 select-none">[{{ log.time }}]</span>
-              <span :class="[getLevelClass(log.level), 'font-bold']"> {{ log.level }} </span>
-              <span :class="getServiceClass(log.service)">{{ log.service }}</span
-              >: {{ log.message }}
-            </div>
-
-            <div
-              v-if="filteredLogs.length === 0"
-              class="text-gray-500 text-center py-8"
-            >
-              No logs matching filter.
-            </div>
-
-            <div
-              v-if="!isPaused"
-              class="flex items-center gap-2 text-primary mt-2 animate-pulse"
-            >
-              <span class="material-symbols-outlined text-[16px]">terminal</span>
-              <span>Listening for new logs...</span>
-            </div>
-            <div v-else class="flex items-center gap-2 text-yellow-400 mt-2">
-              <span class="material-symbols-outlined text-[16px]">pause</span>
-              <span>Stream paused</span>
+                <span class="material-symbols-outlined text-[16px]">search</span>
+                Explore Logs
+              </a>
+              <a
+                :href="`${grafanaUrl}/alerting/list`"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-lg transition-colors"
+              >
+                <span class="material-symbols-outlined text-[16px]">notifications</span>
+                Alert Rules
+              </a>
+              <a
+                :href="`${grafanaUrl}/dashboards`"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-lg transition-colors"
+              >
+                <span class="material-symbols-outlined text-[16px]">dashboard</span>
+                Dashboards
+              </a>
             </div>
           </div>
         </div>

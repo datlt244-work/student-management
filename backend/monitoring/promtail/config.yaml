@@ -27,7 +27,7 @@ scrape_configs:
             logger: logger_name
             message: message
             thread: thread_name
-            timestamp: "@timestamp"
+            timestamp: '"@timestamp"'
       - labels:
           level:
           logger:

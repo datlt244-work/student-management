@@ -180,7 +180,7 @@ services:
   # 8. LOKI (Log Storage)
   # ==============================
   loki:
-    image: grafana/loki:2.9.4
+    image: grafana/loki:3.1.0
     container_name: loki
     ports:
       - "3100:3100"
@@ -196,7 +196,7 @@ services:
   # 9. PROMTAIL (Log Shipper)
   # ==============================
   promtail:
-    image: grafana/promtail:2.9.4
+    image: grafana/promtail:3.1.0
     container_name: promtail
     volumes:
       - ./monitoring/promtail/config.yaml:/etc/promtail/config.yaml

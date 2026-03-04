@@ -39,10 +39,9 @@ services:
       APP_BACKEND_URL: ${APP_BACKEND_URL:-http://localhost:6868/api/v1}
       FIREBASE_CONFIG_JSON: ${FIREBASE_CONFIG_JSON}
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-
-    volumes:
-      - ./logs:/app/logs
-
+    labels:
+      logging: "true"
+      app: "backend"
     depends_on:
       db:
         condition: service_healthy
@@ -204,7 +203,6 @@ services:
     container_name: promtail
     volumes:
       - ./monitoring/promtail/config.yaml:/etc/promtail/config.yaml
-      - ./logs:/var/log/app
       - /var/run/docker.sock:/var/run/docker.sock
     command: -config.file=/etc/promtail/config.yaml
     networks:

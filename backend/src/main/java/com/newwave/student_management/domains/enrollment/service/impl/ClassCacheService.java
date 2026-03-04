@@ -10,6 +10,8 @@ import com.newwave.student_management.domains.profile.repository.SemesterReposit
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,9 +45,47 @@ import java.util.stream.Collectors;
 public class ClassCacheService {
 
     private final RedisTemplate<String, Object> redisTemplate;
+    private final StringRedisTemplate stringRedisTemplate;
     private final ScheduledClassRepository scheduledClassRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final SemesterRepository semesterRepository;
+
+    /**
+     * Lua script thực hiện INCR + check maxSlot trong một lệnh atomic duy nhất.
+     * • KEYS[1] = class:{classId}
+     * • Trả về 1 nếu reserve thành công, 0 nếu hết slot hoặc key không tồn tại.
+     */
+    private static final DefaultRedisScript<Long> RESERVE_SLOT_SCRIPT;
+    private static final DefaultRedisScript<Long> RELEASE_SLOT_SCRIPT;
+
+    static {
+        RESERVE_SLOT_SCRIPT = new DefaultRedisScript<>();
+        RESERVE_SLOT_SCRIPT.setResultType(Long.class);
+        // Atomic: increment currentSlot, chiệu check maxSlot, rollback nếu tran qua
+        RESERVE_SLOT_SCRIPT.setScriptText(
+                "local key = KEYS[1] " +
+                        "local cur = redis.call('HINCRBY', key, 'currentSlot', 1) " +
+                        "local max = tonumber(redis.call('HGET', key, 'maxSlot')) " +
+                        "if max == nil then " +
+                        "  redis.call('HINCRBY', key, 'currentSlot', -1) " +
+                        "  return 0 " +
+                        "end " +
+                        "if cur > max then " +
+                        "  redis.call('HINCRBY', key, 'currentSlot', -1) " +
+                        "  return 0 " +
+                        "end " +
+                        "return 1");
+
+        RELEASE_SLOT_SCRIPT = new DefaultRedisScript<>();
+        RELEASE_SLOT_SCRIPT.setResultType(Long.class);
+        RELEASE_SLOT_SCRIPT.setScriptText(
+                "local key = KEYS[1] " +
+                        "local cur = redis.call('HINCRBY', key, 'currentSlot', -1) " +
+                        "if cur < 0 then " +
+                        "  redis.call('HSET', key, 'currentSlot', '0') " +
+                        "end " +
+                        "return cur");
+    }
 
     /**
      * Prefix cho Redis keys.
@@ -204,28 +244,13 @@ public class ClassCacheService {
      */
     public boolean reserveSlot(Integer classId) {
         String classKey = CLASS_KEY_PREFIX + classId;
-
-        // 1. Atomic increment
-        Long newSlot = redisTemplate.opsForHash().increment(classKey, "currentSlot", 1);
-
-        // 2. Lấy maxSlot
-        Object maxSlotObj = redisTemplate.opsForHash().get(classKey, "maxSlot");
-        if (maxSlotObj == null) {
-            // Cache miss — rollback và return false
-            redisTemplate.opsForHash().increment(classKey, "currentSlot", -1);
-            return false;
-        }
-        long maxSlot = Long.parseLong(maxSlotObj.toString());
-
-        // 3. Check vượt quá → rollback
-        if (newSlot > maxSlot) {
-            redisTemplate.opsForHash().increment(classKey, "currentSlot", -1);
-            log.debug("Slot reservation REJECTED for class {}: {}/{}", classId, newSlot, maxSlot);
-            return false;
-        }
-
-        log.debug("Slot reservation OK for class {}: {}/{}", classId, newSlot, maxSlot);
-        return true;
+        // Lua script đảm bảo INCR + GET + check xảy ra atomic trong 1 round-trip
+        Long result = stringRedisTemplate.execute(
+                RESERVE_SLOT_SCRIPT,
+                List.of(classKey));
+        boolean ok = Long.valueOf(1L).equals(result);
+        log.debug("Slot reservation {} for class {} (Lua script)", ok ? "OK" : "REJECTED", classId);
+        return ok;
     }
 
     /**
@@ -234,12 +259,11 @@ public class ClassCacheService {
      */
     public void releaseSlot(Integer classId) {
         String classKey = CLASS_KEY_PREFIX + classId;
-        Long newSlot = redisTemplate.opsForHash().increment(classKey, "currentSlot", -1);
-        // Đảm bảo không xuống dưới 0
-        if (newSlot != null && newSlot < 0) {
-            redisTemplate.opsForHash().put(classKey, "currentSlot", "0");
-        }
-        log.debug("Slot released for class {}, currentSlot: {}", classId, newSlot);
+        // Lua script: DECR + clamp ≥ 0 trong 1 round-trip atomic
+        Long result = stringRedisTemplate.execute(
+                RELEASE_SLOT_SCRIPT,
+                List.of(classKey));
+        log.debug("Slot released for class {}, currentSlot after release: {}", classId, result);
     }
 
     // ===== Phase 4: Enrollment Stats from Redis =====

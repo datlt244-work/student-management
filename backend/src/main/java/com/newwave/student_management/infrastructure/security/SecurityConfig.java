@@ -1,5 +1,6 @@
 package com.newwave.student_management.infrastructure.security;
 
+import com.newwave.student_management.domains.enrollment.filter.EnrollRateLimitFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -18,6 +19,7 @@ import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -56,7 +58,8 @@ public class SecurityConfig {
         };
 
         @Bean
-        public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        public SecurityFilterChain filterChain(HttpSecurity http,
+                        EnrollRateLimitFilter enrollRateLimitFilter) throws Exception {
                 http
                                 .csrf(AbstractHttpConfigurer::disable)
                                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -69,7 +72,10 @@ public class SecurityConfig {
                                                 .jwt(jwt -> jwt
                                                                 .decoder(jwtDecoder())
                                                                 .jwtAuthenticationConverter(
-                                                                                jwtAuthenticationConverter())));
+                                                                                jwtAuthenticationConverter())))
+                                // EnrollRateLimitFilter phải chạy SAU BearerTokenAuthenticationFilter
+                                // để SecurityContextHolder đã có Authentication khi filter đọc userId
+                                .addFilterAfter(enrollRateLimitFilter, BearerTokenAuthenticationFilter.class);
                 return http.build();
         }
 
@@ -99,6 +105,16 @@ public class SecurityConfig {
                 JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
                 jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(converter);
                 return jwtAuthenticationConverter;
+        }
+
+        /**
+         * Đăng ký EnrollRateLimitFilter như 1 Spring Bean (không @Component).
+         * Bean này được inject vào filterChain qua addFilterAfter.
+         */
+        @Bean
+        public EnrollRateLimitFilter enrollRateLimitFilter(
+                        org.springframework.data.redis.core.StringRedisTemplate stringRedisTemplate) {
+                return new EnrollRateLimitFilter(stringRedisTemplate);
         }
 
         @Bean

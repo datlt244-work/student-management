@@ -38,6 +38,9 @@ RUN addgroup -g 1000 appgroup && adduser -u 1000 -G appgroup -D appuser
 # Copy file JAR đã build từ stage builder
 COPY --from=builder /app/target/*.jar app.jar
 
+# Tạo thư mục logs với quyền ghi cho appuser (trước khi chuyển USER)
+RUN mkdir -p /app/logs && chown appuser:appgroup /app/logs
+
 USER appuser
 
 EXPOSE 6868

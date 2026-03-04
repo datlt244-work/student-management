@@ -10,6 +10,26 @@ public interface ITokenRedisService {
 
     void resetFailedAttempts(String email);
 
+    // ── IP-based rate limiting (chống Password Spraying) ──────────────────
+
+    /**
+     * Kiểm tra IP có đang bị block do quá nhiều login fail không.
+     * Key: auth:login:ip:lock:{ip}
+     */
+    boolean isIpRateLimited(String ip);
+
+    /**
+     * Ghi nhận 1 login fail từ IP này.
+     * Trả về số attempt còn lại trước khi bị block.
+     * Key: auth:login:ip:fail:{ip} TTL = IP_FAIL_WINDOW_SECONDS
+     */
+    int recordIpFailedAttempt(String ip);
+
+    /**
+     * Reset fail counter của IP khi login thành công.
+     */
+    void resetIpFailedAttempts(String ip);
+
     String createAndStoreRefreshToken(UUID userId);
 
     UUID getUserIdByRefreshToken(String refreshToken);
@@ -38,7 +58,8 @@ public interface ITokenRedisService {
     int deleteAllRefreshTokensForUser(UUID userId);
 
     /**
-     * Token version for user. Incremented on password change so all existing JWTs are invalidated.
+     * Token version for user. Incremented on password change so all existing JWTs
+     * are invalidated.
      */
     long getTokenVersion(UUID userId);
 

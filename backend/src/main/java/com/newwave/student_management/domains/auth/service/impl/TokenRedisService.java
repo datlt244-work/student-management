@@ -28,6 +28,9 @@ public class TokenRedisService implements ITokenRedisService {
     private static final String ACTIVATION_TOKEN_PREFIX = "auth:activation:token:";
     private static final String ACTIVATION_TOKEN_TO_USER_PREFIX = "auth:activation:token-to-user:";
     private static final String TOKEN_VERSION_PREFIX = "auth:token-version:";
+    // IP-based rate limiting (chống Password Spraying)
+    private static final String IP_FAIL_KEY_PREFIX = "auth:login:ip:fail:";
+    private static final String IP_LOCK_KEY_PREFIX = "auth:login:ip:lock:";
 
     private final StringRedisTemplate stringRedisTemplate;
 
@@ -39,6 +42,18 @@ public class TokenRedisService implements ITokenRedisService {
 
     @Value("${auth.login.lock-seconds:900}")
     private long lockSeconds;
+
+    // IP rate limit: ngưỡng cao hơn vì có thể nhiều user hợp lệ sau cùng IP (NAT,
+    // văn phòng)
+    // 20 fail / 15 phút → block IP 30 phút
+    @Value("${auth.login.ip.max-failed-attempts:20}")
+    private int ipMaxFailedAttempts;
+
+    @Value("${auth.login.ip.fail-window-seconds:900}")
+    private long ipFailWindowSeconds;
+
+    @Value("${auth.login.ip.lock-seconds:1800}")
+    private long ipLockSeconds;
 
     @Value("${spring.security.jwt.refresh-expiration-seconds:604800}")
     private long refreshExpirationSeconds;
@@ -77,6 +92,57 @@ public class TokenRedisService implements ITokenRedisService {
         String normalized = normalize(email);
         stringRedisTemplate.delete(FAIL_KEY_PREFIX + normalized);
         stringRedisTemplate.delete(LOCK_KEY_PREFIX + normalized);
+    }
+
+    // ── IP-based rate limiting ─────────────────────────────────────────────────
+
+    @Override
+    public boolean isIpRateLimited(String ip) {
+        if (ip == null || ip.isBlank())
+            return false;
+        Boolean exists = stringRedisTemplate.hasKey(IP_LOCK_KEY_PREFIX + normalizeIp(ip));
+        return Boolean.TRUE.equals(exists);
+    }
+
+    @Override
+    public int recordIpFailedAttempt(String ip) {
+        if (ip == null || ip.isBlank())
+            return 0;
+        String normalized = normalizeIp(ip);
+        String failKey = IP_FAIL_KEY_PREFIX + normalized;
+        Long count = stringRedisTemplate.opsForValue().increment(failKey);
+        if (count != null && count == 1L) {
+            stringRedisTemplate.expire(failKey, Duration.ofSeconds(ipFailWindowSeconds));
+        } else if (count != null) {
+            // Safety net: TTL bị mất (crash giữa INCR và EXPIRE)
+            Long ttl = stringRedisTemplate.getExpire(failKey);
+            if (ttl != null && ttl == -1L) {
+                stringRedisTemplate.expire(failKey, Duration.ofSeconds(ipFailWindowSeconds));
+            }
+        }
+
+        long safeCount = count == null ? 0 : count;
+        int remaining = Math.max(0, ipMaxFailedAttempts - (int) safeCount);
+
+        if (safeCount >= ipMaxFailedAttempts) {
+            String lockKey = IP_LOCK_KEY_PREFIX + normalized;
+            stringRedisTemplate.opsForValue().set(lockKey, "1", Duration.ofSeconds(ipLockSeconds));
+            stringRedisTemplate.delete(failKey);
+            log.warn("IP blocked due to too many login failures: ip={}, threshold={}", ip, ipMaxFailedAttempts);
+            remaining = 0;
+        }
+        return remaining;
+    }
+
+    @Override
+    public void resetIpFailedAttempts(String ip) {
+        if (ip == null || ip.isBlank())
+            return;
+        String normalized = normalizeIp(ip);
+        stringRedisTemplate.delete(IP_FAIL_KEY_PREFIX + normalized);
+        // Không xóa IP_LOCK_KEY (block phải tự hết TTL, không reset khi login thành
+        // công)
+        // → Tránh attacker login 1 tài khoản hợp lệ để "rửa" counter của IP
     }
 
     @Override
@@ -310,5 +376,16 @@ public class TokenRedisService implements ITokenRedisService {
 
     private String normalize(String email) {
         return email == null ? "" : email.trim().toLowerCase();
+    }
+
+    /** Chuẩn hóa IP: xử lý IPv6 ::1 → 127.0.0.1, loại khoảng trắng. */
+    private String normalizeIp(String ip) {
+        if (ip == null)
+            return "unknown";
+        String trimmed = ip.trim();
+        // IPv6 loopback → IPv4 loopback
+        if ("::1".equals(trimmed) || "0:0:0:0:0:0:0:1".equals(trimmed))
+            return "127.0.0.1";
+        return trimmed;
     }
 }

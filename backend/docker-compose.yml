@@ -39,6 +39,10 @@ services:
       APP_BACKEND_URL: ${APP_BACKEND_URL:-http://localhost:6868/api/v1}
       FIREBASE_CONFIG_JSON: ${FIREBASE_CONFIG_JSON}
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+
+    volumes:
+      - ./logs:/app/logs
+      
     depends_on:
       db:
         condition: service_healthy

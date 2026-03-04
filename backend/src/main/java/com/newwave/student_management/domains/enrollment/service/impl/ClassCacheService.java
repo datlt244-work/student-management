@@ -9,7 +9,6 @@ import com.newwave.student_management.domains.profile.entity.Semester;
 import com.newwave.student_management.domains.profile.repository.SemesterRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
@@ -44,7 +43,8 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ClassCacheService {
 
-    private final RedisTemplate<String, Object> redisTemplate;
+    // Chỉ dùng stringRedisTemplate để đảm bảo tất cả hash value là plain String
+    // — compatible với HINCRBY trong Lua scripts (không bị JSON-quote wrap)
     private final StringRedisTemplate stringRedisTemplate;
     private final ScheduledClassRepository scheduledClassRepository;
     private final EnrollmentRepository enrollmentRepository;
@@ -147,11 +147,14 @@ public class ClassCacheService {
             classData.put("status", "OPEN");
             classData.put("sessions", serializeSessions(scheduledClass.getSessions()));
 
-            // 4. Lưu Hash vào Redis
-            redisTemplate.opsForHash().putAll(classKey, classData);
+            // 4. Lưu Hash vào Redis bằng stringRedisTemplate (plain String values)
+            // QUAN TRỌNG: Phải dùng stringRedisTemplate để hash values là plain String
+            // (e.g., "30") thay vì JSON-quoted ("\"30\""), vì Lua HINCRBY cần plain integer
+            // string
+            stringRedisTemplate.opsForHash().putAll(classKey, classData);
 
             // 5. Thêm classId vào SET của semester
-            redisTemplate.opsForSet().add(semesterSetKey, String.valueOf(scheduledClass.getClassId()));
+            stringRedisTemplate.opsForSet().add(semesterSetKey, String.valueOf(scheduledClass.getClassId()));
 
             count++;
         }
@@ -170,12 +173,12 @@ public class ClassCacheService {
     }
 
     private void clearSemesterCache(Integer semesterId, String semesterSetKey) {
-        Set<Object> existingClassIds = redisTemplate.opsForSet().members(semesterSetKey);
+        Set<String> existingClassIds = stringRedisTemplate.opsForSet().members(semesterSetKey);
         if (existingClassIds != null && !existingClassIds.isEmpty()) {
-            for (Object classId : existingClassIds) {
-                redisTemplate.delete(CLASS_KEY_PREFIX + classId);
+            for (String classId : existingClassIds) {
+                stringRedisTemplate.delete(CLASS_KEY_PREFIX + classId);
             }
-            redisTemplate.delete(semesterSetKey);
+            stringRedisTemplate.delete(semesterSetKey);
             log.info("Cleared {} cached classes for semester {}", existingClassIds.size(), semesterId);
         }
     }
@@ -185,7 +188,7 @@ public class ClassCacheService {
      */
     public boolean isCached(Integer semesterId) {
         String semesterSetKey = SEMESTER_KEY_PREFIX + semesterId + ":classes";
-        Long size = redisTemplate.opsForSet().size(semesterSetKey);
+        Long size = stringRedisTemplate.opsForSet().size(semesterSetKey);
         return size != null && size > 0;
     }
 
@@ -194,7 +197,7 @@ public class ClassCacheService {
      */
     public long getCachedClassCount(Integer semesterId) {
         String semesterSetKey = SEMESTER_KEY_PREFIX + semesterId + ":classes";
-        Long size = redisTemplate.opsForSet().size(semesterSetKey);
+        Long size = stringRedisTemplate.opsForSet().size(semesterSetKey);
         return size != null ? size : 0;
     }
 
@@ -204,7 +207,7 @@ public class ClassCacheService {
      * Kiểm tra class có trong Redis cache không.
      */
     public boolean isClassCached(Integer classId) {
-        return Boolean.TRUE.equals(redisTemplate.hasKey(CLASS_KEY_PREFIX + classId));
+        return Boolean.TRUE.equals(stringRedisTemplate.hasKey(CLASS_KEY_PREFIX + classId));
     }
 
     /**
@@ -213,7 +216,7 @@ public class ClassCacheService {
      * @return maxSlot, hoặc null nếu cache miss
      */
     public Integer getMaxSlot(Integer classId) {
-        Object val = redisTemplate.opsForHash().get(CLASS_KEY_PREFIX + classId, "maxSlot");
+        Object val = stringRedisTemplate.opsForHash().get(CLASS_KEY_PREFIX + classId, "maxSlot");
         if (val == null)
             return null;
         return Integer.parseInt(val.toString());
@@ -284,7 +287,7 @@ public class ClassCacheService {
                 .getEnrollmentStatus() == com.newwave.student_management.domains.profile.entity.EnrollmentStatus.PUBLISHED;
 
         String semesterSetKey = SEMESTER_KEY_PREFIX + semesterId + ":classes";
-        Set<Object> classIds = redisTemplate.opsForSet().members(semesterSetKey);
+        Set<String> classIds = stringRedisTemplate.opsForSet().members(semesterSetKey);
 
         if (!isPublished) {
             return null; // Trả về null để Controller biết là Cache Not Active
@@ -306,9 +309,9 @@ public class ClassCacheService {
         int totalSlots = 0;
         int filledSlots = 0;
 
-        for (Object classIdObj : classIds) {
-            String classKey = CLASS_KEY_PREFIX + classIdObj.toString();
-            Map<Object, Object> classData = redisTemplate.opsForHash().entries(classKey);
+        for (String classIdStr : classIds) {
+            String classKey = CLASS_KEY_PREFIX + classIdStr;
+            Map<Object, Object> classData = stringRedisTemplate.opsForHash().entries(classKey);
             if (classData.isEmpty())
                 continue;
 
@@ -423,7 +426,7 @@ public class ClassCacheService {
             Integer semesterId, Integer departmentId, UUID studentId) {
 
         String semesterSetKey = SEMESTER_KEY_PREFIX + semesterId + ":classes";
-        Set<Object> classIds = redisTemplate.opsForSet().members(semesterSetKey);
+        Set<String> classIds = stringRedisTemplate.opsForSet().members(semesterSetKey);
 
         // Cache miss → return null để caller fallback về DB
         if (classIds == null || classIds.isEmpty()) {
@@ -436,9 +439,9 @@ public class ClassCacheService {
 
         List<com.newwave.student_management.domains.enrollment.dto.response.StudentAvailableClassResponse> result = new ArrayList<>();
 
-        for (Object classIdObj : classIds) {
-            String classKey = CLASS_KEY_PREFIX + classIdObj;
-            Map<Object, Object> data = redisTemplate.opsForHash().entries(classKey);
+        for (String classIdStr : classIds) {
+            String classKey = CLASS_KEY_PREFIX + classIdStr;
+            Map<Object, Object> data = stringRedisTemplate.opsForHash().entries(classKey);
 
             if (data.isEmpty())
                 continue;

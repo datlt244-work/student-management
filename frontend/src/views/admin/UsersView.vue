@@ -437,25 +437,25 @@ function closeImportExcelModal() {
 
 async function downloadTeacherTemplate() {
   try {
-    importLoading.value = true;
-    importError.value = null;
-    await apiDownloadTeacherTemplate();
+    importLoading.value = true
+    importError.value = null
+    await apiDownloadTeacherTemplate()
   } catch (err: unknown) {
-    importError.value = err instanceof Error ? err.message : 'Failed to download template';
+    importError.value = err instanceof Error ? err.message : 'Failed to download template'
   } finally {
-    importLoading.value = false;
+    importLoading.value = false
   }
 }
 
 async function downloadStudentTemplate() {
   try {
-    importLoading.value = true;
-    importError.value = null;
-    await apiDownloadStudentTemplate();
+    importLoading.value = true
+    importError.value = null
+    await apiDownloadStudentTemplate()
   } catch (err: unknown) {
-    importError.value = err instanceof Error ? err.message : 'Failed to download template';
+    importError.value = err instanceof Error ? err.message : 'Failed to download template'
   } finally {
-    importLoading.value = false;
+    importLoading.value = false
   }
 }
 
@@ -498,7 +498,7 @@ function handleImportDragOver(event: DragEvent) {
 
 async function processImport() {
   if (!importFile.value) return
-  
+
   try {
     importLoading.value = true
     importError.value = null
@@ -1011,12 +1011,12 @@ async function processImport() {
                         :disabled="!!room.assignedTeacherName"
                       >
                         {{ room.roomName }}
-                        <template v-if="room.assignedTeacherName"> (Occupied: {{ room.assignedTeacherName }})</template>
+                        <template v-if="room.assignedTeacherName">
+                          (Occupied: {{ room.assignedTeacherName }})</template
+                        >
                       </option>
                     </select>
-                    <p v-if="roomsLoading" class="text-xs text-slate-500 mt-1">
-                      Loading rooms…
-                    </p>
+                    <p v-if="roomsLoading" class="text-xs text-slate-500 mt-1">Loading rooms…</p>
                   </div>
                   <div class="space-y-1.5 sm:col-span-2">
                     <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">
@@ -1321,10 +1321,10 @@ async function processImport() {
             <!-- Role Selection & Upload block -->
             <div class="flex flex-col gap-6">
               <div class="space-y-3">
-                 <label class="text-sm font-bold text-slate-700 dark:text-slate-300"
+                <label class="text-sm font-bold text-slate-700 dark:text-slate-300"
                   >Role Selection for Import</label
-                 >
-                 <div class="flex p-1 bg-stone-100 dark:bg-stone-800 rounded-lg max-w-sm">
+                >
+                <div class="flex p-1 bg-stone-100 dark:bg-stone-800 rounded-lg max-w-sm">
                   <button
                     type="button"
                     :class="[
@@ -1349,42 +1349,42 @@ async function processImport() {
                   >
                     Student
                   </button>
-                 </div>
+                </div>
               </div>
 
               <div class="flex flex-col gap-3">
-              <label class="text-sm font-bold text-slate-700 dark:text-slate-300"
-                >Upload Filled Template</label
-              >
-              <input
-                ref="importFileInputRef"
-                type="file"
-                accept=".xlsx,.xls"
-                class="hidden"
-                @change="handleImportFileSelect"
-              />
-              <div
-                class="border-2 border-dashed border-primary/40 hover:border-primary bg-primary/5 rounded-xl p-10 flex flex-col items-center justify-center gap-4 cursor-pointer transition-all group"
-                @click="triggerImportFileInput"
-                @drop="handleImportDrop"
-                @dragover="handleImportDragOver"
-              >
-                <div
-                  class="w-14 h-14 rounded-full bg-white dark:bg-stone-800 shadow-md flex items-center justify-center text-primary group-hover:scale-110 transition-transform"
+                <label class="text-sm font-bold text-slate-700 dark:text-slate-300"
+                  >Upload Filled Template</label
                 >
-                  <span class="material-symbols-outlined text-3xl">cloud_upload</span>
-                </div>
-                <div class="text-center">
-                  <p v-if="!importFile" class="text-sm font-bold text-slate-900 dark:text-white">
-                    Click to upload or drag and drop
-                  </p>
-                  <p v-else class="text-sm font-bold text-primary">{{ importFile.name }}</p>
-                  <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                    Excel files only (.xlsx, .xls) up to 10MB
-                  </p>
+                <input
+                  ref="importFileInputRef"
+                  type="file"
+                  accept=".xlsx,.xls"
+                  class="hidden"
+                  @change="handleImportFileSelect"
+                />
+                <div
+                  class="border-2 border-dashed border-primary/40 hover:border-primary bg-primary/5 rounded-xl p-10 flex flex-col items-center justify-center gap-4 cursor-pointer transition-all group"
+                  @click="triggerImportFileInput"
+                  @drop="handleImportDrop"
+                  @dragover="handleImportDragOver"
+                >
+                  <div
+                    class="w-14 h-14 rounded-full bg-white dark:bg-stone-800 shadow-md flex items-center justify-center text-primary group-hover:scale-110 transition-transform"
+                  >
+                    <span class="material-symbols-outlined text-3xl">cloud_upload</span>
+                  </div>
+                  <div class="text-center">
+                    <p v-if="!importFile" class="text-sm font-bold text-slate-900 dark:text-white">
+                      Click to upload or drag and drop
+                    </p>
+                    <p v-else class="text-sm font-bold text-primary">{{ importFile.name }}</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      Excel files only (.xlsx, .xls) up to 10MB
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
             </div>
           </div>
 

@@ -151,6 +151,7 @@ public class StudentClassServiceImpl implements IStudentClassService {
                                                                 .collect(Collectors.toList())
                                                 : new java.util.ArrayList<>())
                                 .enrollmentDate(enrollment.getEnrollmentDate())
+                                .status(enrollment.getStatus())
                                 .build();
         }
 
@@ -222,6 +223,12 @@ public class StudentClassServiceImpl implements IStudentClassService {
                         throw new AppException(ErrorCode.STUDENT_ALREADY_ENROLLED);
                 }
 
+                // Check Waitlist conflict
+                if (enrollmentRepository.findByScheduledClassClassIdAndStudentStudentIdWaitlisted(classId,
+                                student.getStudentId()).isPresent()) {
+                        throw new AppException(ErrorCode.STUDENT_ALREADY_WAITLISTED);
+                }
+
                 // 3. Check if already enrolled in another class of the SAME COURSE in the SAME
                 // SEMESTER
                 if (enrollmentRepository
@@ -238,7 +245,21 @@ public class StudentClassServiceImpl implements IStudentClassService {
                                 // Redis path: HINCRBY atomic — race-condition-free
                                 boolean reserved = classCacheService.reserveSlot(classId);
                                 if (!reserved) {
-                                        throw new AppException(ErrorCode.CLASS_FULL);
+                                        boolean joinedWaitlist = classCacheService.joinWaitlist(classId,
+                                                        student.getStudentId());
+                                        if (!joinedWaitlist) {
+                                                throw new AppException(ErrorCode.CLASS_FULL);
+                                        }
+                                        log.info("Student {} joined waitlist for class {}", student.getStudentId(),
+                                                        classId);
+                                        Enrollment waitlistEnrollment = new Enrollment();
+                                        waitlistEnrollment.setStudent(student);
+                                        waitlistEnrollment.setScheduledClass(scheduledClass);
+                                        waitlistEnrollment.setEnrollmentDate(java.time.LocalDate.now());
+                                        waitlistEnrollment.setStatus(
+                                                        com.newwave.student_management.domains.enrollment.entity.EnrollmentRecordStatus.WAITLISTED);
+                                        enrollmentRepository.save(waitlistEnrollment);
+                                        return;
                                 }
                                 usedRedisReservation = true;
                                 log.debug("Slot reserved via Redis for class {}", classId);
@@ -345,17 +366,77 @@ public class StudentClassServiceImpl implements IStudentClassService {
                         throw new AppException(ErrorCode.ENROLLMENT_CLOSED);
                 }
 
-                enrollmentRepository.delete(enrollment);
+                enrollment.setStatus(
+                                com.newwave.student_management.domains.enrollment.entity.EnrollmentRecordStatus.DROPPED);
+                enrollmentRepository.save(enrollment);
 
-                // Release Redis slot (nếu cache đang active)
+                // Release Redis slot or autofill (nếu cache đang active)
                 try {
                         if (classCacheService.isClassCached(classId)) {
-                                classCacheService.releaseSlot(classId);
-                                log.debug("Released Redis slot for class {} after unenroll", classId);
+                                autoFillFromWaitlist(classId, enrollment.getScheduledClass());
                         }
                 } catch (Exception ex) {
-                        log.warn("Failed to release Redis slot for class {} after unenroll: {}", classId,
+                        log.warn("Failed to auto-fill or release Redis slot for class {} after unenroll: {}", classId,
                                         ex.getMessage());
+                }
+        }
+
+        private void autoFillFromWaitlist(Integer classId, ScheduledClass scheduledClass) {
+                while (true) {
+                        UUID waitlistedStudentId = classCacheService.popWaitlist(classId);
+                        if (waitlistedStudentId == null) {
+                                // No one in waitlist, release slot
+                                classCacheService.releaseSlot(classId);
+                                log.debug("Released Redis slot for class {} after unenroll", classId);
+                                break;
+                        }
+
+                        // Try to enroll this waitlisted student
+                        Student waitlistedStudent = studentRepository.findById(waitlistedStudentId).orElse(null);
+                        if (waitlistedStudent == null)
+                                continue;
+
+                        boolean hasConflict = false;
+                        if (scheduledClass.getSessions() != null) {
+                                for (ClassSession session : scheduledClass.getSessions()) {
+                                        long conflicts = enrollmentRepository.countStudentConflicts(
+                                                        waitlistedStudentId,
+                                                        scheduledClass.getSemester().getSemesterId(),
+                                                        session.getDayOfWeek(),
+                                                        session.getStartTime(),
+                                                        session.getEndTime());
+                                        if (conflicts > 0) {
+                                                hasConflict = true;
+                                                break;
+                                        }
+                                }
+                        }
+
+                        if (hasConflict) {
+                                enrollmentRepository.findByScheduledClassClassIdAndStudentStudentIdWaitlisted(classId,
+                                                waitlistedStudentId).ifPresent(e -> {
+                                                        e.setStatus(com.newwave.student_management.domains.enrollment.entity.EnrollmentRecordStatus.DROPPED);
+                                                        enrollmentRepository.save(e);
+                                                });
+                                continue;
+                        }
+
+                        // Success! Update status to ENROLLED
+                        enrollmentRepository.findByScheduledClassClassIdAndStudentStudentIdWaitlisted(classId,
+                                        waitlistedStudentId).ifPresentOrElse(e -> {
+                                                e.setStatus(com.newwave.student_management.domains.enrollment.entity.EnrollmentRecordStatus.ENROLLED);
+                                                enrollmentRepository.save(e);
+                                        }, () -> {
+                                                Enrollment newEnrollment = new Enrollment();
+                                                newEnrollment.setStudent(waitlistedStudent);
+                                                newEnrollment.setScheduledClass(scheduledClass);
+                                                newEnrollment.setEnrollmentDate(java.time.LocalDate.now());
+                                                enrollmentRepository.save(newEnrollment);
+                                        });
+
+                        log.info("Auto-filled slot for class {} with waitlisted student {}", classId,
+                                        waitlistedStudentId);
+                        break;
                 }
         }
 

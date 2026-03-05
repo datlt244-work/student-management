@@ -5,6 +5,7 @@ import {
   createAdminClass,
   updateAdminClass,
   deleteAdminClass,
+  consolidateClasses,
   type AdminClassListItem,
 } from '@/services/adminClassService'
 import {
@@ -22,7 +23,7 @@ const { toast, showToast } = useToast()
 const loading = ref(false)
 const classes = ref<AdminClassListItem[]>([])
 const semesters = ref<AdminSemesterListItem[]>([])
-const statuses = ['OPEN', 'CLOSED', 'CANCELLED']
+const statuses = ['OPEN', 'CLOSED', 'CANCELLED', 'LOCKED']
 
 const searchQuery = ref('')
 const filterStatus = ref('')
@@ -32,34 +33,36 @@ const pageSize = ref(10)
 const totalElements = ref(0)
 const totalPages = ref(0)
 
-// Modal state
 const showAddClassModal = ref(false)
 const showEditClassModal = ref(false)
 const showDeleteConfirmModal = ref(false)
+const showConsolidateModal = ref(false)
 const createLoading = ref(false)
 const deleteLoading = ref(false)
+const consolidateLoading = ref(false)
+const consolidateSemesterId = ref<number | ''>('')
 const createError = ref<string | null>(null)
 
 interface SessionForm {
-  roomId: string | number;
-  dayOfWeek: number;
-  startTime: string;
-  endTime: string;
+  roomId: string | number
+  dayOfWeek: number
+  startTime: string
+  endTime: string
 }
 
 const newClass = ref({
   courseId: '' as string | number,
   teacherId: '',
   semesterId: '' as string | number,
-  sessions: [
-    { roomId: '', dayOfWeek: 1, startTime: '08:00', endTime: '10:00' }
-  ] as SessionForm[],
+  sessions: [{ roomId: '', dayOfWeek: 1, startTime: '08:00', endTime: '10:00' }] as SessionForm[],
   maxStudents: 40,
-  status: 'OPEN' as 'OPEN' | 'CLOSED' | 'CANCELLED',
+  minStudents: 30,
+  status: 'OPEN' as 'OPEN' | 'CLOSED' | 'CANCELLED' | 'LOCKED',
 })
 
 function addSession() {
-  newClass.value.sessions.push({ roomId: '', dayOfWeek: 1, startTime: '08:00', endTime: '10:00' })
+  const defaultRoomId = selectedTeacherRoom.value ? selectedTeacherRoom.value.id : ''
+  newClass.value.sessions.push({ roomId: defaultRoomId, dayOfWeek: 1, startTime: '08:00', endTime: '10:00' })
 }
 
 function removeSession(index: number) {
@@ -86,7 +89,8 @@ const deletingClass = ref<AdminClassListItem | null>(null)
 // Get current selected teacher's room info
 const selectedTeacherRoom = computed(() => {
   const t = teachers.value.find((t) => t.teacherId === newClass.value.teacherId)
-  if (t?.officeRoomId) return { id: t.officeRoomId, name: t.officeRoomName || `Room #${t.officeRoomId}` }
+  if (t?.officeRoomId)
+    return { id: t.officeRoomId, name: t.officeRoomName || `Room #${t.officeRoomId}` }
   return null
 })
 
@@ -165,7 +169,10 @@ function handleTeacherChange() {
     for (const session of newClass.value.sessions) {
       session.roomId = selectedTeacher.officeRoomId
     }
-    showToast(`Room auto-filled: ${selectedTeacher.officeRoomName || selectedTeacher.officeRoomId}`, 'success')
+    showToast(
+      `Room auto-filled: ${selectedTeacher.officeRoomName || selectedTeacher.officeRoomId}`,
+      'success',
+    )
   }
 }
 
@@ -217,6 +224,7 @@ function handleAddClass() {
     semesterId: currentSemester ? currentSemester.semesterId : '',
     sessions: [{ roomId: '', dayOfWeek: 1, startTime: '08:00', endTime: '10:00' }],
     maxStudents: 40,
+    minStudents: 30,
     status: 'OPEN',
   }
   teachers.value = []
@@ -236,13 +244,17 @@ async function handleEditClass(cls: AdminClassListItem) {
       courseId: actualCourse.courseId,
       teacherId: cls.teacherId || '',
       semesterId: semesters.value.find((s) => s.displayName === cls.semesterName)?.semesterId || '',
-      sessions: cls.sessions && cls.sessions.length > 0 ? cls.sessions.map((s) => ({
-        roomId: s.roomId,
-        dayOfWeek: s.dayOfWeek,
-        startTime: s.startTime?.slice(0, 5) ?? '08:00',
-        endTime: s.endTime?.slice(0, 5) ?? '10:00',
-      })) : [{ roomId: '', dayOfWeek: 1, startTime: '08:00', endTime: '10:00' }],
+      sessions:
+        cls.sessions && cls.sessions.length > 0
+          ? cls.sessions.map((s) => ({
+              roomId: s.roomId,
+              dayOfWeek: s.dayOfWeek,
+              startTime: s.startTime?.slice(0, 5) ?? '08:00',
+              endTime: s.endTime?.slice(0, 5) ?? '10:00',
+            }))
+          : [{ roomId: '', dayOfWeek: 1, startTime: '08:00', endTime: '10:00' }],
       maxStudents: cls.maxStudents,
+      minStudents: cls.minStudents,
       status: cls.status,
     }
 
@@ -279,12 +291,13 @@ async function submitNewClass() {
       teacherId: newClass.value.teacherId,
       semesterId: Number(newClass.value.semesterId),
       maxStudents: newClass.value.maxStudents,
+      minStudents: newClass.value.minStudents,
       sessions: newClass.value.sessions.map((s) => ({
-        roomId: Number(s.roomId),
+        roomId: Number(s.roomId) || (selectedTeacherRoom.value ? Number(selectedTeacherRoom.value.id) : 0),
         dayOfWeek: s.dayOfWeek,
         startTime: s.startTime,
         endTime: s.endTime,
-      }))
+      })),
     })
 
     showToast('Class created successfully')
@@ -309,13 +322,14 @@ async function submitEditClass() {
       teacherId: newClass.value.teacherId,
       semesterId: Number(newClass.value.semesterId),
       maxStudents: newClass.value.maxStudents,
+      minStudents: newClass.value.minStudents,
       status: newClass.value.status,
       sessions: newClass.value.sessions.map((s) => ({
-        roomId: Number(s.roomId),
+        roomId: Number(s.roomId) || (selectedTeacherRoom.value ? Number(selectedTeacherRoom.value.id) : 0),
         dayOfWeek: s.dayOfWeek,
         startTime: s.startTime,
         endTime: s.endTime,
-      }))
+      })),
     })
 
     showToast('Class updated successfully')
@@ -353,6 +367,35 @@ async function confirmDeleteClass() {
     deleteLoading.value = false
   }
 }
+
+function handleConsolidate() {
+  showConsolidateModal.value = true
+  const currentSemester = semesters.value.find((s) => s.isCurrent)
+  consolidateSemesterId.value = currentSemester ? currentSemester.semesterId : ''
+}
+
+function closeConsolidateModal() {
+  showConsolidateModal.value = false
+}
+
+async function confirmConsolidate() {
+  if (!consolidateSemesterId.value) {
+    showToast('Please select a semester', 'error')
+    return
+  }
+
+  try {
+    consolidateLoading.value = true
+    await consolidateClasses(Number(consolidateSemesterId.value))
+    showToast('Classes consolidated successfully', 'success')
+    closeConsolidateModal()
+    fetchClasses()
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : 'Failed to consolidate classes', 'error')
+  } finally {
+    consolidateLoading.value = false
+  }
+}
 </script>
 
 <template>
@@ -368,6 +411,13 @@ async function confirmDeleteClass() {
         </p>
       </div>
       <div class="flex items-center gap-3">
+        <button
+          @click="handleConsolidate"
+          class="flex items-center gap-2 px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-bold shadow-lg shadow-amber-500/20 transition-all active:scale-95"
+        >
+          <span class="material-symbols-outlined text-[20px]">lock_clock</span>
+          Lock & Consolidate
+        </button>
         <button
           @click="handleAddClass"
           class="flex items-center gap-2 px-6 py-2.5 bg-primary hover:bg-primary-dark text-white rounded-lg font-bold shadow-lg shadow-primary/20 transition-all active:scale-95"
@@ -568,12 +618,16 @@ async function confirmDeleteClass() {
               </td>
               <td class="p-4 text-sm text-slate-600 dark:text-slate-400 whitespace-nowrap">
                 <span v-if="cls.sessions && cls.sessions.length > 0">
-                  {{ `T${cls.sessions[0]?.dayOfWeek} ${cls.sessions[0]?.startTime?.slice(0, 5)}-${cls.sessions[0]?.endTime?.slice(0, 5)}` }}
+                  {{
+                    `T${cls.sessions[0]?.dayOfWeek} ${cls.sessions[0]?.startTime?.slice(0, 5)}-${cls.sessions[0]?.endTime?.slice(0, 5)}`
+                  }}
                 </span>
                 <span v-else>N/A</span>
               </td>
               <td class="p-4 text-sm text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                <span v-if="cls.sessions && cls.sessions.length > 0">{{ cls.sessions[0]?.roomName }}</span>
+                <span v-if="cls.sessions && cls.sessions.length > 0">{{
+                  cls.sessions[0]?.roomName
+                }}</span>
                 <span v-else>N/A</span>
               </td>
               <td class="p-4">
@@ -835,12 +889,25 @@ async function confirmDeleteClass() {
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div class="space-y-1.5">
                 <label class="text-xs font-bold text-slate-500 uppercase tracking-wider"
-                  >Max Students</label
+                  >Min Students <span class="text-red-500">*</span></label
+                >
+                <input
+                  v-model="newClass.minStudents"
+                  type="number"
+                  min="1"
+                  required
+                  class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary"
+                />
+              </div>
+              <div class="space-y-1.5">
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider"
+                  >Max Students (Capacity) <span class="text-red-500">*</span></label
                 >
                 <input
                   v-model="newClass.maxStudents"
                   type="number"
                   min="1"
+                  required
                   class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary"
                 />
               </div>
@@ -872,9 +939,15 @@ async function confirmDeleteClass() {
                 </button>
               </div>
 
-              <div v-for="(session, index) in newClass.sessions" :key="index" class="p-4 border border-stone-200 dark:border-stone-700 rounded-xl space-y-4">
+              <div
+                v-for="(session, index) in newClass.sessions"
+                :key="index"
+                class="p-4 border border-stone-200 dark:border-stone-700 rounded-xl space-y-4"
+              >
                 <div class="flex justify-between items-center">
-                  <span class="text-sm font-bold text-slate-700 dark:text-slate-300">Session {{ index + 1 }}</span>
+                  <span class="text-sm font-bold text-slate-700 dark:text-slate-300"
+                    >Session {{ index + 1 }}</span
+                  >
                   <button
                     v-if="newClass.sessions.length > 1"
                     type="button"
@@ -893,9 +966,22 @@ async function confirmDeleteClass() {
                     <div
                       class="w-full px-3 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-stone-50 dark:bg-stone-900/50 text-sm flex items-center gap-2"
                     >
-                      <span v-if="selectedTeacherRoom" class="text-slate-900 dark:text-white font-medium">{{ selectedTeacherRoom.name }}</span>
-                      <span v-else class="text-slate-400 italic">{{ newClass.teacherId ? 'Teacher has no assigned room' : 'Select a teacher first' }}</span>
-                      <span v-if="selectedTeacherRoom" class="material-symbols-outlined text-[16px] text-slate-400 ml-auto" title="Auto-filled from teacher's office room">lock</span>
+                      <span
+                        v-if="selectedTeacherRoom"
+                        class="text-slate-900 dark:text-white font-medium"
+                        >{{ selectedTeacherRoom.name }}</span
+                      >
+                      <span v-else class="text-slate-400 italic">{{
+                        newClass.teacherId
+                          ? 'Teacher has no assigned room'
+                          : 'Select a teacher first'
+                      }}</span>
+                      <span
+                        v-if="selectedTeacherRoom"
+                        class="material-symbols-outlined text-[16px] text-slate-400 ml-auto"
+                        title="Auto-filled from teacher's office room"
+                        >lock</span
+                      >
                     </div>
                   </div>
                   <div class="space-y-1.5">
@@ -907,7 +993,9 @@ async function confirmDeleteClass() {
                       required
                       class="w-full px-2 py-2 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary"
                     >
-                      <option v-for="d in days" :key="d.value" :value="d.value">{{ d.label }}</option>
+                      <option v-for="d in days" :key="d.value" :value="d.value">
+                        {{ d.label }}
+                      </option>
                     </select>
                   </div>
                 </div>
@@ -1034,6 +1122,88 @@ async function confirmDeleteClass() {
                 >progress_activity</span
               >
               Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
+
+  <!-- Consolidate Classes Modal -->
+  <Teleport to="body">
+    <Transition name="fade">
+      <div
+        v-if="showConsolidateModal"
+        class="fixed inset-0 z-[100] flex items-center justify-center p-4"
+        role="dialog"
+      >
+        <div
+          class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+          @click="closeConsolidateModal"
+        ></div>
+        <div
+          class="relative w-full max-w-md bg-white dark:bg-surface-dark rounded-2xl shadow-2xl p-6 flex flex-col gap-5"
+        >
+          <!-- Header -->
+          <div
+            class="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-4"
+          >
+            <div class="flex items-center gap-3">
+              <div class="p-2 rounded-xl bg-amber-100 dark:bg-amber-900/20 text-amber-500">
+                <span class="material-symbols-outlined">lock_clock</span>
+              </div>
+              <h2 class="text-xl font-bold text-slate-900 dark:text-white">Lock & Consolidate</h2>
+            </div>
+            <button
+              @click="closeConsolidateModal"
+              class="p-1.5 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 text-slate-400 transition-colors"
+            >
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+
+          <p class="text-sm text-slate-500 dark:text-slate-400">
+            This action will lock all <span class="font-bold text-green-500">OPEN</span> classes in
+            the selected semester. Classes that do not meet the minimum student requirement will be
+            <span class="font-bold text-red-500">CANCELLED</span> entirely.
+          </p>
+
+          <div class="space-y-1.5 mt-2">
+            <label class="text-xs font-bold text-slate-500 uppercase tracking-wider"
+              >Select Semester <span class="text-red-500">*</span></label
+            >
+            <select
+              v-model="consolidateSemesterId"
+              class="w-full px-3 py-2.5 h-11 border border-stone-200 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-900 text-sm focus:ring-primary focus:border-primary transition-all text-slate-900 dark:text-white"
+            >
+              <option value="" disabled>Select a semester</option>
+              <option v-for="s in semesters" :key="s.semesterId" :value="s.semesterId">
+                {{ s.displayName }}
+              </option>
+            </select>
+          </div>
+
+          <div class="flex gap-3">
+            <button
+              type="button"
+              class="flex-1 px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-stone-100 dark:hover:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl transition-colors"
+              :disabled="consolidateLoading"
+              @click="closeConsolidateModal"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              :disabled="consolidateLoading"
+              class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white text-sm font-bold rounded-xl transition-all active:scale-95"
+              @click="confirmConsolidate"
+            >
+              <span
+                v-if="consolidateLoading"
+                class="material-symbols-outlined text-[18px] animate-spin"
+                >progress_activity</span
+              >
+              Execute
             </button>
           </div>
         </div>

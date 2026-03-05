@@ -28,6 +28,7 @@ import com.newwave.student_management.domains.enrollment.entity.ClassSession;
 import com.newwave.student_management.domains.enrollment.repository.ClassSessionRepository;
 import com.newwave.student_management.domains.facility.entity.Room;
 import com.newwave.student_management.domains.facility.repository.RoomRepository;
+import com.newwave.student_management.domains.notification.service.NotificationInternalService;
 import com.newwave.student_management.domains.profile.repository.SemesterRepository;
 import com.newwave.student_management.domains.profile.repository.StudentRepository;
 import com.newwave.student_management.domains.profile.repository.TeacherRepository;
@@ -46,8 +47,11 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import lombok.extern.slf4j.Slf4j;
+
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AdminClassServiceImpl implements IAdminClassService {
 
     private final ScheduledClassRepository scheduledClassRepository;
@@ -58,6 +62,7 @@ public class AdminClassServiceImpl implements IAdminClassService {
     private final SemesterRepository semesterRepository;
     private final RoomRepository roomRepository;
     private final ClassSessionRepository classSessionRepository;
+    private final NotificationInternalService notificationInternalService;
 
     @Override
     public AdminClassListResponse getAdminClasses(
@@ -154,6 +159,7 @@ public class AdminClassServiceImpl implements IAdminClassService {
         scheduledClass.setTeacher(teacher);
         scheduledClass.setSemester(currentSemester);
         scheduledClass.setMaxStudents(request.getMaxStudents() != null ? request.getMaxStudents() : 40);
+        scheduledClass.setMinStudents(request.getMinStudents() != null ? request.getMinStudents() : 30);
         scheduledClass.setStatus(ScheduledClassStatus.OPEN);
 
         List<ClassSession> classSessions = new java.util.ArrayList<>();
@@ -243,6 +249,8 @@ public class AdminClassServiceImpl implements IAdminClassService {
         scheduledClass.setTeacher(teacher);
         scheduledClass.setMaxStudents(
                 request.getMaxStudents() != null ? request.getMaxStudents() : scheduledClass.getMaxStudents());
+        scheduledClass.setMinStudents(
+                request.getMinStudents() != null ? request.getMinStudents() : scheduledClass.getMinStudents());
         scheduledClass.setStatus(request.getStatus());
 
         if (scheduledClass.getSessions() != null) {
@@ -315,6 +323,7 @@ public class AdminClassServiceImpl implements IAdminClassService {
                         .fullName((enrollment.getStudent().getFirstName() + " " + enrollment.getStudent().getLastName())
                                 .trim())
                         .email(enrollment.getStudent().getEmail())
+                        .status(enrollment.getStatus())
                         .enrollmentDate(enrollment.getEnrollmentDate())
                         .build())
                 .collect(Collectors.toList());
@@ -430,7 +439,8 @@ public class AdminClassServiceImpl implements IAdminClassService {
                 .findByScheduledClassClassIdAndStudentStudentId(classId, studentId)
                 .orElseThrow(() -> new AppException(ErrorCode.ENROLLMENT_NOT_FOUND));
 
-        enrollmentRepository.delete(enrollment);
+        enrollment.setStatus(com.newwave.student_management.domains.enrollment.entity.EnrollmentRecordStatus.DROPPED);
+        enrollmentRepository.save(enrollment);
     }
 
     @Override
@@ -484,6 +494,62 @@ public class AdminClassServiceImpl implements IAdminClassService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Giai đoạn 3: Tính năng khóa lớp và dồn lớp
+     */
+    @Transactional
+    public void lockClassesAndConsolidate(Integer semesterId) {
+        // 1. Tìm tất cả các lớp trong học kỳ
+        List<ScheduledClass> classes = scheduledClassRepository.findAll((root, query, cb) -> {
+            return cb.and(
+                    cb.equal(root.get("semester").get("semesterId"), semesterId),
+                    cb.equal(root.get("status"), ScheduledClassStatus.OPEN),
+                    cb.isNull(root.get("deletedAt")));
+        });
+
+        for (ScheduledClass sc : classes) {
+            long enrolledCount = enrollmentRepository.countByScheduledClassClassId(sc.getClassId());
+
+            // 2. Chuyển trạng thái sang LOCKED
+            sc.setStatus(ScheduledClassStatus.LOCKED);
+
+            // 3. Hủy lớp nếu sĩ số dưới mức tối thiểu
+            if (enrolledCount < sc.getMinStudents()) {
+                sc.setStatus(ScheduledClassStatus.CANCELLED);
+
+                // System Notification
+                log.info("Class {} has been CANCELLED due to low enrollment {}/{}",
+                        sc.getClassId(), enrolledCount, sc.getMinStudents());
+
+                List<Enrollment> classEnrollments = enrollmentRepository
+                        .findAllByScheduledClassClassId(sc.getClassId());
+                for (Enrollment en : classEnrollments) {
+                    if (en.getStatus() != com.newwave.student_management.domains.enrollment.entity.EnrollmentRecordStatus.DROPPED) {
+                        en.setStatus(
+                                com.newwave.student_management.domains.enrollment.entity.EnrollmentRecordStatus.DROPPED);
+                        enrollmentRepository.save(en);
+
+                        String title = "Lớp " + sc.getCourse().getCode() + " bị hủy";
+                        String body = "Lớp học phần " + sc.getCourse().getName() + " (" + sc.getCourse().getCode() +
+                                ") mà bạn đã đăng ký đã bị hủy do không đạt số lượng sinh viên tối thiểu. Vui lòng đăng ký lớp học phần khác.";
+                        String actionUrl = "/student/courses";
+
+                        notificationInternalService.sendPersonal(
+                                title,
+                                body,
+                                actionUrl,
+                                en.getStudent().getStudentCode(),
+                                null);
+                    }
+                }
+            } else {
+                log.info("Class {} has been LOCKED with {}/{} students",
+                        sc.getClassId(), enrolledCount, sc.getMinStudents());
+            }
+            scheduledClassRepository.save(sc);
+        }
+    }
+
     private AdminClassListItemResponse mapToListItemResponse(ScheduledClass scheduledClass) {
         String teacherName = "N/A";
         if (scheduledClass.getTeacher() != null) {
@@ -518,6 +584,7 @@ public class AdminClassServiceImpl implements IAdminClassService {
                         .collect(Collectors.toList()) : new java.util.ArrayList<>())
                 .status(scheduledClass.getStatus())
                 .maxStudents(scheduledClass.getMaxStudents())
+                .minStudents(scheduledClass.getMinStudents())
                 .studentCount(studentCount)
                 .build();
     }

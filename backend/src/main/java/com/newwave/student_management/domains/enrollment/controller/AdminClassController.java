@@ -95,4 +95,12 @@ public class AdminClassController {
         adminClassService.unenrollStudent(classId, studentId);
         return ApiResponse.success(null);
     }
+
+    @Operation(summary = "Khóa lớp và Dồn lớp (Admin)", description = "Chuyển các lớp đang OPEN sang LOCKED. Nếu số lượng sinh viên < minStudents, hủy lớp (CANCELLED).")
+    @PostMapping("/consolidate/{semesterId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Void> lockClassesAndConsolidate(@PathVariable Integer semesterId) {
+        adminClassService.lockClassesAndConsolidate(semesterId);
+        return ApiResponse.success(null);
+    }
 }

@@ -55,7 +55,9 @@ onMounted(async () => {
 
     if (!response.ok) {
       status.value = 'error'
-      message.value = errMsg || 'Link kích hoạt không hợp lệ hoặc đã hết hạn (72h). Vui lòng liên hệ Admin để gửi lại email.'
+      message.value =
+        errMsg ||
+        'Link kích hoạt không hợp lệ hoặc đã hết hạn (72h). Vui lòng liên hệ Admin để gửi lại email.'
       return
     }
 
@@ -73,7 +75,9 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm">
+  <div
+    class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm"
+  >
     <!-- Modal -->
     <div
       class="w-full max-w-md rounded-2xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 shadow-2xl p-8 text-center"
@@ -84,18 +88,28 @@ onBeforeUnmount(() => {
       <!-- Loading -->
       <template v-if="status === 'loading'">
         <div class="flex justify-center mb-6">
-          <span class="material-symbols-outlined animate-spin text-5xl text-primary">progress_activity</span>
+          <span class="material-symbols-outlined animate-spin text-5xl text-primary"
+            >progress_activity</span
+          >
         </div>
-        <h1 id="activate-title" class="text-xl font-bold text-slate-800 dark:text-white">Đang kích hoạt tài khoản…</h1>
+        <h1 id="activate-title" class="text-xl font-bold text-slate-800 dark:text-white">
+          Đang kích hoạt tài khoản…
+        </h1>
         <p class="text-slate-500 dark:text-slate-400 mt-2">Vui lòng đợi trong giây lát.</p>
       </template>
 
       <!-- Success -->
       <template v-else-if="status === 'success'">
-        <div class="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-6">
-          <span class="material-symbols-outlined text-4xl text-green-600 dark:text-green-400">check_circle</span>
+        <div
+          class="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-6"
+        >
+          <span class="material-symbols-outlined text-4xl text-green-600 dark:text-green-400"
+            >check_circle</span
+          >
         </div>
-        <h1 id="activate-title" class="text-xl font-bold text-slate-800 dark:text-white">Kích hoạt thành công</h1>
+        <h1 id="activate-title" class="text-xl font-bold text-slate-800 dark:text-white">
+          Kích hoạt thành công
+        </h1>
         <p class="text-slate-600 dark:text-slate-300 mt-2">{{ message }}</p>
         <p class="mt-4 text-sm text-slate-500 dark:text-slate-400">
           Chuyển về trang đăng nhập trong {{ countdown }} giây…
@@ -111,10 +125,16 @@ onBeforeUnmount(() => {
 
       <!-- Error -->
       <template v-else>
-        <div class="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-6">
-          <span class="material-symbols-outlined text-4xl text-red-600 dark:text-red-400">error</span>
+        <div
+          class="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-6"
+        >
+          <span class="material-symbols-outlined text-4xl text-red-600 dark:text-red-400"
+            >error</span
+          >
         </div>
-        <h1 id="activate-title" class="text-xl font-bold text-slate-800 dark:text-white">Không thể kích hoạt</h1>
+        <h1 id="activate-title" class="text-xl font-bold text-slate-800 dark:text-white">
+          Không thể kích hoạt
+        </h1>
         <p class="text-slate-600 dark:text-slate-300 mt-2">{{ message }}</p>
         <p class="mt-4 text-sm text-slate-500 dark:text-slate-400">
           Chuyển về trang đăng nhập trong {{ countdown }} giây…

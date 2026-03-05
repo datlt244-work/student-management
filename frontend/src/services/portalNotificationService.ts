@@ -36,7 +36,7 @@ export async function getUnreadCount(): Promise<number> {
 
 export async function markAsRead(notificationId: string): Promise<void> {
   const response = await apiFetch(`/notifications/${notificationId}/read`, {
-    method: 'PATCH'
+    method: 'PATCH',
   })
   if (!response.ok) {
     throw new Error('Failed to mark notification as read')
@@ -45,7 +45,7 @@ export async function markAsRead(notificationId: string): Promise<void> {
 
 export async function markAllAsRead(): Promise<void> {
   const response = await apiFetch('/notifications/read-all', {
-    method: 'PATCH'
+    method: 'PATCH',
   })
   if (!response.ok) {
     throw new Error('Failed to mark all notifications as read')

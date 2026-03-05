@@ -29,11 +29,16 @@ const passwordChecks = computed(() => [
   { label: 'At least one uppercase letter', passed: /[A-Z]/.test(newPassword.value) },
   { label: 'At least one lowercase letter', passed: /[a-z]/.test(newPassword.value) },
   { label: 'At least one numeric digit', passed: /\d/.test(newPassword.value) },
-  { label: 'At least one special character', passed: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(newPassword.value) },
+  {
+    label: 'At least one special character',
+    passed: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(newPassword.value),
+  },
 ])
 
 const passedCount = computed(() => passwordChecks.value.filter((c) => c.passed).length)
-const strengthPercent = computed(() => Math.round((passedCount.value / passwordChecks.value.length) * 100))
+const strengthPercent = computed(() =>
+  Math.round((passedCount.value / passwordChecks.value.length) * 100),
+)
 const strengthLabel = computed(() => {
   if (strengthPercent.value === 0) return ''
   if (strengthPercent.value <= 40) return 'Weak'
@@ -102,7 +107,9 @@ function goToLogin() {
   <div
     class="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark font-display antialiased min-h-screen flex flex-col overflow-x-hidden geo-pattern"
   >
-    <div class="layout-container flex h-full grow flex-col items-center justify-center p-4 sm:p-6 lg:p-8">
+    <div
+      class="layout-container flex h-full grow flex-col items-center justify-center p-4 sm:p-6 lg:p-8"
+    >
       <div
         class="w-full max-w-[480px] bg-surface-light dark:bg-surface-dark rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.4)] border border-border-light dark:border-border-dark overflow-hidden relative"
       >
@@ -113,7 +120,9 @@ function goToLogin() {
         <template v-if="isTokenMissing">
           <div class="p-8 flex flex-col gap-6">
             <div class="flex flex-col items-center gap-4 text-center">
-              <div class="h-16 w-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center text-red-600 dark:text-red-400">
+              <div
+                class="h-16 w-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center text-red-600 dark:text-red-400"
+              >
                 <span class="material-symbols-outlined text-4xl">error</span>
               </div>
               <div>
@@ -131,12 +140,17 @@ function goToLogin() {
               <span class="material-symbols-outlined text-sm">arrow_forward</span>
             </button>
           </div>
-          <div class="bg-background-light dark:bg-background-dark/30 py-3 px-8 border-t border-border-light dark:border-border-dark text-center">
+          <div
+            class="bg-background-light dark:bg-background-dark/30 py-3 px-8 border-t border-border-light dark:border-border-dark text-center"
+          >
             <button
               class="inline-flex items-center gap-2 text-sm font-medium text-text-muted-light dark:text-text-muted-dark hover:text-primary transition-colors group cursor-pointer"
               @click="goToLogin"
             >
-              <span class="material-symbols-outlined !text-[16px] group-hover:-translate-x-1 transition-transform">arrow_back</span>
+              <span
+                class="material-symbols-outlined !text-[16px] group-hover:-translate-x-1 transition-transform"
+                >arrow_back</span
+              >
               Back to Login
             </button>
           </div>
@@ -146,13 +160,16 @@ function goToLogin() {
         <template v-else-if="isSuccess">
           <div class="p-8 flex flex-col gap-6">
             <div class="flex flex-col items-center gap-4 text-center">
-              <div class="h-16 w-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center text-green-600 dark:text-green-400">
+              <div
+                class="h-16 w-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center text-green-600 dark:text-green-400"
+              >
                 <span class="material-symbols-outlined text-4xl">check_circle</span>
               </div>
               <div>
                 <h1 class="text-2xl font-bold tracking-tight">Password Updated</h1>
                 <p class="text-text-muted-light dark:text-text-muted-dark text-sm mt-1">
-                  Your password has been reset successfully. All existing sessions have been logged out.
+                  Your password has been reset successfully. All existing sessions have been logged
+                  out.
                 </p>
               </div>
             </div>
@@ -171,7 +188,9 @@ function goToLogin() {
           <div class="p-8 flex flex-col gap-6">
             <!-- Header -->
             <div class="flex flex-col items-center gap-4 text-center">
-              <div class="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center text-primary">
+              <div
+                class="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center text-primary"
+              >
                 <span class="material-symbols-outlined text-4xl">lock_reset</span>
               </div>
               <div>
@@ -197,7 +216,9 @@ function goToLogin() {
               <label class="flex flex-col gap-1.5">
                 <span class="text-sm font-medium">New Password</span>
                 <div class="relative group">
-                  <span class="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted-light dark:text-text-muted-dark group-focus-within:text-primary transition-colors">
+                  <span
+                    class="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted-light dark:text-text-muted-dark group-focus-within:text-primary transition-colors"
+                  >
                     <span class="material-symbols-outlined text-[20px]">lock</span>
                   </span>
                   <input
@@ -211,7 +232,9 @@ function goToLogin() {
                     type="button"
                     @click="showNewPassword = !showNewPassword"
                   >
-                    <span class="material-symbols-outlined text-[20px]">{{ showNewPassword ? 'visibility' : 'visibility_off' }}</span>
+                    <span class="material-symbols-outlined text-[20px]">{{
+                      showNewPassword ? 'visibility' : 'visibility_off'
+                    }}</span>
                   </button>
                 </div>
               </label>
@@ -220,7 +243,9 @@ function goToLogin() {
               <label class="flex flex-col gap-1.5">
                 <span class="text-sm font-medium">Confirm New Password</span>
                 <div class="relative group">
-                  <span class="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted-light dark:text-text-muted-dark group-focus-within:text-primary transition-colors">
+                  <span
+                    class="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted-light dark:text-text-muted-dark group-focus-within:text-primary transition-colors"
+                  >
                     <span class="material-symbols-outlined text-[20px]">lock</span>
                   </span>
                   <input
@@ -241,7 +266,9 @@ function goToLogin() {
                     type="button"
                     @click="showConfirmPassword = !showConfirmPassword"
                   >
-                    <span class="material-symbols-outlined text-[20px]">{{ showConfirmPassword ? 'visibility' : 'visibility_off' }}</span>
+                    <span class="material-symbols-outlined text-[20px]">{{
+                      showConfirmPassword ? 'visibility' : 'visibility_off'
+                    }}</span>
                   </button>
                 </div>
                 <p v-if="passwordsMatch === false" class="text-red-500 dark:text-red-400 text-xs">
@@ -253,9 +280,13 @@ function goToLogin() {
               <div v-if="newPassword" class="space-y-2">
                 <div class="flex justify-between items-center">
                   <span class="text-sm font-medium">Password Strength</span>
-                  <span class="text-sm font-bold text-primary">{{ strengthLabel }} ({{ strengthPercent }}%)</span>
+                  <span class="text-sm font-bold text-primary"
+                    >{{ strengthLabel }} ({{ strengthPercent }}%)</span
+                  >
                 </div>
-                <div class="w-full h-2 bg-background-light dark:bg-background-dark rounded-full overflow-hidden border border-border-light dark:border-border-dark">
+                <div
+                  class="w-full h-2 bg-background-light dark:bg-background-dark rounded-full overflow-hidden border border-border-light dark:border-border-dark"
+                >
                   <div
                     class="h-full rounded-full transition-all duration-500"
                     :class="{
@@ -270,13 +301,21 @@ function goToLogin() {
               </div>
 
               <!-- Password Requirements -->
-              <div class="bg-primary/5 dark:bg-primary/10 rounded-lg p-4 space-y-2 border border-primary/10 dark:border-primary/20">
-                <p class="text-xs font-bold uppercase tracking-wider text-primary mb-2">Password Requirements</p>
+              <div
+                class="bg-primary/5 dark:bg-primary/10 rounded-lg p-4 space-y-2 border border-primary/10 dark:border-primary/20"
+              >
+                <p class="text-xs font-bold uppercase tracking-wider text-primary mb-2">
+                  Password Requirements
+                </p>
                 <div
                   v-for="check in passwordChecks"
                   :key="check.label"
                   class="flex items-center gap-2 text-sm"
-                  :class="check.passed ? 'text-green-600 dark:text-green-400' : 'text-text-muted-light dark:text-text-muted-dark'"
+                  :class="
+                    check.passed
+                      ? 'text-green-600 dark:text-green-400'
+                      : 'text-text-muted-light dark:text-text-muted-dark'
+                  "
                 >
                   <span class="material-symbols-outlined text-lg">
                     {{ check.passed ? 'check_circle' : 'radio_button_unchecked' }}
@@ -298,22 +337,40 @@ function goToLogin() {
                   fill="none"
                   viewBox="0 0 24 24"
                 >
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" :stroke-width="4" />
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  <circle
+                    class="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    :stroke-width="4"
+                  />
+                  <path
+                    class="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  />
                 </svg>
                 <span>{{ isLoading ? 'Updating...' : 'Update Password' }}</span>
-                <span v-if="!isLoading" class="material-symbols-outlined text-sm">arrow_forward</span>
+                <span v-if="!isLoading" class="material-symbols-outlined text-sm"
+                  >arrow_forward</span
+                >
               </button>
             </form>
           </div>
 
           <!-- Card Footer -->
-          <div class="bg-background-light dark:bg-background-dark/30 py-3 px-8 border-t border-border-light dark:border-border-dark text-center">
+          <div
+            class="bg-background-light dark:bg-background-dark/30 py-3 px-8 border-t border-border-light dark:border-border-dark text-center"
+          >
             <button
               class="inline-flex items-center gap-2 text-sm font-medium text-text-muted-light dark:text-text-muted-dark hover:text-primary transition-colors group cursor-pointer"
               @click="goToLogin"
             >
-              <span class="material-symbols-outlined !text-[16px] group-hover:-translate-x-1 transition-transform">arrow_back</span>
+              <span
+                class="material-symbols-outlined !text-[16px] group-hover:-translate-x-1 transition-transform"
+                >arrow_back</span
+              >
               Back to Login
             </button>
           </div>

@@ -50,13 +50,11 @@ function updateCountdown() {
   }
 }
 
-const showCountdown = computed(
-  () => deadlineInfo.value?.isOpen && !countdown.value.expired
-)
+const showCountdown = computed(() => deadlineInfo.value?.isOpen && !countdown.value.expired)
 
 // Cổng đăng ký có đang mở không (PUBLISHED + chưa hết deadline)
 const isEnrollmentOpen = computed(
-  () => deadlineInfo.value?.isOpen === true && !countdown.value.expired
+  () => deadlineInfo.value?.isOpen === true && !countdown.value.expired,
 )
 
 // Default placeholder for courses
@@ -146,7 +144,13 @@ async function handleDrop() {
 }
 
 const daysMap: Record<string, number> = {
-  'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6, 'Sun': 7
+  Mon: 1,
+  Tue: 2,
+  Wed: 3,
+  Thu: 4,
+  Fri: 5,
+  Sat: 6,
+  Sun: 7,
 }
 
 const filteredClasses = computed(() => {
@@ -158,7 +162,8 @@ const filteredClasses = computed(() => {
       c.teacherName.toLowerCase().includes(searchQuery.value.toLowerCase())
 
     const matchesCredits = selectedCredits.value === null || c.credits === selectedCredits.value
-    const matchesDay = !selectedDay.value || c.sessions?.some(s => s.dayOfWeek === daysMap[selectedDay.value!])
+    const matchesDay =
+      !selectedDay.value || c.sessions?.some((s) => s.dayOfWeek === daysMap[selectedDay.value!])
 
     return matchesSearch && matchesCredits && matchesDay
   })
@@ -193,12 +198,14 @@ function clearFilters() {
 
 function formatSchedule(cls: StudentAvailableClass | StudentEnrolledClass): string {
   if (!cls.sessions || cls.sessions.length === 0) return 'N/A'
-  return cls.sessions.map(s => `T${s.dayOfWeek} ${s.startTime.slice(0, 5)}-${s.endTime.slice(0, 5)}`).join(', ')
+  return cls.sessions
+    .map((s) => `T${s.dayOfWeek} ${s.startTime.slice(0, 5)}-${s.endTime.slice(0, 5)}`)
+    .join(', ')
 }
 
 function formatRoom(cls: StudentAvailableClass | StudentEnrolledClass): string {
   if (!cls.sessions || cls.sessions.length === 0) return 'TBD'
-  return Array.from(new Set(cls.sessions.map(s => s.roomName))).join(', ')
+  return Array.from(new Set(cls.sessions.map((s) => s.roomName))).join(', ')
 }
 </script>
 
@@ -233,15 +240,27 @@ function formatRoom(cls: StudentAvailableClass | StudentEnrolledClass): string {
         <div
           v-if="showCountdown"
           class="relative flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl overflow-hidden border border-primary/30"
-          style="background: linear-gradient(135deg, rgba(var(--color-primary-rgb, 99,102,241), 0.08) 0%, rgba(var(--color-primary-rgb, 99,102,241), 0.02) 100%)"
+          style="
+            background: linear-gradient(
+              135deg,
+              rgba(var(--color-primary-rgb, 99, 102, 241), 0.08) 0%,
+              rgba(var(--color-primary-rgb, 99, 102, 241), 0.02) 100%
+            );
+          "
         >
           <!-- Glow accent -->
           <div class="absolute inset-0 pointer-events-none">
-            <div class="absolute -top-10 -left-10 w-40 h-40 bg-primary/10 rounded-full blur-3xl"></div>
-            <div class="absolute -bottom-10 -right-10 w-40 h-40 bg-primary/10 rounded-full blur-3xl"></div>
+            <div
+              class="absolute -top-10 -left-10 w-40 h-40 bg-primary/10 rounded-full blur-3xl"
+            ></div>
+            <div
+              class="absolute -bottom-10 -right-10 w-40 h-40 bg-primary/10 rounded-full blur-3xl"
+            ></div>
           </div>
           <div class="relative flex items-center gap-3">
-            <span class="material-symbols-outlined text-primary !text-[28px] animate-pulse">timer</span>
+            <span class="material-symbols-outlined text-primary !text-[28px] animate-pulse"
+              >timer</span
+            >
             <div>
               <p class="text-text-main-light dark:text-text-main-dark font-bold text-sm">
                 Registration closes in
@@ -268,9 +287,10 @@ function formatRoom(cls: StudentAvailableClass | StudentEnrolledClass): string {
               >
                 {{ String(item.value).padStart(2, '0') }}
               </div>
-              <span class="text-text-muted-light dark:text-text-muted-dark text-[10px] font-semibold mt-1 uppercase tracking-wider">{{
-                item.label
-              }}</span>
+              <span
+                class="text-text-muted-light dark:text-text-muted-dark text-[10px] font-semibold mt-1 uppercase tracking-wider"
+                >{{ item.label }}</span
+              >
             </div>
             <template v-for="(_, idx) in [0, 1, 2]" :key="'sep' + idx">
               <span
@@ -480,18 +500,21 @@ function formatRoom(cls: StudentAvailableClass | StudentEnrolledClass): string {
 
                 <button
                   @click="handleEnroll(cls.classId)"
-                  :disabled="
-                    cls.currentStudents >= cls.maxStudents || registeringId === cls.classId
-                  "
+                  :disabled="cls.status !== 'OPEN' || registeringId === cls.classId"
                   class="bg-primary hover:bg-primary/90 text-text-main-light font-bold text-sm py-2 px-4 rounded-lg transition-all shadow-sm shadow-primary/20 disabled:bg-stone-300 dark:disabled:bg-stone-800 disabled:text-text-muted-light dark:disabled:text-text-muted-dark disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   <div
                     v-if="registeringId === cls.classId"
                     class="size-4 border-2 border-text-main-light/20 border-t-text-main-light rounded-full animate-spin"
                   ></div>
-                  <span>{{
-                    cls.currentStudents >= cls.maxStudents ? 'Waitlist' : 'Register'
-                  }}</span>
+                  <template v-if="cls.status !== 'OPEN'">
+                    <span>Closed</span>
+                  </template>
+                  <template v-else>
+                    <span>{{
+                      cls.currentStudents >= cls.maxStudents ? 'Waitlist' : 'Register'
+                    }}</span>
+                  </template>
                 </button>
               </div>
             </div>
@@ -506,7 +529,9 @@ function formatRoom(cls: StudentAvailableClass | StudentEnrolledClass): string {
           v-if="!isEnrollmentOpen && enrolledClasses.length > 0"
           class="flex items-center gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800"
         >
-          <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 !text-[20px]">lock</span>
+          <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 !text-[20px]"
+            >lock</span
+          >
           <p class="text-amber-800 dark:text-amber-300 text-sm font-semibold">
             Enrollment period is closed — you can view your classes but cannot drop them.
           </p>
@@ -591,6 +616,11 @@ function formatRoom(cls: StudentAvailableClass | StudentEnrolledClass): string {
                     Credits
                   </th>
                   <th
+                    class="text-center text-xs font-semibold text-text-muted-light dark:text-text-muted-dark uppercase tracking-wider px-6 py-3.5"
+                  >
+                    Status
+                  </th>
+                  <th
                     class="text-right text-xs font-semibold text-text-muted-light dark:text-text-muted-dark uppercase tracking-wider px-6 py-3.5"
                   >
                     Action
@@ -642,9 +672,24 @@ function formatRoom(cls: StudentAvailableClass | StudentEnrolledClass): string {
                   >
                     {{ cls.credits }}
                   </td>
+                  <td class="px-6 py-4 text-center">
+                    <span
+                      class="px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wide inline-block"
+                      :class="{
+                        'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400':
+                          cls.status === 'ENROLLED',
+                        'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400':
+                          cls.status === 'WAITLISTED',
+                        'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400':
+                          cls.status === 'DROPPED',
+                      }"
+                    >
+                      {{ cls.status }}
+                    </span>
+                  </td>
                   <td class="px-6 py-4 text-right">
                     <button
-                      v-if="isEnrollmentOpen"
+                      v-if="isEnrollmentOpen && cls.status !== 'DROPPED'"
                       @click="confirmDrop(cls.classId, cls.courseName)"
                       :disabled="droppingId === cls.classId"
                       class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -657,7 +702,7 @@ function formatRoom(cls: StudentAvailableClass | StudentEnrolledClass): string {
                       Drop
                     </button>
                     <span
-                      v-else
+                      v-else-if="cls.status !== 'DROPPED'"
                       class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold border border-border-light dark:border-border-dark text-text-muted-light dark:text-text-muted-dark bg-input-bg-light dark:bg-input-bg-dark cursor-not-allowed"
                       title="Enrollment period is closed"
                     >

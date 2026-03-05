@@ -20,5 +20,6 @@ public class AdminClassListItemResponse {
     private java.util.List<ClassSessionResponse> sessions;
     private ScheduledClassStatus status;
     private Integer maxStudents;
+    private Integer minStudents;
     private long studentCount;
 }

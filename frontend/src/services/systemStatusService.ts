@@ -97,5 +97,3 @@ export async function getSystemHealthFrontend(): Promise<ComponentStatusDto> {
   const data = await response.json()
   return (data.result || data) as ComponentStatusDto
 }
-
-

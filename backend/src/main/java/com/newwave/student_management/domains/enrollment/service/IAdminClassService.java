@@ -33,4 +33,6 @@ public interface IAdminClassService {
     void unenrollStudent(Integer classId, UUID studentId);
 
     List<AdminEligibleStudentResponse> getEligibleStudents(Integer classId);
+
+    void lockClassesAndConsolidate(Integer semesterId);
 }

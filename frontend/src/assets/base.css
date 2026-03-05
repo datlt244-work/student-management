@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 @plugin "@tailwindcss/forms";
 
 @theme {
@@ -18,6 +18,6 @@
   --color-input-bg-light: #f4eee7;
   --color-input-bg-dark: #3a2e22;
 
-  --font-display: "Lexend", sans-serif;
-  --font-body: "Noto Sans", sans-serif;
+  --font-display: 'Lexend', sans-serif;
+  --font-body: 'Noto Sans', sans-serif;
 }

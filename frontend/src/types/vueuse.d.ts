@@ -10,5 +10,3 @@ declare module '@vueuse/core' {
     options?: { debounce?: number; maxWait?: number; [key: string]: any },
   ): void
 }
-
-

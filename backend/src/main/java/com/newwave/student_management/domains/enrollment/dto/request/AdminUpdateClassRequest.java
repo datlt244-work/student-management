@@ -31,6 +31,10 @@ public class AdminUpdateClassRequest {
     @Min(value = 1, message = "Max students must be at least 1")
     private Integer maxStudents;
 
+    @NotNull(message = "Min students is required")
+    @Min(value = 1, message = "Min students must be at least 1")
+    private Integer minStudents;
+
     @NotNull(message = "Status is required")
     private ScheduledClassStatus status;
 }

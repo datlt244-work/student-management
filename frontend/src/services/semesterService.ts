@@ -18,5 +18,5 @@ export const semesterService = {
   async getCurrentSemester() {
     const response = await apiFetch('/semesters/current')
     return response.json() as Promise<ApiResponse<SemesterResponse>>
-  }
+  },
 }

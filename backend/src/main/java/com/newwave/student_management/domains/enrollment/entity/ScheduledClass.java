@@ -67,4 +67,10 @@ public class ScheduledClass extends JpaBaseEntity {
          */
         @Column(name = "max_students")
         private Integer maxStudents = 40;
+
+        /**
+         * Sĩ số tối thiểu. Mặc định 30.
+         */
+        @Column(name = "min_students")
+        private Integer minStudents = 30;
 }

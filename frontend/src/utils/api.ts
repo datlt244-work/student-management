@@ -114,10 +114,7 @@ async function refreshTokenWithDedup(): Promise<boolean> {
  * - Auto Authorization header (nếu có token)
  * - Auto refresh token khi nhận 401 và retry request
  */
-export async function apiFetch(
-  endpoint: string,
-  options?: RequestInit,
-): Promise<Response> {
+export async function apiFetch(endpoint: string, options?: RequestInit): Promise<Response> {
   const authStore = useAuthStore()
   const url = getApiUrl(endpoint)
 
@@ -138,7 +135,11 @@ export async function apiFetch(
   // Nếu 401 và có refresh token → thử refresh rồi retry
   if (response.status === 401 && authStore.refreshToken) {
     // Không retry cho chính endpoint refresh-token hoặc login
-    if (endpoint.includes('/auth/refresh-token') || endpoint.includes('/auth/login') || endpoint.includes('/auth/logout')) {
+    if (
+      endpoint.includes('/auth/refresh-token') ||
+      endpoint.includes('/auth/login') ||
+      endpoint.includes('/auth/logout')
+    ) {
       return response
     }
 

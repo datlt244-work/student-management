@@ -9,12 +9,15 @@ import {
   type UserNotification,
 } from '@/services/portalNotificationService'
 
-const props = withDefaults(defineProps<{
-  portal: string
-  align?: 'left' | 'right'
-}>(), {
-  align: 'right'
-})
+const props = withDefaults(
+  defineProps<{
+    portal: string
+    align?: 'left' | 'right'
+  }>(),
+  {
+    align: 'right',
+  },
+)
 
 const router = useRouter()
 const isOpen = ref(false)
@@ -151,7 +154,7 @@ onUnmounted(() => {
         v-if="isOpen"
         :class="[
           'absolute mt-2 w-80 sm:w-96 bg-surface-light dark:bg-surface-dark rounded-xl shadow-2xl border border-border-light dark:border-border-dark z-50 overflow-hidden',
-          align === 'left' ? 'left-0 origin-top-left' : 'right-0 origin-top-right'
+          align === 'left' ? 'left-0 origin-top-left' : 'right-0 origin-top-right',
         ]"
       >
         <div

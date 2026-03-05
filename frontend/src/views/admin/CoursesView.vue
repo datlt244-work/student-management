@@ -1044,5 +1044,3 @@ function clearFilters() {
   transform: translateY(-8px) scale(0.97);
 }
 </style>
-
-

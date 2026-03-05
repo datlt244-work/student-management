@@ -18,7 +18,7 @@ export interface StudentAvailableClass {
   sessions: ClassSessionResponse[]
   maxStudents: number
   currentStudents: number
-  status: 'OPEN' | 'CLOSED' | 'CANCELLED'
+  status: 'OPEN' | 'CLOSED' | 'CANCELLED' | 'LOCKED'
 }
 
 export interface StudentEnrolledClass {
@@ -29,6 +29,7 @@ export interface StudentEnrolledClass {
   credits: number
   teacherName: string
   sessions: ClassSessionResponse[]
+  status: 'ENROLLED' | 'WAITLISTED' | 'DROPPED'
   enrollmentDate: string
 }
 

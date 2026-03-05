@@ -56,7 +56,9 @@ function goToLogin() {
   <div
     class="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark font-display antialiased min-h-screen flex flex-col overflow-x-hidden geo-pattern"
   >
-    <div class="layout-container flex h-full grow flex-col items-center justify-center p-4 sm:p-6 lg:p-8">
+    <div
+      class="layout-container flex h-full grow flex-col items-center justify-center p-4 sm:p-6 lg:p-8"
+    >
       <div
         class="w-full max-w-[480px] bg-surface-light dark:bg-surface-dark rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.4)] border border-border-light dark:border-border-dark overflow-hidden relative"
       >
@@ -66,17 +68,22 @@ function goToLogin() {
         <!-- Success State -->
         <template v-if="successMessage">
           <div class="px-8 pt-10 pb-2 text-center">
-            <div class="inline-flex items-center justify-center size-16 rounded-full bg-green-100 dark:bg-green-900/20 mb-4 text-green-600 dark:text-green-400">
+            <div
+              class="inline-flex items-center justify-center size-16 rounded-full bg-green-100 dark:bg-green-900/20 mb-4 text-green-600 dark:text-green-400"
+            >
               <span class="material-symbols-outlined !text-[32px]">mark_email_read</span>
             </div>
             <h1 class="text-2xl font-bold leading-tight">Check Your Email</h1>
           </div>
           <div class="px-8 pb-6 text-center">
-            <p class="text-text-muted-light dark:text-text-muted-dark text-base font-normal leading-normal">
+            <p
+              class="text-text-muted-light dark:text-text-muted-dark text-base font-normal leading-normal"
+            >
               {{ successMessage }}
             </p>
             <p class="text-text-muted-light dark:text-text-muted-dark text-sm mt-3">
-              The link will expire in <span class="font-semibold text-primary">{{ cooldownMinutes }} minutes</span>.
+              The link will expire in
+              <span class="font-semibold text-primary">{{ cooldownMinutes }} minutes</span>.
             </p>
           </div>
           <div class="px-8 pb-10 text-center">
@@ -84,7 +91,10 @@ function goToLogin() {
               class="inline-flex items-center gap-2 text-sm font-medium text-text-muted-light dark:text-text-muted-dark hover:text-primary transition-colors group cursor-pointer"
               @click="goToLogin"
             >
-              <span class="material-symbols-outlined !text-[16px] group-hover:-translate-x-1 transition-transform">arrow_back</span>
+              <span
+                class="material-symbols-outlined !text-[16px] group-hover:-translate-x-1 transition-transform"
+                >arrow_back</span
+              >
               Back to Login
             </button>
           </div>
@@ -95,7 +105,9 @@ function goToLogin() {
           <div class="p-8 flex flex-col gap-6">
             <!-- Header -->
             <div class="flex flex-col items-center gap-4 text-center">
-              <div class="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center text-primary">
+              <div
+                class="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center text-primary"
+              >
                 <span class="material-symbols-outlined text-4xl">lock_reset</span>
               </div>
               <div>
@@ -120,7 +132,9 @@ function goToLogin() {
               <label class="flex flex-col gap-1.5">
                 <span class="text-sm font-medium">Email Address</span>
                 <div class="relative group">
-                  <span class="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted-light dark:text-text-muted-dark group-focus-within:text-primary transition-colors">
+                  <span
+                    class="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted-light dark:text-text-muted-dark group-focus-within:text-primary transition-colors"
+                  >
                     <span class="material-symbols-outlined text-[20px]">mail</span>
                   </span>
                   <input
@@ -145,22 +159,40 @@ function goToLogin() {
                   fill="none"
                   viewBox="0 0 24 24"
                 >
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" :stroke-width="4" />
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  <circle
+                    class="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    :stroke-width="4"
+                  />
+                  <path
+                    class="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  />
                 </svg>
                 <span>{{ isLoading ? 'Sending...' : 'Send Reset Link' }}</span>
-                <span v-if="!isLoading" class="material-symbols-outlined text-sm">arrow_forward</span>
+                <span v-if="!isLoading" class="material-symbols-outlined text-sm"
+                  >arrow_forward</span
+                >
               </button>
             </form>
           </div>
 
           <!-- Footer -->
-          <div class="bg-background-light dark:bg-background-dark/30 py-3 px-8 border-t border-border-light dark:border-border-dark text-center">
+          <div
+            class="bg-background-light dark:bg-background-dark/30 py-3 px-8 border-t border-border-light dark:border-border-dark text-center"
+          >
             <button
               class="inline-flex items-center gap-2 text-sm font-medium text-text-muted-light dark:text-text-muted-dark hover:text-primary transition-colors group cursor-pointer"
               @click="goToLogin"
             >
-              <span class="material-symbols-outlined !text-[16px] group-hover:-translate-x-1 transition-transform">arrow_back</span>
+              <span
+                class="material-symbols-outlined !text-[16px] group-hover:-translate-x-1 transition-transform"
+                >arrow_back</span
+              >
               Back to Login
             </button>
           </div>

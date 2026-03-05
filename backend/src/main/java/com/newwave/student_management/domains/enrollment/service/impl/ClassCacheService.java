@@ -91,9 +91,13 @@ public class ClassCacheService {
      * Prefix cho Redis keys.
      * - SEMESTER_KEY_PREFIX + semesterId + ":classes" → SET chứa tất cả classId
      * - CLASS_KEY_PREFIX + classId → HASH chứa chi tiết lớp
+     * - WAITLIST_KEY_PREFIX + classId → ZSET chứa studentId xếp hàng đợi theo
+     * timestamp
      */
     private static final String SEMESTER_KEY_PREFIX = "semester:";
     private static final String CLASS_KEY_PREFIX = "class:";
+    private static final String WAITLIST_KEY_PREFIX = "waitlist:";
+    private static final int MAX_WAITLIST = 10;
 
     /**
      * Đồng bộ tất cả lớp OPEN trong 1 semester lên Redis.
@@ -177,6 +181,7 @@ public class ClassCacheService {
         if (existingClassIds != null && !existingClassIds.isEmpty()) {
             for (String classId : existingClassIds) {
                 stringRedisTemplate.delete(CLASS_KEY_PREFIX + classId);
+                stringRedisTemplate.delete(WAITLIST_KEY_PREFIX + classId);
             }
             stringRedisTemplate.delete(semesterSetKey);
             log.info("Cleared {} cached classes for semester {}", existingClassIds.size(), semesterId);
@@ -267,6 +272,47 @@ public class ClassCacheService {
                 RELEASE_SLOT_SCRIPT,
                 List.of(classKey));
         log.debug("Slot released for class {}, currentSlot after release: {}", classId, result);
+    }
+
+    // ===== Phase 5: Waitlist Management =====
+
+    /**
+     * Thêm sinh viên vào hàng đợi (ZSet). Score là thời gian hiện tại (ai đến trước
+     * xếp trước).
+     * 
+     * @return true nếu thêm thành công, false nếu hàng đợi đã đầy.
+     */
+    public boolean joinWaitlist(Integer classId, UUID studentId) {
+        String waitlistKey = WAITLIST_KEY_PREFIX + classId;
+        Long count = stringRedisTemplate.opsForZSet().zCard(waitlistKey);
+        if (count != null && count >= MAX_WAITLIST) {
+            return false;
+        }
+        long score = System.currentTimeMillis();
+        return Boolean.TRUE.equals(stringRedisTemplate.opsForZSet().add(waitlistKey, studentId.toString(), score));
+    }
+
+    /**
+     * Bốc sinh viên đứng đầu dòng (có score nhỏ nhất) khỏi hàng đợi.
+     * Lệnh POP sẽ lấy ra và xóa khỏi ZSet.
+     */
+    public UUID popWaitlist(Integer classId) {
+        String waitlistKey = WAITLIST_KEY_PREFIX + classId;
+        Set<String> set = stringRedisTemplate.opsForZSet().range(waitlistKey, 0, 0);
+        if (set != null && !set.isEmpty()) {
+            String studentIdStr = set.iterator().next();
+            stringRedisTemplate.opsForZSet().remove(waitlistKey, studentIdStr);
+            return UUID.fromString(studentIdStr);
+        }
+        return null;
+    }
+
+    /**
+     * Xóa sinh viên khỏi hàng đợi (nếu họ tự hủy chờ).
+     */
+    public void removeFromWaitlist(Integer classId, UUID studentId) {
+        String waitlistKey = WAITLIST_KEY_PREFIX + classId;
+        stringRedisTemplate.opsForZSet().remove(waitlistKey, studentId.toString());
     }
 
     // ===== Phase 4: Enrollment Stats from Redis =====

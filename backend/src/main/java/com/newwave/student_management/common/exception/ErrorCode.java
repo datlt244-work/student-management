@@ -70,6 +70,7 @@ public enum ErrorCode {
         STUDENT_DEPARTMENT_MISMATCH(1269, "Student must belong to the same department as the course",
                         HttpStatus.BAD_REQUEST),
         CLASS_NOT_OPEN(1272, "Class is not open for enrollment", HttpStatus.BAD_REQUEST),
+        STUDENT_ALREADY_WAITLISTED(1281, "Student is already in the waitlist for this class", HttpStatus.CONFLICT),
         ENROLLMENT_CLOSED(1280, "Enrollment period is closed. You can no longer drop classes.", HttpStatus.BAD_REQUEST),
         ENROLLMENT_NOT_FOUND(1270, "Enrollment record not found", HttpStatus.NOT_FOUND),
         ROOM_NOT_FOUND(1273, "Room not found", HttpStatus.NOT_FOUND),

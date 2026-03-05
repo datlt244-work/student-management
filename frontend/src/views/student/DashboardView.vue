@@ -175,13 +175,21 @@ const totalCreditsRequired = 120
           {{ displayName.substring(0, 2).toUpperCase() }}
         </div>
         <div class="flex flex-col justify-center">
-          <h1 class="text-2xl md:text-3xl font-bold leading-tight">Welcome back, {{ displayName }}!</h1>
-          <p class="text-text-muted-light dark:text-text-muted-dark text-sm md:text-base font-medium mt-1">Computer Science Major &bull; Senior Year</p>
+          <h1 class="text-2xl md:text-3xl font-bold leading-tight">
+            Welcome back, {{ displayName }}!
+          </h1>
+          <p
+            class="text-text-muted-light dark:text-text-muted-dark text-sm md:text-base font-medium mt-1"
+          >
+            Computer Science Major &bull; Senior Year
+          </p>
           <p class="text-text-muted-light dark:text-stone-500 text-sm mt-1">Fall Semester 2023</p>
         </div>
       </div>
       <div class="flex gap-3">
-        <button class="bg-primary hover:bg-orange-600 text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow-sm transition-colors flex items-center gap-2">
+        <button
+          class="bg-primary hover:bg-orange-600 text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow-sm transition-colors flex items-center gap-2"
+        >
           <span class="material-symbols-outlined text-[18px]">add</span>
           New Task
         </button>
@@ -201,7 +209,10 @@ const totalCreditsRequired = 120
         ]"
       >
         <!-- Decorative blob for highlighted card -->
-        <div v-if="stat.highlight" class="absolute right-0 top-0 w-16 h-16 bg-primary/10 rounded-bl-full -mr-4 -mt-4"></div>
+        <div
+          v-if="stat.highlight"
+          class="absolute right-0 top-0 w-16 h-16 bg-primary/10 rounded-bl-full -mr-4 -mt-4"
+        ></div>
 
         <div class="flex justify-between items-start z-10">
           <div :class="['p-2 rounded-lg', stat.iconBg, stat.iconColor]">
@@ -210,15 +221,24 @@ const totalCreditsRequired = 120
           <span
             :class="[
               'text-xs font-bold px-2 py-1 rounded',
-              stat.trendPositive ? 'text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20' : 'text-primary bg-orange-50 dark:bg-orange-900/20',
+              stat.trendPositive
+                ? 'text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20'
+                : 'text-primary bg-orange-50 dark:bg-orange-900/20',
             ]"
           >
             {{ stat.trend }}
           </span>
         </div>
-        <p class="text-text-muted-light dark:text-stone-400 text-sm font-medium mt-2 z-10">{{ stat.label }}</p>
+        <p class="text-text-muted-light dark:text-stone-400 text-sm font-medium mt-2 z-10">
+          {{ stat.label }}
+        </p>
         <p class="text-3xl font-bold tracking-tight z-10">
-          {{ stat.value }}<span v-if="stat.suffix" class="text-lg text-text-muted-light dark:text-text-muted-dark font-normal">{{ stat.suffix }}</span>
+          {{ stat.value
+          }}<span
+            v-if="stat.suffix"
+            class="text-lg text-text-muted-light dark:text-text-muted-dark font-normal"
+            >{{ stat.suffix }}</span
+          >
         </p>
       </div>
     </div>
@@ -228,10 +248,15 @@ const totalCreditsRequired = 120
       <!-- Left Column (Weekly Schedule + Degree) - Spans 7 cols -->
       <div class="lg:col-span-7 flex flex-col gap-6">
         <!-- Schedule Section -->
-        <section class="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark p-6 shadow-sm">
+        <section
+          class="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark p-6 shadow-sm"
+        >
           <div class="flex justify-between items-center mb-6">
             <h3 class="text-xl font-bold">My Weekly Schedule</h3>
-            <router-link :to="{ name: 'student-schedule' }" class="text-primary text-sm font-bold hover:underline">
+            <router-link
+              :to="{ name: 'student-schedule' }"
+              class="text-primary text-sm font-bold hover:underline"
+            >
               View Full Calendar
             </router-link>
           </div>
@@ -257,37 +282,58 @@ const totalCreditsRequired = 120
             <div
               v-for="item in scheduleItems"
               :key="item.title"
-              :class="['flex items-center gap-4 p-4 rounded-lg bg-background-light dark:bg-stone-800 border-l-4', item.borderColor]"
+              :class="[
+                'flex items-center gap-4 p-4 rounded-lg bg-background-light dark:bg-stone-800 border-l-4',
+                item.borderColor,
+              ]"
             >
               <div class="flex flex-col min-w-[80px]">
                 <span class="font-bold text-lg">{{ item.time }}</span>
-                <span class="text-text-muted-light dark:text-text-muted-dark text-xs uppercase font-medium">{{ item.period }}</span>
+                <span
+                  class="text-text-muted-light dark:text-text-muted-dark text-xs uppercase font-medium"
+                  >{{ item.period }}</span
+                >
               </div>
               <div class="w-px h-10 bg-border-light dark:bg-border-dark"></div>
               <div class="flex-1">
                 <h4 class="font-bold text-base">{{ item.title }}</h4>
                 <div class="flex items-center gap-3 mt-1">
-                  <span class="text-text-muted-light dark:text-text-muted-dark text-sm flex items-center gap-1">
-                    <span class="material-symbols-outlined text-[16px]">{{ item.isOnline ? 'laptop_chromebook' : 'location_on' }}</span>
+                  <span
+                    class="text-text-muted-light dark:text-text-muted-dark text-sm flex items-center gap-1"
+                  >
+                    <span class="material-symbols-outlined text-[16px]">{{
+                      item.isOnline ? 'laptop_chromebook' : 'location_on'
+                    }}</span>
                     {{ item.location }}
                   </span>
-                  <span v-if="item.instructor" class="text-text-muted-light dark:text-text-muted-dark text-sm flex items-center gap-1">
+                  <span
+                    v-if="item.instructor"
+                    class="text-text-muted-light dark:text-text-muted-dark text-sm flex items-center gap-1"
+                  >
                     <span class="material-symbols-outlined text-[16px]">person</span>
                     {{ item.instructor }}
                   </span>
                 </div>
               </div>
-              <span :class="['text-xs font-bold px-2 py-1 rounded', item.typeBg, item.typeColor]">{{ item.type }}</span>
+              <span :class="['text-xs font-bold px-2 py-1 rounded', item.typeBg, item.typeColor]">{{
+                item.type
+              }}</span>
             </div>
           </div>
         </section>
 
         <!-- Degree Completion Section -->
-        <section class="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark p-6 shadow-sm">
+        <section
+          class="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark p-6 shadow-sm"
+        >
           <div class="flex flex-col md:flex-row gap-8 items-center">
             <!-- Progress Ring -->
             <div class="relative size-32 md:size-40 shrink-0">
-              <svg class="size-full -rotate-90" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
+              <svg
+                class="size-full -rotate-90"
+                viewBox="0 0 36 36"
+                xmlns="http://www.w3.org/2000/svg"
+              >
                 <path
                   class="text-stone-100 dark:text-stone-800"
                   d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
@@ -315,8 +361,14 @@ const totalCreditsRequired = 120
                 You are on track to graduate in Spring 2024. Keep up the great work!
               </p>
               <div class="mt-2 flex flex-wrap gap-2 justify-center md:justify-start">
-                <span class="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-xs px-3 py-1 rounded-full font-medium">On Track</span>
-                <span class="bg-stone-100 dark:bg-stone-800 text-xs px-3 py-1 rounded-full font-medium">{{ totalCreditsRequired }} Credits Required</span>
+                <span
+                  class="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-xs px-3 py-1 rounded-full font-medium"
+                  >On Track</span
+                >
+                <span
+                  class="bg-stone-100 dark:bg-stone-800 text-xs px-3 py-1 rounded-full font-medium"
+                  >{{ totalCreditsRequired }} Credits Required</span
+                >
               </div>
             </div>
           </div>
@@ -326,7 +378,9 @@ const totalCreditsRequired = 120
       <!-- Right Column (Deadlines & Grades) - Spans 5 cols -->
       <div class="lg:col-span-5 flex flex-col gap-6">
         <!-- Deadlines Section -->
-        <section class="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark p-6 shadow-sm flex flex-col h-full">
+        <section
+          class="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark p-6 shadow-sm flex flex-col h-full"
+        >
           <div class="flex justify-between items-center mb-6">
             <h3 class="text-xl font-bold">Upcoming Deadlines</h3>
             <button class="text-primary text-sm font-bold hover:underline">View All</button>
@@ -335,16 +389,25 @@ const totalCreditsRequired = 120
             <div
               v-for="(deadline, index) in deadlines"
               :key="deadline.title"
-              :class="['flex items-start gap-4', index < deadlines.length - 1 ? 'pb-4 border-b border-stone-100 dark:border-stone-800' : '']"
+              :class="[
+                'flex items-start gap-4',
+                index < deadlines.length - 1
+                  ? 'pb-4 border-b border-stone-100 dark:border-stone-800'
+                  : '',
+              ]"
             >
               <div :class="['p-2.5 rounded-lg', deadline.iconBg, deadline.iconColor]">
                 <span class="material-symbols-outlined text-[20px]">{{ deadline.icon }}</span>
               </div>
               <div class="flex-1">
                 <h4 class="font-bold text-sm">{{ deadline.title }}</h4>
-                <p class="text-text-muted-light dark:text-text-muted-dark text-xs mt-0.5">{{ deadline.course }} &bull; {{ deadline.due }}</p>
+                <p class="text-text-muted-light dark:text-text-muted-dark text-xs mt-0.5">
+                  {{ deadline.course }} &bull; {{ deadline.due }}
+                </p>
               </div>
-              <button class="size-8 flex items-center justify-center rounded-full border border-border-light dark:border-border-dark text-text-muted-light dark:text-text-muted-dark hover:bg-background-light dark:hover:bg-stone-800 transition-colors">
+              <button
+                class="size-8 flex items-center justify-center rounded-full border border-border-light dark:border-border-dark text-text-muted-light dark:text-text-muted-dark hover:bg-background-light dark:hover:bg-stone-800 transition-colors"
+              >
                 <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
               </button>
             </div>
@@ -352,20 +415,32 @@ const totalCreditsRequired = 120
         </section>
 
         <!-- Latest Grades Section -->
-        <section class="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark p-6 shadow-sm">
+        <section
+          class="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark p-6 shadow-sm"
+        >
           <h3 class="text-xl font-bold mb-4">Latest Grades</h3>
           <div class="overflow-hidden rounded-lg border border-stone-100 dark:border-stone-800">
             <table class="w-full text-left border-collapse">
               <thead class="bg-background-light dark:bg-stone-800">
                 <tr>
-                  <th class="p-3 text-xs font-semibold text-text-muted-light dark:text-text-muted-dark uppercase tracking-wider">Course</th>
-                  <th class="p-3 text-xs font-semibold text-text-muted-light dark:text-text-muted-dark uppercase tracking-wider text-right">Grade</th>
+                  <th
+                    class="p-3 text-xs font-semibold text-text-muted-light dark:text-text-muted-dark uppercase tracking-wider"
+                  >
+                    Course
+                  </th>
+                  <th
+                    class="p-3 text-xs font-semibold text-text-muted-light dark:text-text-muted-dark uppercase tracking-wider text-right"
+                  >
+                    Grade
+                  </th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-stone-100 dark:divide-stone-800">
                 <tr v-for="item in grades" :key="item.course">
                   <td class="p-3 text-sm font-medium">{{ item.course }}</td>
-                  <td :class="['p-3 text-sm font-bold text-right', item.gradeColor]">{{ item.grade }}</td>
+                  <td :class="['p-3 text-sm font-bold text-right', item.gradeColor]">
+                    {{ item.grade }}
+                  </td>
                 </tr>
               </tbody>
             </table>

@@ -31,5 +31,5 @@ export const gradeService = {
   async getTranscript() {
     const response = await apiFetch('/student/grades/transcript')
     return response.json() as Promise<ApiResponse<StudentTranscript>>
-  }
+  },
 }

@@ -497,7 +497,9 @@ export async function updateAdminUserProfile(
  * UC-11.3a: Tạo User (Teacher hoặc Student)
  * POST /admin/users — 201 Created, trả về user + profile.
  */
-export async function createAdminUser(body: AdminCreateUserRequest): Promise<AdminUserDetailResult> {
+export async function createAdminUser(
+  body: AdminCreateUserRequest,
+): Promise<AdminUserDetailResult> {
   const response = await apiFetch('/admin/users', {
     method: 'POST',
     body: JSON.stringify(body),
@@ -576,7 +578,10 @@ export async function getAdminCourses(params: {
   return (data.result || data) as AdminCourseListResult
 }
 
-export async function updateAdminCourseStatus(courseId: number, status: 'ACTIVE' | 'INACTIVE'): Promise<AdminCourseListItem> {
+export async function updateAdminCourseStatus(
+  courseId: number,
+  status: 'ACTIVE' | 'INACTIVE',
+): Promise<AdminCourseListItem> {
   const response = await apiFetch(`/admin/courses/${courseId}/status`, {
     method: 'PATCH',
     body: JSON.stringify({ status }),
@@ -600,7 +605,9 @@ export interface AdminCreateCourseRequest {
   description?: string
 }
 
-export async function createAdminCourse(body: AdminCreateCourseRequest): Promise<AdminCourseListItem> {
+export async function createAdminCourse(
+  body: AdminCreateCourseRequest,
+): Promise<AdminCourseListItem> {
   const response = await apiFetch('/admin/courses', {
     method: 'POST',
     body: JSON.stringify(body),
@@ -640,7 +647,10 @@ export interface AdminUpdateCourseRequest {
   description?: string
 }
 
-export async function updateAdminCourse(id: number | string, data: AdminUpdateCourseRequest): Promise<AdminCourseDetail> {
+export async function updateAdminCourse(
+  id: number | string,
+  data: AdminUpdateCourseRequest,
+): Promise<AdminCourseDetail> {
   const response = await apiFetch(`/admin/courses/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
@@ -662,7 +672,6 @@ export async function deleteAdminCourse(id: number | string): Promise<void> {
     throw new Error(errorData?.message || `Failed to delete course (${response.status})`)
   }
 }
-
 
 // ========== Semester ==========
 
@@ -690,13 +699,13 @@ export interface AdminSemesterListResult {
 }
 
 export interface TeacherSimpleResponse {
-  teacherId: string;
-  teacherCode: string;
-  firstName: string;
-  lastName: string;
-  fullName: string;
-  officeRoomId?: number | null;
-  officeRoomName?: string | null;
+  teacherId: string
+  teacherCode: string
+  firstName: string
+  lastName: string
+  fullName: string
+  officeRoomId?: number | null
+  officeRoomName?: string | null
 }
 
 export interface AdminCreateSemesterRequest {
@@ -737,14 +746,16 @@ export async function getAdminSemesterList(params: {
 
   return {
     content: raw.content ?? [],
-    page: typeof raw.page === 'number' ? raw.page : (typeof raw.number === 'number' ? raw.number : 0),
+    page: typeof raw.page === 'number' ? raw.page : typeof raw.number === 'number' ? raw.number : 0,
     size: raw.size ?? 10,
     totalElements: raw.totalElements ?? 0,
     totalPages: raw.totalPages ?? 0,
   } as AdminSemesterListResult
 }
 
-export async function createAdminSemester(body: AdminCreateSemesterRequest): Promise<AdminSemesterListItem> {
+export async function createAdminSemester(
+  body: AdminCreateSemesterRequest,
+): Promise<AdminSemesterListItem> {
   const response = await apiFetch('/admin/semesters', {
     method: 'POST',
     body: JSON.stringify(body),
@@ -775,14 +786,16 @@ export async function updateAdminSemester(
   return (data.result || data) as AdminSemesterListItem
 }
 
-export async function getAdminTeachersByDepartment(departmentId: number): Promise<TeacherSimpleResponse[]> {
-  const response = await apiFetch(`/admin/users/teachers?departmentId=${departmentId}`);
+export async function getAdminTeachersByDepartment(
+  departmentId: number,
+): Promise<TeacherSimpleResponse[]> {
+  const response = await apiFetch(`/admin/users/teachers?departmentId=${departmentId}`)
   if (!response.ok) {
-    const errorData = await response.json().catch(() => null);
-    throw new Error(errorData?.message || `Failed to fetch teachers (${response.status})`);
+    const errorData = await response.json().catch(() => null)
+    throw new Error(errorData?.message || `Failed to fetch teachers (${response.status})`)
   }
-  const data = await response.json();
-  return (data.result || data) as TeacherSimpleResponse[];
+  const data = await response.json()
+  return (data.result || data) as TeacherSimpleResponse[]
 }
 
 export async function setCurrentAdminSemester(id: number): Promise<AdminSemesterListItem> {
@@ -834,56 +847,63 @@ export async function closeAdminSemesterEnrollment(id: number): Promise<AdminSem
 // ========== UC-12.1: Excel Templates ==========
 
 export async function downloadTeacherTemplate(): Promise<void> {
-  const response = await apiFetch('/admin/users/import/templates/teacher');
+  const response = await apiFetch('/admin/users/import/templates/teacher')
   if (!response.ok) {
-    const errorData = await response.json().catch(() => null);
-    throw new Error(errorData?.message || `Failed to download teacher template (${response.status})`);
+    const errorData = await response.json().catch(() => null)
+    throw new Error(
+      errorData?.message || `Failed to download teacher template (${response.status})`,
+    )
   }
-  const blob = await response.blob();
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'Template_Teacher.xlsx';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  window.URL.revokeObjectURL(url);
+  const blob = await response.blob()
+  const url = window.URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'Template_Teacher.xlsx'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  window.URL.revokeObjectURL(url)
 }
 
 export async function downloadStudentTemplate(): Promise<void> {
-  const response = await apiFetch('/admin/users/import/templates/student');
+  const response = await apiFetch('/admin/users/import/templates/student')
   if (!response.ok) {
-    const errorData = await response.json().catch(() => null);
-    throw new Error(errorData?.message || `Failed to download student template (${response.status})`);
+    const errorData = await response.json().catch(() => null)
+    throw new Error(
+      errorData?.message || `Failed to download student template (${response.status})`,
+    )
   }
-  const blob = await response.blob();
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'Template_Student.xlsx';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  window.URL.revokeObjectURL(url);
+  const blob = await response.blob()
+  const url = window.URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'Template_Student.xlsx'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  window.URL.revokeObjectURL(url)
 }
 
 // ========== UC-12.2: Batch User Import via Excel ==========
 
-export async function importUsers(file: File, role: 'TEACHER' | 'STUDENT'): Promise<{ message: string }> {
-  const formData = new FormData();
-  formData.append('file', file);
+export async function importUsers(
+  file: File,
+  role: 'TEACHER' | 'STUDENT',
+): Promise<{ message: string }> {
+  const formData = new FormData()
+  formData.append('file', file)
 
   const response = await apiFetch(`/admin/users/import/${role.toLowerCase()}`, {
     method: 'POST',
     body: formData,
     // Note: Do not specify Content-Type, browser will automatically set it to multipart/form-data with the correct boundary
-  });
+  })
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => null);
-    throw new Error(errorData?.message || `Failed to trigger import (${response.status})`);
+    const errorData = await response.json().catch(() => null)
+    throw new Error(errorData?.message || `Failed to trigger import (${response.status})`)
   }
 
-  const data = await response.json();
-  return { message: data.result || 'Import initiated successfully.' };
+  const data = await response.json()
+  return { message: data.result || 'Import initiated successfully.' }
 }

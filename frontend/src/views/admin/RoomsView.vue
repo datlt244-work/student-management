@@ -4,7 +4,7 @@ import {
   adminRoomService,
   type AdminRoomResponse,
   type AdminCreateRoomRequest,
-  type AdminUpdateRoomRequest
+  type AdminUpdateRoomRequest,
 } from '@/services/adminRoomService'
 import { useToast } from '@/composables/useToast'
 
@@ -45,7 +45,7 @@ async function fetchRooms() {
       currentPage.value,
       pageSize.value,
       searchQuery.value || undefined,
-      filterRoomType.value || undefined
+      filterRoomType.value || undefined,
     )
     rooms.value = response.content
     totalElements.value = response.totalElements
@@ -81,7 +81,11 @@ function clearFilters() {
 }
 
 function handlePageChange(page: number) {
-  if (page >= 1 && (totalPages.value === 0 || page <= totalPages.value) && page !== currentPage.value) {
+  if (
+    page >= 1 &&
+    (totalPages.value === 0 || page <= totalPages.value) &&
+    page !== currentPage.value
+  ) {
     currentPage.value = page
     fetchRooms()
   }
@@ -109,17 +113,17 @@ async function handleCreateRoom() {
     createLoading.value = true
     createError.value = null
     await adminRoomService.createRoom(newRoom.value)
-    
+
     showToast('Room created successfully', 'success')
     showAddRoomModal.value = false
-    
+
     // Reset form
     newRoom.value = {
       roomName: '',
       capacity: 40,
       roomType: 'LECTURE_HALL',
     }
-    
+
     // Refresh list
     fetchRooms()
   } catch (err) {
@@ -148,7 +152,7 @@ function openEditModal(room: AdminRoomResponse) {
 
 async function handleUpdateRoom() {
   if (!editingRoom.value) return
-  
+
   try {
     createLoading.value = true
     createError.value = null
@@ -157,9 +161,9 @@ async function handleUpdateRoom() {
       capacity: editingRoom.value.capacity || 40,
       roomType: editingRoom.value.roomType || 'LECTURE_HALL',
     }
-    
+
     await adminRoomService.updateRoom(editingRoom.value.roomId, updateData)
-    
+
     showToast('Room updated successfully', 'success')
     showEditRoomModal.value = false
     fetchRooms()
@@ -178,7 +182,7 @@ function openDeleteModal(room: AdminRoomResponse) {
 
 async function handleDeleteRoom() {
   if (!deletingRoom.value) return
-  
+
   try {
     deleteLoading.value = true
     await adminRoomService.deleteRoom(deletingRoom.value.roomId)
@@ -220,14 +224,15 @@ onMounted(() => {
         </button>
       </div>
     </div>
-    
+
     <Teleport to="body">
       <div v-if="toast" class="fixed top-4 right-4 z-[100] animate-fade-in">
-        <div 
-          :class="[ 
+        <div
+          :class="[
             'flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border min-w-[300px]',
-            toast.type === 'success' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/30 dark:border-green-800 dark:text-green-300' : 
-            'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/30 dark:border-red-800 dark:text-red-300'
+            toast.type === 'success'
+              ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/30 dark:border-green-800 dark:text-green-300'
+              : 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/30 dark:border-red-800 dark:text-red-300',
           ]"
         >
           <span class="material-symbols-outlined shrink-0">
@@ -261,9 +266,11 @@ onMounted(() => {
           class="h-11 w-full sm:w-48 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-sm rounded-lg focus:ring-primary focus:border-primary transition-all text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/50"
         >
           <option value="">All Room Types</option>
-          <option v-for="type in roomTypes" :key="type" :value="type">{{ type.replace('_', ' ') }}</option>
+          <option v-for="type in roomTypes" :key="type" :value="type">
+            {{ type.replace('_', ' ') }}
+          </option>
         </select>
-        
+
         <button
           v-if="searchQuery || filterRoomType !== ''"
           @click="clearFilters"
@@ -276,10 +283,14 @@ onMounted(() => {
     </div>
 
     <!-- Table -->
-    <div class="bg-surface-light dark:bg-surface-dark border border-stone-200 dark:border-stone-800 rounded-xl overflow-hidden shadow-sm">
+    <div
+      class="bg-surface-light dark:bg-surface-dark border border-stone-200 dark:border-stone-800 rounded-xl overflow-hidden shadow-sm"
+    >
       <div class="overflow-x-auto">
         <table class="w-full text-left text-sm whitespace-nowrap">
-          <thead class="bg-stone-50 dark:bg-stone-800/50 text-slate-500 dark:text-slate-400 font-medium border-b border-stone-200 dark:border-stone-800">
+          <thead
+            class="bg-stone-50 dark:bg-stone-800/50 text-slate-500 dark:text-slate-400 font-medium border-b border-stone-200 dark:border-stone-800"
+          >
             <tr>
               <th class="px-6 py-4">Room Name</th>
               <th class="px-6 py-4">Type</th>
@@ -312,12 +323,16 @@ onMounted(() => {
                 {{ room.roomName }}
               </td>
               <td class="px-6 py-4">
-                <span :class="[
-                  'inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold',
-                  room.roomType === 'LECTURE_HALL' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                  room.roomType === 'COMPUTER_LAB' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
-                  'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
-                ]">
+                <span
+                  :class="[
+                    'inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold',
+                    room.roomType === 'LECTURE_HALL'
+                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                      : room.roomType === 'COMPUTER_LAB'
+                        ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                        : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
+                  ]"
+                >
                   {{ room.roomType?.replace('_', ' ') }}
                 </span>
               </td>
@@ -326,12 +341,19 @@ onMounted(() => {
               </td>
               <td class="px-6 py-4">
                 <div v-if="room.assignedTeacherName" class="flex items-center gap-2">
-                  <span class="w-7 h-7 flex items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <span
+                    class="w-7 h-7 flex items-center justify-center rounded-full bg-primary/10 text-primary"
+                  >
                     <span class="material-symbols-outlined text-[16px]">person</span>
                   </span>
-                  <span class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ room.assignedTeacherName }}</span>
+                  <span class="text-sm font-medium text-slate-700 dark:text-slate-300">{{
+                    room.assignedTeacherName
+                  }}</span>
                 </div>
-                <span v-else class="inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                <span
+                  v-else
+                  class="inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                >
                   Available
                 </span>
               </td>
@@ -351,11 +373,17 @@ onMounted(() => {
                       'p-2 rounded-lg transition-colors',
                       room.assignedTeacherName
                         ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
-                        : 'text-slate-400 hover:text-red-500 hover:bg-red-500/10'
+                        : 'text-slate-400 hover:text-red-500 hover:bg-red-500/10',
                     ]"
-                    :title="room.assignedTeacherName ? `Cannot delete: assigned to ${room.assignedTeacherName}` : 'Delete Room'"
+                    :title="
+                      room.assignedTeacherName
+                        ? `Cannot delete: assigned to ${room.assignedTeacherName}`
+                        : 'Delete Room'
+                    "
                   >
-                    <span class="material-symbols-outlined text-[20px]">{{ room.assignedTeacherName ? 'lock' : 'delete' }}</span>
+                    <span class="material-symbols-outlined text-[20px]">{{
+                      room.assignedTeacherName ? 'lock' : 'delete'
+                    }}</span>
                   </button>
                 </div>
               </td>
@@ -418,26 +446,44 @@ onMounted(() => {
         </div>
       </div>
     </div>
-    
+
     <!-- Add Room Modal -->
     <Teleport to="body">
-      <div v-if="showAddRoomModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" @click="showAddRoomModal = false"></div>
-        <div class="relative w-full max-w-md bg-surface-light dark:bg-surface-dark rounded-xl shadow-2xl border border-stone-200 dark:border-stone-800 overflow-hidden flex flex-col max-h-[90vh]">
-          <div class="flex items-center justify-between px-6 py-4 border-b border-stone-200 dark:border-stone-800">
+      <div
+        v-if="showAddRoomModal"
+        class="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      >
+        <div
+          class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
+          @click="showAddRoomModal = false"
+        ></div>
+        <div
+          class="relative w-full max-w-md bg-surface-light dark:bg-surface-dark rounded-xl shadow-2xl border border-stone-200 dark:border-stone-800 overflow-hidden flex flex-col max-h-[90vh]"
+        >
+          <div
+            class="flex items-center justify-between px-6 py-4 border-b border-stone-200 dark:border-stone-800"
+          >
             <h3 class="text-lg font-bold text-slate-900 dark:text-white">Add New Room</h3>
-            <button @click="showAddRoomModal = false" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+            <button
+              @click="showAddRoomModal = false"
+              class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+            >
               <span class="material-symbols-outlined">close</span>
             </button>
           </div>
 
           <div class="overflow-y-auto p-6 space-y-4">
-            <div v-if="createError" class="p-3 bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400 text-sm rounded-lg border border-red-200 dark:border-red-800/30">
+            <div
+              v-if="createError"
+              class="p-3 bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400 text-sm rounded-lg border border-red-200 dark:border-red-800/30"
+            >
               {{ createError }}
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Room Name <span class="text-red-500">*</span></label>
+              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"
+                >Room Name <span class="text-red-500">*</span></label
+              >
               <input
                 v-model="newRoom.roomName"
                 type="text"
@@ -445,9 +491,11 @@ onMounted(() => {
                 class="w-full px-3 py-2 border border-stone-200 dark:border-stone-800 bg-transparent rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
             </div>
-            
+
             <div>
-              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Capacity <span class="text-red-500">*</span></label>
+              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"
+                >Capacity <span class="text-red-500">*</span></label
+              >
               <input
                 v-model="newRoom.capacity"
                 type="number"
@@ -457,7 +505,9 @@ onMounted(() => {
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Room Type <span class="text-red-500">*</span></label>
+              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"
+                >Room Type <span class="text-red-500">*</span></label
+              >
               <select
                 v-model="newRoom.roomType"
                 class="w-full px-3 py-2 border border-stone-200 dark:border-stone-800 bg-transparent rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
@@ -467,7 +517,9 @@ onMounted(() => {
             </div>
           </div>
 
-          <div class="px-6 py-4 border-t border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-800/30 flex justify-end gap-3 rounded-b-xl">
+          <div
+            class="px-6 py-4 border-t border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-800/30 flex justify-end gap-3 rounded-b-xl"
+          >
             <button
               @click="showAddRoomModal = false"
               class="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-lg transition-colors"
@@ -479,7 +531,9 @@ onMounted(() => {
               :disabled="createLoading || !newRoom.roomName || !newRoom.capacity"
               class="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <span v-if="createLoading" class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
+              <span v-if="createLoading" class="material-symbols-outlined animate-spin text-[18px]"
+                >progress_activity</span
+              >
               Save Room
             </button>
           </div>
@@ -489,32 +543,52 @@ onMounted(() => {
 
     <!-- Edit Room Modal -->
     <Teleport to="body">
-      <div v-if="showEditRoomModal && editingRoom" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" @click="showEditRoomModal = false"></div>
-        <div class="relative w-full max-w-md bg-surface-light dark:bg-surface-dark rounded-xl shadow-2xl border border-stone-200 dark:border-stone-800 overflow-hidden flex flex-col max-h-[90vh]">
-          <div class="flex items-center justify-between px-6 py-4 border-b border-stone-200 dark:border-stone-800">
+      <div
+        v-if="showEditRoomModal && editingRoom"
+        class="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      >
+        <div
+          class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
+          @click="showEditRoomModal = false"
+        ></div>
+        <div
+          class="relative w-full max-w-md bg-surface-light dark:bg-surface-dark rounded-xl shadow-2xl border border-stone-200 dark:border-stone-800 overflow-hidden flex flex-col max-h-[90vh]"
+        >
+          <div
+            class="flex items-center justify-between px-6 py-4 border-b border-stone-200 dark:border-stone-800"
+          >
             <h3 class="text-lg font-bold text-slate-900 dark:text-white">Edit Room</h3>
-            <button @click="showEditRoomModal = false" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+            <button
+              @click="showEditRoomModal = false"
+              class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+            >
               <span class="material-symbols-outlined">close</span>
             </button>
           </div>
 
           <div class="overflow-y-auto p-6 space-y-4">
-            <div v-if="createError" class="p-3 bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400 text-sm rounded-lg border border-red-200 dark:border-red-800/30">
+            <div
+              v-if="createError"
+              class="p-3 bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400 text-sm rounded-lg border border-red-200 dark:border-red-800/30"
+            >
               {{ createError }}
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Room Name <span class="text-red-500">*</span></label>
+              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"
+                >Room Name <span class="text-red-500">*</span></label
+              >
               <input
                 v-model="editingRoom.roomName"
                 type="text"
                 class="w-full px-3 py-2 border border-stone-200 dark:border-stone-800 bg-transparent rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
             </div>
-            
+
             <div>
-              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Capacity <span class="text-red-500">*</span></label>
+              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"
+                >Capacity <span class="text-red-500">*</span></label
+              >
               <input
                 v-model="editingRoom.capacity"
                 type="number"
@@ -524,7 +598,9 @@ onMounted(() => {
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Room Type <span class="text-red-500">*</span></label>
+              <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"
+                >Room Type <span class="text-red-500">*</span></label
+              >
               <select
                 v-model="editingRoom.roomType"
                 class="w-full px-3 py-2 border border-stone-200 dark:border-stone-800 bg-transparent rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
@@ -534,7 +610,9 @@ onMounted(() => {
             </div>
           </div>
 
-          <div class="px-6 py-4 border-t border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-800/30 flex justify-end gap-3 rounded-b-xl">
+          <div
+            class="px-6 py-4 border-t border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-800/30 flex justify-end gap-3 rounded-b-xl"
+          >
             <button
               @click="showEditRoomModal = false"
               class="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-lg transition-colors"
@@ -546,7 +624,9 @@ onMounted(() => {
               :disabled="createLoading || !editingRoom.roomName || !editingRoom.capacity"
               class="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <span v-if="createLoading" class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
+              <span v-if="createLoading" class="material-symbols-outlined animate-spin text-[18px]"
+                >progress_activity</span
+              >
               Save Changes
             </button>
           </div>
@@ -556,20 +636,38 @@ onMounted(() => {
 
     <!-- Delete Confirm Modal -->
     <Teleport to="body">
-      <div v-if="showDeleteConfirmModal && deletingRoom" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" @click="showDeleteConfirmModal = false"></div>
-        <div class="relative w-full max-w-md bg-surface-light dark:bg-surface-dark rounded-xl shadow-2xl border border-stone-200 dark:border-stone-800 overflow-hidden">
+      <div
+        v-if="showDeleteConfirmModal && deletingRoom"
+        class="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      >
+        <div
+          class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
+          @click="showDeleteConfirmModal = false"
+        ></div>
+        <div
+          class="relative w-full max-w-md bg-surface-light dark:bg-surface-dark rounded-xl shadow-2xl border border-stone-200 dark:border-stone-800 overflow-hidden"
+        >
           <div class="p-6 text-center">
-            <div class="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-4">
-              <span class="material-symbols-outlined text-3xl text-red-600 dark:text-red-400">warning</span>
+            <div
+              class="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-4"
+            >
+              <span class="material-symbols-outlined text-3xl text-red-600 dark:text-red-400"
+                >warning</span
+              >
             </div>
             <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-2">Delete Room</h3>
             <p class="text-sm text-slate-500 dark:text-slate-400">
-              Are you sure you want to delete room <span class="font-bold text-slate-900 dark:text-white">{{ deletingRoom.roomName }}</span>? This action cannot be undone.
+              Are you sure you want to delete room
+              <span class="font-bold text-slate-900 dark:text-white">{{
+                deletingRoom.roomName
+              }}</span
+              >? This action cannot be undone.
             </p>
           </div>
-          
-          <div class="px-6 py-4 border-t border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-800/30 flex justify-end gap-3 mt-2">
+
+          <div
+            class="px-6 py-4 border-t border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-800/30 flex justify-end gap-3 mt-2"
+          >
             <button
               @click="showDeleteConfirmModal = false"
               class="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-lg transition-colors"
@@ -581,7 +679,9 @@ onMounted(() => {
               :disabled="deleteLoading"
               class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
             >
-              <span v-if="deleteLoading" class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
+              <span v-if="deleteLoading" class="material-symbols-outlined animate-spin text-[18px]"
+                >progress_activity</span
+              >
               Delete
             </button>
           </div>

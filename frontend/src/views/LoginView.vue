@@ -118,7 +118,9 @@ function handleGoogleLogin() {
   <div
     class="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark font-display antialiased min-h-screen flex flex-col overflow-x-hidden geo-pattern"
   >
-    <div class="layout-container flex h-full grow flex-col items-center justify-center p-4 sm:p-6 lg:p-8">
+    <div
+      class="layout-container flex h-full grow flex-col items-center justify-center p-4 sm:p-6 lg:p-8"
+    >
       <!-- Login Card -->
       <div
         class="w-full max-w-md bg-surface-light dark:bg-surface-dark rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.4)] border border-border-light dark:border-border-dark overflow-hidden relative"
@@ -129,7 +131,9 @@ function handleGoogleLogin() {
         <div class="p-8 flex flex-col gap-6">
           <!-- Header -->
           <div class="flex flex-col items-center gap-4 text-center">
-            <div class="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center text-primary">
+            <div
+              class="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center text-primary"
+            >
               <span class="material-symbols-outlined text-4xl">school</span>
             </div>
             <div>
@@ -234,7 +238,10 @@ function handleGoogleLogin() {
                   Remember me
                 </span>
               </label>
-              <router-link class="text-sm font-medium text-primary hover:text-primary-dark transition-colors" :to="{ name: 'forgot-password' }">
+              <router-link
+                class="text-sm font-medium text-primary hover:text-primary-dark transition-colors"
+                :to="{ name: 'forgot-password' }"
+              >
                 Forgot Password?
               </router-link>
             </div>
@@ -252,8 +259,19 @@ function handleGoogleLogin() {
                 fill="none"
                 viewBox="0 0 24 24"
               >
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" :stroke-width="4" />
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  :stroke-width="4"
+                />
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                />
               </svg>
               <span>{{ isLoading ? 'Logging in...' : 'Login' }}</span>
               <span v-if="!isLoading" class="material-symbols-outlined text-sm">arrow_forward</span>
@@ -351,4 +369,3 @@ function handleGoogleLogin() {
     60px 60px;
 }
 </style>
-

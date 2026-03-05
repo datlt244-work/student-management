@@ -20,9 +20,7 @@ export interface EnrollmentStatsResponse {
   classes: ClassEnrollmentStat[]
 }
 
-export async function getEnrollmentStats(
-  semesterId: number,
-): Promise<EnrollmentStatsResponse> {
+export async function getEnrollmentStats(semesterId: number): Promise<EnrollmentStatsResponse> {
   const res = await apiFetch(`/admin/semesters/${semesterId}/enrollment-stats`)
   const json = await res.json()
   return json.result

@@ -626,7 +626,9 @@ function clearSemesterFilters() {
 
                     <!-- Publish -->
                     <button
-                      v-if="sem.isCurrent && (!sem.enrollmentStatus || sem.enrollmentStatus === 'DRAFT')"
+                      v-if="
+                        sem.isCurrent && (!sem.enrollmentStatus || sem.enrollmentStatus === 'DRAFT')
+                      "
                       :disabled="publishLoading === sem.semesterId"
                       class="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-all disabled:opacity-40"
                       title="Publish: Sync classes to Redis for enrollment"
@@ -637,7 +639,9 @@ function clearSemesterFilters() {
                         class="material-symbols-outlined text-[16px] animate-spin"
                         >progress_activity</span
                       >
-                      <span v-else class="material-symbols-outlined text-[16px]">rocket_launch</span>
+                      <span v-else class="material-symbols-outlined text-[16px]"
+                        >rocket_launch</span
+                      >
                       <span class="hidden lg:inline">Publish</span>
                     </button>
 

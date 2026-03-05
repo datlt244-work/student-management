@@ -17,5 +17,6 @@ public class AdminClassStudentResponse {
     private String studentCode;
     private String fullName;
     private String email;
+    private com.newwave.student_management.domains.enrollment.entity.EnrollmentRecordStatus status;
     private LocalDate enrollmentDate;
 }

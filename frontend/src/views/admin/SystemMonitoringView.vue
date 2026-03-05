@@ -5,10 +5,7 @@ import {
   type EnrollmentStatsResponse,
   type ClassEnrollmentStat,
 } from '@/services/enrollmentStatsService'
-import {
-  getAdminSemesterList,
-  type AdminSemesterListItem,
-} from '@/services/adminUserService'
+import { getAdminSemesterList, type AdminSemesterListItem } from '@/services/adminUserService'
 
 // ===== Tab Management =====
 type TabName = 'system-logs' | 'audit-logs' | 'redis-analytics'
@@ -33,14 +30,62 @@ interface AuditEntry {
 }
 
 const mockAuditLogs: AuditEntry[] = [
-  { timestamp: 'Mar 03, 09:42 AM', user: 'admin@school.edu', action: 'Published Semester (Spring 2026)', ip: '192.168.1.42', status: 'Success' },
-  { timestamp: 'Mar 03, 09:38 AM', user: 'admin@school.edu', action: 'Created new user (teacher)', ip: '192.168.1.42', status: 'Success' },
-  { timestamp: 'Mar 03, 09:30 AM', user: 'admin@school.edu', action: 'Updated System Settings', ip: '192.168.1.42', status: 'Success' },
-  { timestamp: 'Mar 03, 09:15 AM', user: 'admin@school.edu', action: 'Imported 150 students via Excel', ip: '192.168.1.42', status: 'Success' },
-  { timestamp: 'Mar 03, 08:55 AM', user: 'admin@school.edu', action: 'Deleted inactive user (ID: 2341)', ip: '192.168.1.42', status: 'Success' },
-  { timestamp: 'Mar 02, 04:10 PM', user: 'admin@school.edu', action: 'Set current semester', ip: '10.0.0.15', status: 'Success' },
-  { timestamp: 'Mar 02, 03:45 PM', user: 'admin@school.edu', action: 'Created 12 new classes', ip: '10.0.0.15', status: 'Success' },
-  { timestamp: 'Mar 02, 02:30 PM', user: 'admin@school.edu', action: 'Reset password for user ID: 5521', ip: '10.0.0.15', status: 'Failed' },
+  {
+    timestamp: 'Mar 03, 09:42 AM',
+    user: 'admin@school.edu',
+    action: 'Published Semester (Spring 2026)',
+    ip: '192.168.1.42',
+    status: 'Success',
+  },
+  {
+    timestamp: 'Mar 03, 09:38 AM',
+    user: 'admin@school.edu',
+    action: 'Created new user (teacher)',
+    ip: '192.168.1.42',
+    status: 'Success',
+  },
+  {
+    timestamp: 'Mar 03, 09:30 AM',
+    user: 'admin@school.edu',
+    action: 'Updated System Settings',
+    ip: '192.168.1.42',
+    status: 'Success',
+  },
+  {
+    timestamp: 'Mar 03, 09:15 AM',
+    user: 'admin@school.edu',
+    action: 'Imported 150 students via Excel',
+    ip: '192.168.1.42',
+    status: 'Success',
+  },
+  {
+    timestamp: 'Mar 03, 08:55 AM',
+    user: 'admin@school.edu',
+    action: 'Deleted inactive user (ID: 2341)',
+    ip: '192.168.1.42',
+    status: 'Success',
+  },
+  {
+    timestamp: 'Mar 02, 04:10 PM',
+    user: 'admin@school.edu',
+    action: 'Set current semester',
+    ip: '10.0.0.15',
+    status: 'Success',
+  },
+  {
+    timestamp: 'Mar 02, 03:45 PM',
+    user: 'admin@school.edu',
+    action: 'Created 12 new classes',
+    ip: '10.0.0.15',
+    status: 'Success',
+  },
+  {
+    timestamp: 'Mar 02, 02:30 PM',
+    user: 'admin@school.edu',
+    action: 'Reset password for user ID: 5521',
+    ip: '10.0.0.15',
+    status: 'Failed',
+  },
 ]
 
 // ===== Redis Analytics (Real API) =====
@@ -201,9 +246,18 @@ function getCapacityTextColor(current: number, max: number) {
           class="w-full max-w-2xl bg-surface-light dark:bg-surface-dark rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm p-8 md:p-12 text-center"
         >
           <!-- Grafana Icon -->
-          <div class="mx-auto w-20 h-20 rounded-2xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center mb-6 shadow-lg shadow-orange-500/20">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" class="w-10 h-10">
-              <path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12s4.477 10 10 10 10-4.477 10-10zm-10 8a8 8 0 110-16 8 8 0 010 16zm0-14a6 6 0 100 12 6 6 0 000-12zm0 2a4 4 0 110 8 4 4 0 010-8zm0 2a2 2 0 100 4 2 2 0 000-4z"/>
+          <div
+            class="mx-auto w-20 h-20 rounded-2xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center mb-6 shadow-lg shadow-orange-500/20"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="white"
+              class="w-10 h-10"
+            >
+              <path
+                d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12s4.477 10 10 10 10-4.477 10-10zm-10 8a8 8 0 110-16 8 8 0 010 16zm0-14a6 6 0 100 12 6 6 0 000-12zm0 2a4 4 0 110 8 4 4 0 010-8zm0 2a2 2 0 100 4 2 2 0 000-4z"
+              />
             </svg>
           </div>
 
@@ -211,7 +265,8 @@ function getCapacityTextColor(current: number, max: number) {
             Grafana Log Dashboard
           </h2>
           <p class="text-slate-500 dark:text-slate-400 text-sm md:text-base max-w-md mx-auto mb-8">
-            System logs are managed via <strong>Grafana + Loki</strong>. Click the button below to open the Grafana dashboard for real-time log monitoring, filtering, and alerting.
+            System logs are managed via <strong>Grafana + Loki</strong>. Click the button below to
+            open the Grafana dashboard for real-time log monitoring, filtering, and alerting.
           </p>
 
           <a
@@ -226,7 +281,9 @@ function getCapacityTextColor(current: number, max: number) {
 
           <!-- Quick Links -->
           <div class="mt-8 pt-6 border-t border-stone-200 dark:border-stone-800">
-            <p class="text-xs font-bold uppercase text-slate-400 mb-4 tracking-wider">Quick Links</p>
+            <p class="text-xs font-bold uppercase text-slate-400 mb-4 tracking-wider">
+              Quick Links
+            </p>
             <div class="flex flex-wrap justify-center gap-3">
               <a
                 :href="`${grafanaUrl}/explore`"
@@ -271,40 +328,26 @@ function getCapacityTextColor(current: number, max: number) {
           <div
             class="p-4 border-b border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-900/30 flex justify-between items-center flex-shrink-0"
           >
-            <h3 class="font-bold text-slate-800 dark:text-slate-200">
-              Administrative Actions
-            </h3>
-            <button class="text-sm text-primary font-medium hover:underline">
-              Export CSV
-            </button>
+            <h3 class="font-bold text-slate-800 dark:text-slate-200">Administrative Actions</h3>
+            <button class="text-sm text-primary font-medium hover:underline">Export CSV</button>
           </div>
           <div class="overflow-auto flex-1">
             <table class="w-full text-left border-collapse">
               <thead class="bg-stone-50 dark:bg-stone-900/50 sticky top-0">
                 <tr>
-                  <th
-                    class="p-4 text-xs font-bold uppercase text-slate-500 dark:text-slate-400"
-                  >
+                  <th class="p-4 text-xs font-bold uppercase text-slate-500 dark:text-slate-400">
                     Timestamp
                   </th>
-                  <th
-                    class="p-4 text-xs font-bold uppercase text-slate-500 dark:text-slate-400"
-                  >
+                  <th class="p-4 text-xs font-bold uppercase text-slate-500 dark:text-slate-400">
                     User
                   </th>
-                  <th
-                    class="p-4 text-xs font-bold uppercase text-slate-500 dark:text-slate-400"
-                  >
+                  <th class="p-4 text-xs font-bold uppercase text-slate-500 dark:text-slate-400">
                     Action
                   </th>
-                  <th
-                    class="p-4 text-xs font-bold uppercase text-slate-500 dark:text-slate-400"
-                  >
+                  <th class="p-4 text-xs font-bold uppercase text-slate-500 dark:text-slate-400">
                     IP Address
                   </th>
-                  <th
-                    class="p-4 text-xs font-bold uppercase text-slate-500 dark:text-slate-400"
-                  >
+                  <th class="p-4 text-xs font-bold uppercase text-slate-500 dark:text-slate-400">
                     Status
                   </th>
                 </tr>
@@ -343,14 +386,15 @@ function getCapacityTextColor(current: number, max: number) {
       </div>
 
       <!-- ===== Redis Analytics Tab ===== -->
-      <div
-        v-if="activeTab === 'redis-analytics'"
-        class="absolute inset-0 overflow-y-auto"
-      >
+      <div v-if="activeTab === 'redis-analytics'" class="absolute inset-0 overflow-y-auto">
         <!-- Semester Selector -->
-        <div class="mb-6 flex justify-between items-center bg-surface-light dark:bg-surface-dark p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm">
+        <div
+          class="mb-6 flex justify-between items-center bg-surface-light dark:bg-surface-dark p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm"
+        >
           <div>
-            <h3 class="text-base font-bold text-slate-900 dark:text-white">Live Registration Status</h3>
+            <h3 class="text-base font-bold text-slate-900 dark:text-white">
+              Live Registration Status
+            </h3>
             <p class="text-sm text-slate-500">Monitor Redis cache fill rates in real-time</p>
           </div>
           <div class="flex items-center gap-3">
@@ -366,24 +410,43 @@ function getCapacityTextColor(current: number, max: number) {
           </div>
         </div>
 
-        <div v-if="statsLoading && !enrollmentStats" class="flex items-center gap-2 justify-center py-12 text-primary">
+        <div
+          v-if="statsLoading && !enrollmentStats"
+          class="flex items-center gap-2 justify-center py-12 text-primary"
+        >
           <span class="material-symbols-outlined animate-spin">progress_activity</span>
           <span>Loading Redis metrics...</span>
         </div>
-        
-        <div v-else-if="statsError" class="py-12 text-center text-red-500 bg-red-50 dark:bg-red-900/10 rounded-xl border border-red-200 dark:border-red-900/30">
+
+        <div
+          v-else-if="statsError"
+          class="py-12 text-center text-red-500 bg-red-50 dark:bg-red-900/10 rounded-xl border border-red-200 dark:border-red-900/30"
+        >
           <span class="material-symbols-outlined text-4xl mb-2">error</span>
           <p class="font-bold">Failed to load analytics</p>
           <p class="text-sm opacity-80">{{ statsError }}</p>
-          <button class="mt-4 px-4 py-2 border border-red-200 dark:border-red-800 rounded-lg text-sm font-medium hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors" @click="loadStats">
+          <button
+            class="mt-4 px-4 py-2 border border-red-200 dark:border-red-800 rounded-lg text-sm font-medium hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors"
+            @click="loadStats"
+          >
             Retry
           </button>
         </div>
 
-        <div v-else-if="!cacheActive" class="py-16 text-center text-slate-500 bg-stone-50 dark:bg-[#1e1e1e] rounded-xl border border-stone-200 dark:border-stone-800 flex flex-col items-center justify-center">
-          <span class="material-symbols-outlined text-4xl mb-3 text-slate-300 dark:text-slate-600">cloud_off</span>
-          <h3 class="text-lg font-bold text-slate-700 dark:text-slate-300 mb-1">Cache Not Active</h3>
-          <p class="text-sm max-w-sm">Registration is not currently open for this semester. Publish the semester using the Admin tools to sync class data to Redis.</p>
+        <div
+          v-else-if="!cacheActive"
+          class="py-16 text-center text-slate-500 bg-stone-50 dark:bg-[#1e1e1e] rounded-xl border border-stone-200 dark:border-stone-800 flex flex-col items-center justify-center"
+        >
+          <span class="material-symbols-outlined text-4xl mb-3 text-slate-300 dark:text-slate-600"
+            >cloud_off</span
+          >
+          <h3 class="text-lg font-bold text-slate-700 dark:text-slate-300 mb-1">
+            Cache Not Active
+          </h3>
+          <p class="text-sm max-w-sm">
+            Registration is not currently open for this semester. Publish the semester using the
+            Admin tools to sync class data to Redis.
+          </p>
         </div>
 
         <template v-else>
@@ -398,120 +461,133 @@ function getCapacityTextColor(current: number, max: number) {
               <p class="text-2xl font-bold text-slate-900 dark:text-white">
                 {{ classCapacities.length }}
               </p>
+            </div>
+            <div
+              class="bg-surface-light dark:bg-surface-dark p-5 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm"
+            >
+              <p class="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">
+                Total Slots
+              </p>
+              <p class="text-2xl font-bold text-slate-900 dark:text-white">
+                {{ filledSlots }} / {{ totalSlots }}
+              </p>
+            </div>
+            <div
+              class="bg-surface-light dark:bg-surface-dark p-5 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm"
+            >
+              <p class="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">
+                Overall Fill Rate
+              </p>
+              <p class="text-2xl font-bold" :class="getCapacityTextColor(filledSlots, totalSlots)">
+                {{ fillRate }}%
+              </p>
+            </div>
           </div>
-          <div
-            class="bg-surface-light dark:bg-surface-dark p-5 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm"
-          >
-            <p class="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">
-              Total Slots
-            </p>
-            <p class="text-2xl font-bold text-slate-900 dark:text-white">
-              {{ filledSlots }} / {{ totalSlots }}
-            </p>
-          </div>
-          <div
-            class="bg-surface-light dark:bg-surface-dark p-5 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm"
-          >
-            <p class="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">
-              Overall Fill Rate
-            </p>
-            <p class="text-2xl font-bold" :class="getCapacityTextColor(filledSlots, totalSlots)">
-              {{ fillRate }}%
-            </p>
-          </div>
-        </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <!-- Gauge Chart -->
-          <div
-            class="bg-surface-light dark:bg-surface-dark p-6 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm flex flex-col items-center justify-center"
-          >
-            <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-6">
-              Redis Slot Fill Rate
-            </h3>
-            <div class="relative w-64 h-32 overflow-hidden">
-              <!-- Background arc -->
-              <div
-                class="absolute w-64 h-64 rounded-full border-[20px] border-stone-100 dark:border-stone-800 top-0 left-0 box-border"
-              ></div>
-              <!-- Fill arc -->
-              <div
-                class="absolute w-64 h-64 rounded-full border-[20px] border-primary border-t-transparent border-r-transparent border-l-transparent top-0 left-0 box-border"
-                :style="{
-                  clipPath: 'polygon(0 0, 100% 0, 100% 50%, 0 50%)',
-                  transform: `rotate(${45 + (fillRate / 100) * 180}deg)`,
-                }"
-              ></div>
-              <!-- Value -->
-              <div class="absolute bottom-0 left-1/2 -translate-x-1/2 text-center">
-                <span class="text-4xl font-bold text-slate-900 dark:text-white"
-                  >{{ fillRate }}%</span
-                >
-                <p class="text-xs text-slate-500">Capacity Used</p>
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Gauge Chart -->
+            <div
+              class="bg-surface-light dark:bg-surface-dark p-6 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm flex flex-col items-center justify-center"
+            >
+              <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-6">
+                Redis Slot Fill Rate
+              </h3>
+              <div class="relative w-64 h-32 overflow-hidden">
+                <!-- Background arc -->
+                <div
+                  class="absolute w-64 h-64 rounded-full border-[20px] border-stone-100 dark:border-stone-800 top-0 left-0 box-border"
+                ></div>
+                <!-- Fill arc -->
+                <div
+                  class="absolute w-64 h-64 rounded-full border-[20px] border-primary border-t-transparent border-r-transparent border-l-transparent top-0 left-0 box-border"
+                  :style="{
+                    clipPath: 'polygon(0 0, 100% 0, 100% 50%, 0 50%)',
+                    transform: `rotate(${45 + (fillRate / 100) * 180}deg)`,
+                  }"
+                ></div>
+                <!-- Value -->
+                <div class="absolute bottom-0 left-1/2 -translate-x-1/2 text-center">
+                  <span class="text-4xl font-bold text-slate-900 dark:text-white"
+                    >{{ fillRate }}%</span
+                  >
+                  <p class="text-xs text-slate-500">Capacity Used</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Class Capacity Bars -->
+            <div
+              class="bg-surface-light dark:bg-surface-dark p-6 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm"
+            >
+              <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4">
+                Class Capacity Status
+              </h3>
+              <div class="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+                <div v-for="cls in classCapacities" :key="cls.classId">
+                  <div class="flex justify-between text-sm mb-1">
+                    <span class="text-slate-700 dark:text-slate-300 font-medium">
+                      {{ cls.courseName }}
+                      <span class="text-xs text-slate-400"
+                        >({{ cls.courseCode }} - ID: {{ cls.classId }})</span
+                      >
+                    </span>
+                    <span
+                      :class="[getCapacityTextColor(cls.currentSlot, cls.maxSlot), 'font-bold']"
+                    >
+                      {{ cls.currentSlot >= cls.maxSlot && cls.maxSlot > 0 ? 'Full' : '' }}
+                      {{ cls.currentSlot }} / {{ cls.maxSlot }} ({{
+                        Math.round((cls.maxSlot > 0 ? cls.currentSlot / cls.maxSlot : 0) * 100)
+                      }}%)
+                    </span>
+                  </div>
+                  <div class="w-full bg-stone-100 dark:bg-stone-800 rounded-full h-2.5">
+                    <div
+                      :class="[
+                        getCapacityColor(cls.currentSlot, cls.maxSlot),
+                        'h-2.5 rounded-full transition-all duration-500',
+                      ]"
+                      :style="{
+                        width:
+                          Math.min(
+                            (cls.maxSlot > 0 ? cls.currentSlot / cls.maxSlot : 0) * 100,
+                            100,
+                          ) + '%',
+                      }"
+                    ></div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- Class Capacity Bars -->
+          <!-- Redis Key Info -->
           <div
-            class="bg-surface-light dark:bg-surface-dark p-6 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm"
+            class="mt-6 bg-surface-light dark:bg-surface-dark p-6 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm"
           >
             <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4">
-              Class Capacity Status
+              Redis Key Structure
             </h3>
-            <div class="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-              <div v-for="cls in classCapacities" :key="cls.classId">
-                <div class="flex justify-between text-sm mb-1">
-                  <span class="text-slate-700 dark:text-slate-300 font-medium">
-                    {{ cls.courseName }}
-                    <span class="text-xs text-slate-400">({{ cls.courseCode }} - ID: {{ cls.classId }})</span>
-                  </span>
-                  <span
-                    :class="[getCapacityTextColor(cls.currentSlot, cls.maxSlot), 'font-bold']"
-                  >
-                    {{ cls.currentSlot >= cls.maxSlot && cls.maxSlot > 0 ? 'Full' : '' }}
-                    {{ cls.currentSlot }} / {{ cls.maxSlot }} ({{ Math.round((cls.maxSlot > 0 ? cls.currentSlot / cls.maxSlot : 0) * 100) }}%)
-                  </span>
-                </div>
-                <div
-                  class="w-full bg-stone-100 dark:bg-stone-800 rounded-full h-2.5"
+            <div
+              class="font-mono text-sm bg-[#1e1e1e] text-gray-300 rounded-lg p-4 overflow-x-auto"
+            >
+              <div class="text-gray-500"># Danh sách class IDs của semester</div>
+              <div>
+                <span class="text-cyan-400">semester:{semesterId}:classes</span>
+                <span class="text-gray-500"> → </span>
+                <span class="text-yellow-300">SET</span>
+                <span class="text-green-400"> [1, 2, 3, ...]</span>
+              </div>
+              <div class="mt-3 text-gray-500"># Chi tiết từng class (Hash)</div>
+              <div>
+                <span class="text-cyan-400">class:{classId}</span>
+                <span class="text-gray-500"> → </span>
+                <span class="text-yellow-300">HASH</span>
+                <span class="text-green-400">
+                  { courseCode, courseName, maxSlot, currentSlot, status, ... }</span
                 >
-                  <div
-                    :class="[getCapacityColor(cls.currentSlot, cls.maxSlot), 'h-2.5 rounded-full transition-all duration-500']"
-                    :style="{ width: Math.min((cls.maxSlot > 0 ? cls.currentSlot / cls.maxSlot : 0) * 100, 100) + '%' }"
-                  ></div>
-                </div>
               </div>
             </div>
           </div>
-        </div>
-
-        <!-- Redis Key Info -->
-        <div
-          class="mt-6 bg-surface-light dark:bg-surface-dark p-6 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm"
-        >
-          <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4">
-            Redis Key Structure
-          </h3>
-          <div class="font-mono text-sm bg-[#1e1e1e] text-gray-300 rounded-lg p-4 overflow-x-auto">
-            <div class="text-gray-500"># Danh sách class IDs của semester</div>
-            <div>
-              <span class="text-cyan-400">semester:{semesterId}:classes</span>
-              <span class="text-gray-500"> → </span>
-              <span class="text-yellow-300">SET</span>
-              <span class="text-green-400"> [1, 2, 3, ...]</span>
-            </div>
-            <div class="mt-3 text-gray-500"># Chi tiết từng class (Hash)</div>
-            <div>
-              <span class="text-cyan-400">class:{classId}</span>
-              <span class="text-gray-500"> → </span>
-              <span class="text-yellow-300">HASH</span>
-              <span class="text-green-400">
-                { courseCode, courseName, maxSlot, currentSlot, status, ... }</span
-              >
-            </div>
-          </div>
-        </div>
         </template>
       </div>
     </div>

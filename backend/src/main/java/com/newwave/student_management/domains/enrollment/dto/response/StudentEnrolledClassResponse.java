@@ -19,5 +19,6 @@ public class StudentEnrolledClassResponse {
     private Integer credits;
     private String teacherName;
     private java.util.List<ClassSessionResponse> sessions;
+    private com.newwave.student_management.domains.enrollment.entity.EnrollmentRecordStatus status;
     private LocalDate enrollmentDate;
 }

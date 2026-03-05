@@ -72,32 +72,36 @@ export async function getNotificationHistory(params: {
   const list = (raw.content || []) as unknown[]
 
   return {
-  content: list.map((itemObj: unknown) => {
-    const item = itemObj as Record<string, unknown>
-    const status = (item.status as string) || ''
-    const displayDate = (item.status === 'PENDING' ? item.scheduledAt : (item.sentAt || item.createdAt)) as string;
-    
-    return {
-      id: (item.sentId as string | number),
-      title: item.title as string,
-      body: item.body as string,
-      type: (
-        item.notificationType === 'BROADCAST'
+    content: list.map((itemObj: unknown) => {
+      const item = itemObj as Record<string, unknown>
+      const status = (item.status as string) || ''
+      const displayDate = (
+        item.status === 'PENDING' ? item.scheduledAt : item.sentAt || item.createdAt
+      ) as string
+
+      return {
+        id: item.sentId as string | number,
+        title: item.title as string,
+        body: item.body as string,
+        type: (item.notificationType === 'BROADCAST'
           ? 'Broadcast'
           : item.notificationType === 'TARGETED'
             ? 'Targeted'
-            : 'Personal'
-      ) as 'Broadcast' | 'Targeted' | 'Personal',
-      recipients: (item.recipientCount as number) || 0,
-      status: (status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()) as 'Pending' | 'Sent' | 'Failed' | 'Cancelled',
-      date: new Date(displayDate).toLocaleDateString(),
-      time: new Date(displayDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      createdAt: item.createdAt as string,
-      scheduledAt: item.scheduledAt as string,
-      sentAt: item.sentAt as string,
-      actionUrl: item.actionUrl as string
-    }
-  }),
+            : 'Personal') as 'Broadcast' | 'Targeted' | 'Personal',
+        recipients: (item.recipientCount as number) || 0,
+        status: (status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()) as
+          | 'Pending'
+          | 'Sent'
+          | 'Failed'
+          | 'Cancelled',
+        date: new Date(displayDate).toLocaleDateString(),
+        time: new Date(displayDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        createdAt: item.createdAt as string,
+        scheduledAt: item.scheduledAt as string,
+        sentAt: item.sentAt as string,
+        actionUrl: item.actionUrl as string,
+      }
+    }),
     page: raw.number ?? 0,
     size: raw.size ?? 20,
     totalElements: raw.totalElements ?? 0,
@@ -113,7 +117,7 @@ export async function sendAdminNotification(request: SendNotificationRequest) {
         title: request.title,
         body: request.body,
         actionUrl: request.actionUrl,
-        scheduledAt: request.scheduledAt
+        scheduledAt: request.scheduledAt,
       }),
     })
 
@@ -134,13 +138,15 @@ export async function sendAdminNotification(request: SendNotificationRequest) {
         role: request.role,
         departmentId: request.departmentId,
         classCode: request.classId,
-        scheduledAt: request.scheduledAt
+        scheduledAt: request.scheduledAt,
       }),
     })
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => null)
-      throw new Error(errorData?.message || `Failed to send targeted notification (${response.status})`)
+      throw new Error(
+        errorData?.message || `Failed to send targeted notification (${response.status})`,
+      )
     }
     return
   }
@@ -153,13 +159,15 @@ export async function sendAdminNotification(request: SendNotificationRequest) {
         body: request.body,
         actionUrl: request.actionUrl,
         recipientId: request.recipientId,
-        scheduledAt: request.scheduledAt
+        scheduledAt: request.scheduledAt,
       }),
     })
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => null)
-      throw new Error(errorData?.message || `Failed to send personal notification (${response.status})`)
+      throw new Error(
+        errorData?.message || `Failed to send personal notification (${response.status})`,
+      )
     }
     return
   }
@@ -176,13 +184,18 @@ export interface RecipientSearchResponse {
 }
 
 export async function searchRecipients(query: string): Promise<RecipientSearchResponse[]> {
-  const response = await apiFetch(`/notifications/search-recipients?query=${encodeURIComponent(query)}`)
+  const response = await apiFetch(
+    `/notifications/search-recipients?query=${encodeURIComponent(query)}`,
+  )
   if (!response.ok) return []
   const data = await response.json()
   return data.result || data
 }
 
-export async function getNotificationStats(): Promise<{ activeTokens: number; sentLast30Days: number }> {
+export async function getNotificationStats(): Promise<{
+  activeTokens: number
+  sentLast30Days: number
+}> {
   const response = await apiFetch('/notifications/stats')
   if (!response.ok) return { activeTokens: 0, sentLast30Days: 0 }
   const data = await response.json()
@@ -193,6 +206,8 @@ export async function deleteNotification(id: string | number) {
   const response = await apiFetch(`/notifications/history/${id}`, { method: 'DELETE' })
   if (!response.ok) {
     const errorData = await response.json().catch(() => null)
-    throw new Error(errorData?.message || `Failed to delete/recall notification (${response.status})`)
+    throw new Error(
+      errorData?.message || `Failed to delete/recall notification (${response.status})`,
+    )
   }
 }

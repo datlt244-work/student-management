@@ -144,12 +144,14 @@ function formatDate(dateString: string): string {
 
 const formattedSchedules = computed(() => {
   if (!classInfo.value?.sessions || classInfo.value.sessions.length === 0) return 'N/A'
-  return classInfo.value.sessions.map(s => `T${s.dayOfWeek} ${s.startTime.slice(0, 5)}-${s.endTime.slice(0, 5)}`).join(', ')
+  return classInfo.value.sessions
+    .map((s) => `T${s.dayOfWeek} ${s.startTime.slice(0, 5)}-${s.endTime.slice(0, 5)}`)
+    .join(', ')
 })
 
 const formattedRooms = computed(() => {
   if (!classInfo.value?.sessions || classInfo.value.sessions.length === 0) return 'N/A'
-  const rooms = new Set(classInfo.value.sessions.map(s => s.roomName))
+  const rooms = new Set(classInfo.value.sessions.map((s) => s.roomName))
   return Array.from(rooms).join(', ')
 })
 </script>
@@ -226,9 +228,7 @@ const formattedRooms = computed(() => {
           >
           <div class="flex items-center gap-2 mt-1">
             <span class="material-symbols-outlined text-primary text-[20px]">meeting_room</span>
-            <span class="font-medium text-slate-900 dark:text-white">{{
-              formattedRooms
-            }}</span>
+            <span class="font-medium text-slate-900 dark:text-white">{{ formattedRooms }}</span>
           </div>
         </div>
       </div>
@@ -309,6 +309,11 @@ const formattedRooms = computed(() => {
                 Enrollment Date
               </th>
               <th
+                class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap text-center"
+              >
+                Status
+              </th>
+              <th
                 class="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap text-right"
               >
                 Actions
@@ -340,6 +345,21 @@ const formattedRooms = computed(() => {
               <td class="p-4 text-sm text-slate-600 dark:text-slate-400">
                 {{ formatDate(student.enrollmentDate) }}
               </td>
+              <td class="p-4 whitespace-nowrap text-center">
+                <span
+                  class="px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wide"
+                  :class="{
+                    'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400':
+                      student.status === 'ENROLLED',
+                    'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400':
+                      student.status === 'WAITLISTED',
+                    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400':
+                      student.status === 'DROPPED',
+                  }"
+                >
+                  {{ student.status }}
+                </span>
+              </td>
               <td class="p-4 text-right whitespace-nowrap">
                 <button
                   @click="confirmUnenroll(student)"
@@ -350,7 +370,7 @@ const formattedRooms = computed(() => {
               </td>
             </tr>
             <tr v-if="filteredStudents.length === 0">
-              <td colspan="5" class="p-8 text-center text-slate-500">
+              <td colspan="6" class="p-8 text-center text-slate-500">
                 No students found in this class.
               </td>
             </tr>

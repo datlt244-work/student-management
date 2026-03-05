@@ -38,4 +38,8 @@ public class Enrollment extends JpaBaseEntity {
 
         @Column(name = "enrollment_date", nullable = false)
         private LocalDate enrollmentDate;
+
+        @Enumerated(EnumType.STRING)
+        @Column(name = "status", length = 20, nullable = false)
+        private EnrollmentRecordStatus status = EnrollmentRecordStatus.ENROLLED;
 }

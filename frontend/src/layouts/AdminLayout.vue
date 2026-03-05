@@ -70,7 +70,9 @@ function getInitials(email: string | undefined): string {
     </button>
 
     <!-- Mobile Notification Bell -->
-    <div class="md:hidden fixed top-4 right-4 z-50 flex items-center justify-center rounded-lg bg-surface-light dark:bg-surface-dark border border-stone-200 dark:border-stone-800 shadow-md">
+    <div
+      class="md:hidden fixed top-4 right-4 z-50 flex items-center justify-center rounded-lg bg-surface-light dark:bg-surface-dark border border-stone-200 dark:border-stone-800 shadow-md"
+    >
       <NotificationPopover portal="admin" />
     </div>
 
@@ -179,7 +181,7 @@ function getInitials(email: string | undefined): string {
                 </p>
               </div>
             </div>
-            
+
             <div class="shrink-0 flex items-center">
               <NotificationPopover portal="admin" align="left" />
             </div>

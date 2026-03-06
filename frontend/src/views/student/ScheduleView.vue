@@ -285,7 +285,7 @@ const weeksInSemester = computed(() => {
   firstMonday.setDate(start.getDate() - (startDay - 1))
   
   const weeks = []
-  let current = new Date(firstMonday)
+  const current = new Date(firstMonday)
   
   while (current <= end) {
     const weekStart = new Date(current)

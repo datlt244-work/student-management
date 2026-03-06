@@ -207,8 +207,8 @@ onMounted(async () => {
     } else if (semesters.value.length > 0) {
       selectedSemesterId.value = semesters.value[0]?.semesterId || null
     }
-  } catch (err: any) {
-    error.value = err.message || 'Failed to initialize semesters'
+  } catch (err: unknown) {
+    error.value = (err as Error).message || 'Failed to initialize semesters'
   }
 })
 
@@ -219,8 +219,8 @@ watch(selectedSemesterId, async (newVal) => {
   scheduleData.value = []
   try {
     scheduleData.value = await getMySchedule(newVal)
-  } catch (err: any) {
-    error.value = err.message || 'Failed to fetch schedule'
+  } catch (err: unknown) {
+    error.value = (err as Error).message || 'Failed to fetch schedule'
   } finally {
     isLoadingSchedule.value = false
   }
@@ -290,7 +290,7 @@ const occurrencesOfSelectedCourse = computed(() => {
     if (!item.startDate || !item.endDate) return
     const start = new Date(item.startDate)
     const end = new Date(item.endDate)
-    let d = new Date(start)
+    const d = new Date(start)
     
     // Day logic
     const backendToJsDay = item.dayOfWeek === 7 ? 0 : item.dayOfWeek
@@ -356,12 +356,7 @@ const maxAllowedAbsent = computed(() => {
    return Math.floor(totalSessionsCount.value * 0.2)
 })
 
-const totalOccurrences = computed(() => {
-   // Only count occurrences that have happened (up to today) to calculate realistic progress
-   const todayDate = new Date()
-   todayDate.setHours(23, 59, 59, 999)
-   return occurrencesOfSelectedCourse.value.filter(o => o.dateObj <= todayDate).length
-})
+
 
 const totalAbsent = computed(() => {
    let count = 0

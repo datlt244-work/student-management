@@ -12,6 +12,8 @@ import java.time.LocalTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class StudentScheduleResponse {
+    private Integer classId;
+    private String className;
     private String courseCode;
     private String courseName;
     private String teacherName;
@@ -20,4 +22,6 @@ public class StudentScheduleResponse {
     private LocalTime startTime;
     private LocalTime endTime;
     private String classStatus;
+    private java.time.LocalDate startDate;
+    private java.time.LocalDate endDate;
 }

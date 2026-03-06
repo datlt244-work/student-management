@@ -1,6 +1,8 @@
 import { apiFetch } from '@/utils/api'
 
 export interface StudentSchedule {
+  classId: number
+  className: string
   courseCode: string
   courseName: string
   teacherName: string
@@ -27,4 +29,17 @@ export async function getMySchedule(semesterId: number): Promise<StudentSchedule
 
   const data = await response.json()
   return data.result as StudentSchedule[]
+}
+
+export interface StudentClassMemberResponse {
+  studentCode: string
+  firstName: string
+  lastName: string
+  email: string
+}
+
+export async function getClassMembers(classId: number): Promise<StudentClassMemberResponse[]> {
+  const response = await apiFetch(`/student/classes/${classId}/members`)
+  const data = await response.json()
+  return data.result as StudentClassMemberResponse[]
 }

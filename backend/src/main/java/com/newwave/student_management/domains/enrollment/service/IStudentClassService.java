@@ -13,4 +13,7 @@ public interface IStudentClassService {
     void enroll(UUID userId, Integer classId);
 
     void unenroll(UUID userId, Integer classId);
+
+    List<com.newwave.student_management.domains.enrollment.dto.response.StudentClassMemberResponse> getClassMembers(
+            Integer classId);
 }

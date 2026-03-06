@@ -36,6 +36,12 @@ public class ScheduleServiceImpl implements IScheduleService {
                 return enrollments.stream()
                                 .flatMap(enrollment -> enrollment.getScheduledClass().getSessions().stream()
                                                 .map(session -> StudentScheduleResponse.builder()
+                                                                .classId(enrollment.getScheduledClass().getClassId())
+                                                                .className(enrollment.getScheduledClass().getCourse()
+                                                                                .getCode()
+                                                                                + "-"
+                                                                                + enrollment.getScheduledClass()
+                                                                                                .getClassId())
                                                                 .courseCode(enrollment.getScheduledClass().getCourse()
                                                                                 .getCode())
                                                                 .courseName(enrollment.getScheduledClass().getCourse()

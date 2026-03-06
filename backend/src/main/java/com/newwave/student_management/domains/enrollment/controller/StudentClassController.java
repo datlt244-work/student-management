@@ -99,4 +99,11 @@ public class StudentClassController {
         studentClassService.unenroll(userId, classId);
         return ApiResponse.success(null);
     }
+
+    @GetMapping("/{classId}/members")
+    @Operation(summary = "Lấy danh sách sinh viên lớp học", description = "Lấy danh sách thành viên cùng lớp.")
+    public ApiResponse<List<com.newwave.student_management.domains.enrollment.dto.response.StudentClassMemberResponse>> getClassMembers(
+            @PathVariable Integer classId) {
+        return ApiResponse.success(studentClassService.getClassMembers(classId));
+    }
 }

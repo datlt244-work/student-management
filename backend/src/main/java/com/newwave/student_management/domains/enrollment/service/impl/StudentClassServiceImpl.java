@@ -440,4 +440,21 @@ public class StudentClassServiceImpl implements IStudentClassService {
                 }
         }
 
+        @Override
+        @Transactional(readOnly = true)
+        public List<com.newwave.student_management.domains.enrollment.dto.response.StudentClassMemberResponse> getClassMembers(
+                        Integer classId) {
+                // Find all enrollments for this class ID that are active
+                List<Enrollment> enrollments = enrollmentRepository.findByScheduledClassClassId(classId);
+
+                return enrollments.stream()
+                                .map(enrollment -> com.newwave.student_management.domains.enrollment.dto.response.StudentClassMemberResponse
+                                                .builder()
+                                                .studentCode(enrollment.getStudent().getStudentCode())
+                                                .firstName(enrollment.getStudent().getFirstName())
+                                                .lastName(enrollment.getStudent().getLastName())
+                                                .email(enrollment.getStudent().getEmail())
+                                                .build())
+                                .collect(Collectors.toList());
+        }
 }

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
-import { getMySchedule, type StudentSchedule } from '@/services/scheduleService'
+import { getMySchedule, getClassMembers, type StudentSchedule, type StudentClassMemberResponse } from '@/services/scheduleService'
 import { semesterService, type SemesterResponse } from '@/services/semesterService'
 
 const days = [
@@ -49,7 +49,29 @@ const scheduleData = ref<StudentSchedule[]>([])
 const isLoading = ref(false)
 const error = ref('')
 
-const viewMode = ref<'weekly' | 'list'>('weekly')
+const viewMode = ref<'weekly' | 'list' | 'activity_detail' | 'members_list'>('weekly')
+const selectedActivity = ref<ScheduleOccurrence | null>(null)
+const classMembers = ref<StudentClassMemberResponse[]>([])
+const isLoadingMembers = ref(false)
+
+function openActivityDetail(cls: ScheduleOccurrence) {
+  selectedActivity.value = cls
+  viewMode.value = 'activity_detail'
+}
+
+async function viewStudentList() {
+  if (!selectedActivity.value) return
+  viewMode.value = 'members_list'
+  isLoadingMembers.value = true
+  try {
+    const list = await getClassMembers(selectedActivity.value.classId)
+    classMembers.value = list || []
+  } catch (err) {
+    console.error(err)
+  } finally {
+    isLoadingMembers.value = false
+  }
+}
 
 async function fetchSemesters() {
   try {
@@ -145,6 +167,8 @@ function formatTime(time: string | undefined) {
 }
 
 interface ScheduleOccurrence {
+  classId: number
+  className: string
   date: string // YYYY-MM-DD
   dayName: string // 'Mon', 'Tue'
   dateObj: Date
@@ -179,6 +203,8 @@ const expandedListItems = computed(() => {
         const dd = String(d.getDate()).padStart(2, '0')
         const dayMatch = Object.values(days).find(db => db.index === item.dayOfWeek)
         items.push({
+          classId: item.classId,
+          className: item.className || 'Group ' + item.classId,
           date: `${y}-${mo}-${dd}`,
           dayName: dayMatch ? dayMatch.name : '',
           dateObj: new Date(d),
@@ -462,6 +488,7 @@ const currentWeekDates = computed(() => {
                         parseInt(time.split(':')[0] as string),
                       )"
                       :key="idx"
+                      @click.stop="openActivityDetail(cls)"
                       class="absolute left-1 right-1 rounded-lg p-2.5 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col group border border-transparent hover:border-primary/30 z-10"
                       :class="getClassStyle(idx)"
                       :style="{
@@ -533,7 +560,8 @@ const currentWeekDates = computed(() => {
                
                <div class="flex flex-col gap-3 pl-4 sm:pl-20">
                  <div v-for="(cls, idx) in group.items" :key="idx"
-                      class="bg-surface-light dark:bg-surface-dark p-4 sm:p-5 rounded-xl border shadow-sm hover:shadow-md transition-shadow relative overflow-hidden flex flex-col sm:flex-row gap-4 sm:items-center"
+                      @click.stop="openActivityDetail(cls)"
+                      class="bg-surface-light dark:bg-surface-dark p-4 sm:p-5 rounded-xl border shadow-sm hover:shadow-md transition-shadow relative overflow-hidden flex flex-col sm:flex-row gap-4 sm:items-center cursor-pointer"
                       :class="cls.colorClass.split(' ').slice(0, 2).join(' ')"
                  >
                    <!-- Left Color Accent Bar -->
@@ -560,6 +588,115 @@ const currentWeekDates = computed(() => {
                    </div>
                  </div>
                </div>
+            </div>
+          </div>
+
+          <!-- Activity Detail View -->
+          <div v-else-if="viewMode === 'activity_detail' && selectedActivity" class="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm p-6 overflow-hidden flex flex-col gap-6">
+            <div class="flex items-center justify-between border-b border-border-light dark:border-border-dark pb-4">
+              <h2 class="text-2xl font-bold">Activity detail</h2>
+              <button @click="viewMode = 'weekly'" class="flex items-center gap-1 px-4 py-2 border border-border-light dark:border-border-dark rounded hover:bg-black/5 dark:hover:bg-white/5 transition-colors font-semibold text-sm">
+                <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+                Back to Schedule
+              </button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm text-left">
+                <tbody>
+                  <tr class="border-b last:border-0 border-border-light dark:border-border-dark">
+                    <td class="font-bold py-4 w-1/3">Date:</td>
+                    <td class="py-4 font-medium">{{ selectedActivity.dayName }} {{ formatPrettyDate(selectedActivity.date) }}</td>
+                  </tr>
+                  <tr class="border-b last:border-0 border-border-light dark:border-border-dark">
+                    <td class="font-bold py-4">Student group:</td>
+                    <td class="py-4">
+                      <span class="text-primary font-bold cursor-pointer hover:underline inline-flex items-center gap-1 group" @click="viewStudentList">
+                        {{ selectedActivity.className }}
+                        <span class="material-symbols-outlined !text-[14px] opacity-70">open_in_new</span>
+                      </span>
+                    </td>
+                  </tr>
+                  <tr class="border-b last:border-0 border-border-light dark:border-border-dark">
+                    <td class="font-bold py-4">Instructor:</td>
+                    <td class="py-4 flex items-center gap-2">
+                       <span class="font-bold">{{ selectedActivity.teacherName }}</span>
+                       <span class="bg-orange-500 text-white px-2.5 py-0.5 rounded text-xs font-bold cursor-pointer hover:bg-orange-600 transition-colors">Meet URL</span>
+                    </td>
+                  </tr>
+                  <tr class="border-b last:border-0 border-border-light dark:border-border-dark">
+                    <td class="font-bold py-4">Course:</td>
+                    <td class="py-4"><span class="font-bold">{{ selectedActivity.courseName }}</span> ({{ selectedActivity.courseCode }})</td>
+                  </tr>
+                  <tr class="border-b last:border-0 border-border-light dark:border-border-dark">
+                    <td class="font-bold py-4">Course session number:</td>
+                    <td class="py-4">-</td>
+                  </tr>
+                  <tr class="border-b last:border-0 border-border-light dark:border-border-dark">
+                    <td class="font-bold py-4">Course session type:</td>
+                    <td class="py-4">-</td>
+                  </tr>
+                  <tr class="border-b last:border-0 border-border-light dark:border-border-dark">
+                    <td class="font-bold py-4">Course session description:</td>
+                    <td class="py-4">-</td>
+                  </tr>
+                  <tr class="border-b last:border-0 border-border-light dark:border-border-dark">
+                    <td class="font-bold py-4">Campus/Programme:</td>
+                    <td class="py-4">-</td>
+                  </tr>
+                  <tr class="border-b last:border-0 border-border-light dark:border-border-dark">
+                    <td class="font-bold py-4">Attendance:</td>
+                    <td class="py-4">-</td>
+                  </tr>
+                  <tr class="border-b last:border-0 border-border-light dark:border-border-dark">
+                    <td class="font-bold py-4">Record time:</td>
+                    <td class="py-4">-</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Class Members View -->
+          <div v-else-if="viewMode === 'members_list'" class="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm p-6 overflow-hidden flex flex-col gap-6">
+            <div class="flex items-center justify-between border-b border-border-light dark:border-border-dark pb-4">
+              <h2 class="text-2xl font-bold">Class Members of <span class="text-primary">{{ selectedActivity?.className }}</span></h2>
+              <button @click="viewMode = 'activity_detail'" class="flex items-center gap-1 px-4 py-2 border border-border-light dark:border-border-dark rounded hover:bg-black/5 dark:hover:bg-white/5 transition-colors font-semibold text-sm">
+                <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+                Back
+              </button>
+            </div>
+            <div v-if="isLoadingMembers" class="py-16 flex flex-col justify-center items-center gap-3 text-primary font-bold">
+               <span class="material-symbols-outlined animate-spin text-4xl">progress_activity</span>
+               Processing...
+            </div>
+            <div v-else class="overflow-x-auto rounded-lg border border-border-light dark:border-border-dark shadow-sm">
+              <table class="w-full text-sm text-left">
+                <thead class="bg-stone-50/50 dark:bg-stone-900/50 border-b border-border-light dark:border-border-dark">
+                  <tr>
+                    <th class="p-4 font-bold tracking-wider text-center w-16 text-xs uppercase text-text-muted-light dark:text-text-muted-dark">Index</th>
+                    <th class="p-4 font-bold tracking-wider text-center w-24 text-xs uppercase text-text-muted-light dark:text-text-muted-dark">Image</th>
+                    <th class="p-4 font-bold tracking-wider text-xs uppercase text-text-muted-light dark:text-text-muted-dark">Member Code</th>
+                    <th class="p-4 font-bold tracking-wider text-xs uppercase text-text-muted-light dark:text-text-muted-dark">Surname</th>
+                    <th class="p-4 font-bold tracking-wider text-xs uppercase text-text-muted-light dark:text-text-muted-dark">Given Name</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-border-light dark:divide-border-dark">
+                  <tr v-for="(member, idx) in classMembers" :key="member.studentCode" class="hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                    <td class="p-4 text-center font-bold text-text-muted-light dark:text-text-muted-dark border-r border-border-light dark:border-border-dark">{{ idx + 1 }}</td>
+                    <td class="p-4 border-r border-border-light dark:border-border-dark">
+                      <div class="w-12 h-16 bg-black/10 dark:bg-white/10 mx-auto rounded overflow-hidden flex items-center justify-center relative shadow-inner">
+                        <img :src="`https://ui-avatars.com/api/?name=${member.firstName}+${member.lastName}&background=random&color=fff&size=64`" class="absolute inset-0 w-full h-full object-cover" />
+                      </div>
+                    </td>
+                    <td class="p-4 font-mono font-bold text-primary">{{ member.studentCode }}</td>
+                    <td class="p-4 font-bold">{{ member.lastName }}</td>
+                    <td class="p-4">{{ member.firstName }}</td>
+                  </tr>
+                  <tr v-if="classMembers.length === 0">
+                    <td colspan="5" class="p-8 text-center text-text-muted-light dark:text-text-muted-dark font-medium">No members found in this class.</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>

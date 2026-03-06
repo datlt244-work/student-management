@@ -58,6 +58,10 @@ public class ScheduleServiceImpl implements IScheduleService {
                                                                 .endTime(session.getEndTime())
                                                                 .classStatus(enrollment.getScheduledClass().getStatus()
                                                                                 .name())
+                                                                .startDate(enrollment.getScheduledClass().getSemester()
+                                                                                .getStartDate())
+                                                                .endDate(enrollment.getScheduledClass().getSemester()
+                                                                                .getEndDate())
                                                                 .build()))
                                 .collect(Collectors.toList());
         }

@@ -7,6 +7,8 @@ export interface SemesterResponse {
   year: number
   isCurrent: boolean
   displayName: string
+  startDate: string
+  endDate: string
 }
 
 export const semesterService = {

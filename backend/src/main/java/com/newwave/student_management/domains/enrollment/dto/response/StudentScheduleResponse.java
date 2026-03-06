@@ -20,4 +20,6 @@ public class StudentScheduleResponse {
     private LocalTime startTime;
     private LocalTime endTime;
     private String classStatus;
+    private java.time.LocalDate startDate;
+    private java.time.LocalDate endDate;
 }

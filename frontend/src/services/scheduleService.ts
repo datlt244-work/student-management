@@ -9,6 +9,8 @@ export interface StudentSchedule {
   startTime: string
   endTime: string
   classStatus: string
+  startDate: string // YYYY-MM-DD
+  endDate: string   // YYYY-MM-DD
 }
 
 /**

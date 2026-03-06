@@ -43,3 +43,16 @@ export async function getClassMembers(classId: number): Promise<StudentClassMemb
   const data = await response.json()
   return data.result as StudentClassMemberResponse[]
 }
+
+export interface AttendanceRecordResponse {
+  date: string // YYYY-MM-DD
+  status: 'ATTENDED' | 'ABSENT'
+  recordTime: string
+}
+
+export async function getClassAttendances(classId: number): Promise<AttendanceRecordResponse[]> {
+  const response = await apiFetch(`/student/classes/${classId}/attendances`)
+  if (!response.ok) return []
+  const data = await response.json()
+  return data.result as AttendanceRecordResponse[]
+}

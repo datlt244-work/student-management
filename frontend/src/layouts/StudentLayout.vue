@@ -18,11 +18,12 @@ function closeMobileMenu() {
   mobileMenuOpen.value = false
 }
 
-const navItems = [
-  { name: 'Dashboard', routeName: 'student-dashboard' },
-  { name: 'Courses', routeName: 'student-courses' },
-  { name: 'Grades', routeName: 'student-grades' },
-  { name: 'Schedule', routeName: 'student-schedule' },
+const navigation = [
+  { name: 'Dashboard', routeName: 'student-dashboard', icon: 'dashboard' },
+  { name: 'Course', routeName: 'student-courses', icon: 'how_to_reg' },
+  { name: 'Schedule', routeName: 'student-schedule', icon: 'calendar_month' },
+  { name: 'Attendance Report', routeName: 'student-attendance', icon: 'fact_check' },
+  { name: 'Grades', routeName: 'student-grades', icon: 'school' },
   { name: 'Profile', routeName: 'student-profile' },
 ]
 
@@ -77,7 +78,7 @@ function getInitials(email: string | undefined): string {
         </div>
         <nav class="hidden md:flex items-center gap-9">
           <router-link
-            v-for="item in navItems"
+            v-for="item in navigation"
             :key="item.routeName"
             :to="{ name: item.routeName }"
             :class="[
@@ -156,7 +157,7 @@ function getInitials(email: string | undefined): string {
             </div>
             <nav class="flex-1 overflow-y-auto p-4 flex flex-col gap-1">
               <router-link
-                v-for="item in navItems"
+                v-for="item in navigation"
                 :key="item.routeName"
                 :to="{ name: item.routeName }"
                 :class="[

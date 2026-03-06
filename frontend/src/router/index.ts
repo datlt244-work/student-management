@@ -176,6 +176,11 @@ const router = createRouter({
           component: () => import('@/views/student/ScheduleView.vue'),
         },
         {
+          path: 'attendance',
+          name: 'student-attendance',
+          component: () => import('@/views/student/AttendanceReportView.vue'),
+        },
+        {
           path: 'profile',
           name: 'student-profile',
           component: () => import('@/views/student/ProfileView.vue'),

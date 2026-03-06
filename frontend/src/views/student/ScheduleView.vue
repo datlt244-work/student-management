@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
-import { getMySchedule, getClassMembers, type StudentSchedule, type StudentClassMemberResponse } from '@/services/scheduleService'
+import { getMySchedule, getClassMembers, getClassAttendances, type StudentSchedule, type StudentClassMemberResponse, type AttendanceRecordResponse } from '@/services/scheduleService'
 import { semesterService, type SemesterResponse } from '@/services/semesterService'
 
 const days = [
@@ -52,12 +52,28 @@ const error = ref('')
 const viewMode = ref<'weekly' | 'list' | 'activity_detail' | 'members_list'>('weekly')
 const selectedActivity = ref<ScheduleOccurrence | null>(null)
 const classMembers = ref<StudentClassMemberResponse[]>([])
+const classAttendances = ref<AttendanceRecordResponse[]>([])
 const isLoadingMembers = ref(false)
+const isLoadingAttendance = ref(false)
 
-function openActivityDetail(cls: ScheduleOccurrence) {
+async function openActivityDetail(cls: ScheduleOccurrence) {
   selectedActivity.value = cls
   viewMode.value = 'activity_detail'
+  isLoadingAttendance.value = true
+  try {
+    const records = await getClassAttendances(cls.classId)
+    classAttendances.value = records || []
+  } catch (err) {
+    console.error(err)
+  } finally {
+    isLoadingAttendance.value = false
+  }
 }
+
+const currentActivityAttendance = computed(() => {
+  if (!selectedActivity.value || !classAttendances.value.length) return null
+  return classAttendances.value.find(a => a.date === selectedActivity.value!.date)
+})
 
 async function viewStudentList() {
   if (!selectedActivity.value) return
@@ -215,7 +231,7 @@ const expandedListItems = computed(() => {
           startTime: item.startTime,
           endTime: item.endTime,
           classStatus: item.classStatus,
-          colorClass: getClassStyle(idx)
+          colorClass: getClassStyle(idx) || 'bg-stone-100 border-l-4 border-stone-500'
         })
       }
       d.setDate(d.getDate() + 1)
@@ -645,11 +661,25 @@ const currentWeekDates = computed(() => {
                   </tr>
                   <tr class="border-b last:border-0 border-border-light dark:border-border-dark">
                     <td class="font-bold py-4">Attendance:</td>
-                    <td class="py-4">-</td>
+                    <td class="py-4">
+                       <span v-if="isLoadingAttendance">Loading...</span>
+                       <span v-else-if="new Date(selectedActivity.date) > new Date()" class="text-text-muted-light dark:text-text-muted-dark italic font-medium">Future</span>
+                       <span v-else-if="!currentActivityAttendance" class="text-text-muted-light dark:text-text-muted-dark font-medium">Not yet taken</span>
+                       <span v-else :class="{
+                          'text-green-600 font-bold': currentActivityAttendance.status === 'ATTENDED',
+                          'text-red-600 font-bold': currentActivityAttendance.status === 'ABSENT'
+                       }">
+                          {{ currentActivityAttendance.status }}
+                       </span>
+                    </td>
                   </tr>
                   <tr class="border-b last:border-0 border-border-light dark:border-border-dark">
                     <td class="font-bold py-4">Record time:</td>
-                    <td class="py-4">-</td>
+                    <td class="py-4">
+                       <span v-if="isLoadingAttendance">...</span>
+                       <span v-else-if="currentActivityAttendance">{{ new Date(currentActivityAttendance.recordTime).toLocaleString() }}</span>
+                       <span v-else>-</span>
+                    </td>
                   </tr>
                 </tbody>
               </table>

@@ -81,12 +81,16 @@ public class GradeServiceImpl implements IGradeService {
         Map<String, List<AssessmentItem>> itemsByCategory = assessmentItems.stream()
                 .collect(Collectors.groupingBy(AssessmentItem::getCategory));
 
+        BigDecimal totalWeight = BigDecimal.ZERO;
+        boolean hasFinalScore = false;
+
         for (Map.Entry<String, List<AssessmentItem>> entry : itemsByCategory.entrySet()) {
             String category = entry.getKey();
             List<AssessmentItem> items = entry.getValue();
 
             BigDecimal categoryWeightTotal = BigDecimal.ZERO;
             BigDecimal categoryValueTotal = BigDecimal.ZERO;
+            boolean hasAtLeastOneScore = false;
 
             for (AssessmentItem item : items) {
                 StudentScore score = scoreMap.get(item.getItemId());
@@ -103,8 +107,12 @@ public class GradeServiceImpl implements IGradeService {
 
                 categoryWeightTotal = categoryWeightTotal.add(item.getWeight());
                 if (value != null) {
+                    hasAtLeastOneScore = true;
                     categoryValueTotal = categoryValueTotal.add(value.multiply(item.getWeight())
                             .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP));
+                    if (category.toLowerCase().contains("final exam")) {
+                        hasFinalScore = true;
+                    }
                 }
             }
 
@@ -113,15 +121,22 @@ public class GradeServiceImpl implements IGradeService {
                     .category(category)
                     .itemName("Total")
                     .weight(categoryWeightTotal)
-                    .value(categoryValueTotal)
+                    .value(hasAtLeastOneScore ? categoryValueTotal : null)
                     .isTotal(true)
                     .build());
+
+            totalWeight = totalWeight.add(categoryWeightTotal);
         }
 
         BigDecimal finalGrade = (grade != null) ? grade.getGradeValue() : null;
+        // Nếu chưa có điểm cuối kỳ hoặc chưa kết thúc môn -> Giấu điểm TB theo yêu cầu
+        if (!hasFinalScore && finalGrade == null) {
+            finalGrade = null;
+        }
+
         String feedback = (grade != null) ? grade.getFeedback() : null;
         String status = (finalGrade != null && finalGrade.compareTo(BigDecimal.valueOf(5.0)) >= 0) ? "PASSED"
-                : (finalGrade != null ? "FAILED" : "IN_PROGRESS");
+                : (finalGrade != null ? "FAILED" : null);
 
         return StudentGradeResponse.builder()
                 .enrollmentId(enrollment.getEnrollmentId())

@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { gradeService, type StudentGrade } from '@/services/gradeService'
 import { semesterService, type SemesterResponse } from '@/services/semesterService'
+import { getMyProfile, type CombinedProfile } from '@/services/profileService'
 import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
@@ -10,19 +11,30 @@ const semesters = ref<SemesterResponse[]>([])
 const allSemesterGrades = ref<Record<number, StudentGrade[]>>({})
 const selectedGrade = ref<StudentGrade | null>(null)
 const expandedSemesters = ref<Set<number>>(new Set())
+const profile = ref<CombinedProfile | null>(null)
 
 const userFullName = computed(() => {
-  const user = authStore.user
-  return user ? user.email.split('@')[0] : 'Student'
+  const stu = profile.value?.studentProfile
+  if (stu) return `${stu.firstName} ${stu.lastName}`
+  return 'Student'
 })
 
-const userCode = computed(() => authStore.user?.email || '')
+const userCode = computed(() => {
+  return profile.value?.studentProfile?.studentCode || authStore.user?.email || ''
+})
 
 async function fetchInitialData() {
   try {
     isLoading.value = true
-    const semRes = await semesterService.getAllSemesters()
+    
+    // Fetch profile and semesters in parallel
+    const [semRes, profRes] = await Promise.all([
+      semesterService.getAllSemesters(),
+      getMyProfile()
+    ])
+    
     semesters.value = semRes.result || []
+    profile.value = profRes || null
 
     if (semesters.value.length > 0) {
       // Mặc định expand kỳ hiện tại

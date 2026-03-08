@@ -6,13 +6,30 @@ export interface ApiResponse<T> {
   timestamp?: string
 }
 
+export interface StudentAssessmentScore {
+  category: string
+  itemName: string
+  weight: number
+  value: number | null
+  comment: string | null
+  isTotal: boolean
+}
+
 export interface StudentGrade {
+  enrollmentId: number
+  semesterName: string
+  semesterYear: number
   courseCode: string
   courseName: string
+  classCode: string
+  fromDate: string
+  toDate: string
   credits: number
   grade: number | null
   grade4: number | null
+  status: 'PASSED' | 'FAILED' | 'IN_PROGRESS'
   feedback: string | null
+  assessmentScores: StudentAssessmentScore[]
 }
 
 export interface StudentTranscript {

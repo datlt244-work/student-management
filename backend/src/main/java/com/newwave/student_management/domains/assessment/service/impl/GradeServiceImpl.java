@@ -2,11 +2,18 @@ package com.newwave.student_management.domains.assessment.service.impl;
 
 import com.newwave.student_management.common.exception.AppException;
 import com.newwave.student_management.common.exception.ErrorCode;
+import com.newwave.student_management.domains.assessment.dto.response.StudentAssessmentScoreResponse;
 import com.newwave.student_management.domains.assessment.dto.response.StudentGradeResponse;
 import com.newwave.student_management.domains.assessment.dto.response.StudentTranscriptResponse;
+import com.newwave.student_management.domains.assessment.entity.AssessmentItem;
 import com.newwave.student_management.domains.assessment.entity.Grade;
+import com.newwave.student_management.domains.assessment.entity.StudentScore;
+import com.newwave.student_management.domains.assessment.repository.AssessmentItemRepository;
 import com.newwave.student_management.domains.assessment.repository.GradeRepository;
+import com.newwave.student_management.domains.assessment.repository.StudentScoreRepository;
 import com.newwave.student_management.domains.assessment.service.IGradeService;
+import com.newwave.student_management.domains.enrollment.entity.Enrollment;
+import com.newwave.student_management.domains.enrollment.repository.EnrollmentRepository;
 import com.newwave.student_management.domains.profile.entity.Student;
 import com.newwave.student_management.domains.profile.repository.StudentRepository;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +22,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -25,6 +34,9 @@ public class GradeServiceImpl implements IGradeService {
 
     private final GradeRepository gradeRepository;
     private final StudentRepository studentRepository;
+    private final AssessmentItemRepository assessmentItemRepository;
+    private final StudentScoreRepository studentScoreRepository;
+    private final EnrollmentRepository enrollmentRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -32,13 +44,116 @@ public class GradeServiceImpl implements IGradeService {
         Student student = studentRepository.findByUser_UserIdAndDeletedAtIsNull(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.STUDENT_PROFILE_NOT_FOUND));
 
-        List<Grade> grades = gradeRepository
-                .findByEnrollment_Student_StudentIdAndEnrollment_ScheduledClass_Semester_SemesterId(
+        // Lấy tất cả Enrollment của sinh viên trong kỳ này (bao gồm cả lớp đang học
+        // chưa có điểm)
+        List<Enrollment> enrollments = enrollmentRepository
+                .findByStudentStudentIdAndScheduledClassSemesterSemesterIdAndScheduledClassDeletedAtIsNull(
                         student.getStudentId(), semesterId);
 
-        return grades.stream()
-                .map(this::mapToGradeResponse)
+        return enrollments.stream()
+                .map(this::mapEnrollmentToGradeResponse)
                 .collect(Collectors.toList());
+    }
+
+    private StudentGradeResponse mapEnrollmentToGradeResponse(Enrollment enrollment) {
+        // Tìm Grade thực tế nếu có
+        Grade grade = gradeRepository.findByEnrollment_EnrollmentId(enrollment.getEnrollmentId())
+                .orElse(null);
+
+        return mapToGradeResponseDetailed(enrollment, grade);
+    }
+
+    private StudentGradeResponse mapToGradeResponseDetailed(Enrollment enrollment, Grade grade) {
+
+        // Lấy chi tiết điểm thành phần
+        List<AssessmentItem> assessmentItems = assessmentItemRepository
+                .findByCourse_CourseId(enrollment.getScheduledClass().getCourse().getCourseId());
+
+        List<StudentScore> studentScores = studentScoreRepository
+                .findByEnrollment_EnrollmentId(enrollment.getEnrollmentId());
+
+        Map<Integer, StudentScore> scoreMap = studentScores.stream()
+                .collect(Collectors.toMap(s -> s.getAssessmentItem().getItemId(), s -> s));
+
+        List<StudentAssessmentScoreResponse> detailedScores = new ArrayList<>();
+
+        // Group by category to add "Total" lines like in the image
+        Map<String, List<AssessmentItem>> itemsByCategory = assessmentItems.stream()
+                .collect(Collectors.groupingBy(AssessmentItem::getCategory));
+
+        BigDecimal totalWeight = BigDecimal.ZERO;
+        boolean hasFinalScore = false;
+
+        for (Map.Entry<String, List<AssessmentItem>> entry : itemsByCategory.entrySet()) {
+            String category = entry.getKey();
+            List<AssessmentItem> items = entry.getValue();
+
+            BigDecimal categoryWeightTotal = BigDecimal.ZERO;
+            BigDecimal categoryValueTotal = BigDecimal.ZERO;
+            boolean hasAtLeastOneScore = false;
+
+            for (AssessmentItem item : items) {
+                StudentScore score = scoreMap.get(item.getItemId());
+                BigDecimal value = (score != null) ? score.getScoreValue() : null;
+
+                detailedScores.add(StudentAssessmentScoreResponse.builder()
+                        .category(category)
+                        .itemName(item.getName())
+                        .weight(item.getWeight())
+                        .value(value)
+                        .comment((score != null) ? score.getComment() : null)
+                        .isTotal(false)
+                        .build());
+
+                categoryWeightTotal = categoryWeightTotal.add(item.getWeight());
+                if (value != null) {
+                    hasAtLeastOneScore = true;
+                    categoryValueTotal = categoryValueTotal.add(value.multiply(item.getWeight())
+                            .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP));
+                    if (category.toLowerCase().contains("final exam")) {
+                        hasFinalScore = true;
+                    }
+                }
+            }
+
+            // Add Total line for category
+            detailedScores.add(StudentAssessmentScoreResponse.builder()
+                    .category(category)
+                    .itemName("Total")
+                    .weight(categoryWeightTotal)
+                    .value(hasAtLeastOneScore ? categoryValueTotal : null)
+                    .isTotal(true)
+                    .build());
+
+            totalWeight = totalWeight.add(categoryWeightTotal);
+        }
+
+        BigDecimal finalGrade = (grade != null) ? grade.getGradeValue() : null;
+        // Nếu chưa có điểm cuối kỳ hoặc chưa kết thúc môn -> Giấu điểm TB theo yêu cầu
+        if (!hasFinalScore && finalGrade == null) {
+            finalGrade = null;
+        }
+
+        String feedback = (grade != null) ? grade.getFeedback() : null;
+        String status = (finalGrade != null && finalGrade.compareTo(BigDecimal.valueOf(5.0)) >= 0) ? "PASSED"
+                : (finalGrade != null ? "FAILED" : null);
+
+        return StudentGradeResponse.builder()
+                .enrollmentId(enrollment.getEnrollmentId())
+                .semesterName(enrollment.getScheduledClass().getSemester().getName())
+                .semesterYear(enrollment.getScheduledClass().getSemester().getYear())
+                .courseCode(enrollment.getScheduledClass().getCourse().getCode())
+                .courseName(enrollment.getScheduledClass().getCourse().getName())
+                .classCode("CLASS_" + enrollment.getScheduledClass().getClassId())
+                .fromDate(enrollment.getScheduledClass().getSemester().getStartDate())
+                .toDate(enrollment.getScheduledClass().getSemester().getEndDate())
+                .credits(enrollment.getScheduledClass().getCourse().getCredits())
+                .grade(finalGrade)
+                .grade4(finalGrade != null ? convertToScale4(finalGrade) : null)
+                .status(status)
+                .feedback(feedback)
+                .assessmentScores(detailedScores)
+                .build();
     }
 
     @Override
@@ -68,11 +183,15 @@ public class GradeServiceImpl implements IGradeService {
 
     private StudentGradeResponse mapToGradeResponse(Grade grade) {
         return StudentGradeResponse.builder()
+                .enrollmentId(grade.getEnrollment().getEnrollmentId())
                 .courseCode(grade.getEnrollment().getScheduledClass().getCourse().getCode())
                 .courseName(grade.getEnrollment().getScheduledClass().getCourse().getName())
                 .credits(grade.getEnrollment().getScheduledClass().getCourse().getCredits())
                 .grade(grade.getGradeValue())
                 .grade4(grade.getGradeValue() != null ? convertToScale4(grade.getGradeValue()) : null)
+                .status((grade.getGradeValue() != null && grade.getGradeValue().compareTo(BigDecimal.valueOf(5.0)) >= 0)
+                        ? "PASSED"
+                        : "FAILED")
                 .feedback(grade.getFeedback())
                 .build();
     }

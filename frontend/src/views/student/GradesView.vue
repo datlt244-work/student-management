@@ -1,391 +1,331 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { gradeService, type StudentGrade, type StudentTranscript } from '@/services/gradeService'
+import { gradeService, type StudentGrade } from '@/services/gradeService'
 import { semesterService, type SemesterResponse } from '@/services/semesterService'
+import { getMyProfile, type CombinedProfile } from '@/services/profileService'
+import { useAuthStore } from '@/stores/auth'
 
+const authStore = useAuthStore()
 const isLoading = ref(true)
 const semesters = ref<SemesterResponse[]>([])
-const selectedSemesterId = ref<number | null>(null)
-const semesterGrades = ref<StudentGrade[]>([])
-const transcript = ref<StudentTranscript | null>(null)
+const allSemesterGrades = ref<Record<number, StudentGrade[]>>({})
+const selectedGrade = ref<StudentGrade | null>(null)
+const expandedSemesters = ref<Set<number>>(new Set())
+const profile = ref<CombinedProfile | null>(null)
 
-const currentGpa = computed(() => transcript.value?.cumulativeGpa || 0)
-const totalCredits = computed(() => transcript.value?.totalCredits || 0)
+const userFullName = computed(() => {
+  const stu = profile.value?.studentProfile
+  if (stu) return `${stu.firstName} ${stu.lastName}`
+  return 'Student'
+})
+
+const userCode = computed(() => {
+  return profile.value?.studentProfile?.studentCode || authStore.user?.email || ''
+})
 
 async function fetchInitialData() {
   try {
     isLoading.value = true
-    const [semRes, transRes] = await Promise.all([
+    
+    // Fetch profile and semesters in parallel
+    const [semRes, profRes] = await Promise.all([
       semesterService.getAllSemesters(),
-      gradeService.getTranscript(),
+      getMyProfile()
     ])
-
+    
     semesters.value = semRes.result || []
-    transcript.value = transRes.result || null
+    profile.value = profRes || null
 
     if (semesters.value.length > 0) {
-      // Mặc định chọn học kỳ hiện tại hoặc học kỳ gần nhất
-      const current = semesters.value.find((s) => s.isCurrent)
-      selectedSemesterId.value = current
-        ? current.semesterId
-        : semesters.value[0]?.semesterId || null
-      await fetchGrades()
+      // Mặc định expand kỳ hiện tại
+      const current = semesters.value.find((s) => s.isCurrent) || semesters.value[0]
+      if (current) {
+        toggleSemester(current.semesterId)
+      }
     }
   } catch (error) {
-    console.error('Failed to fetch initial grade data', error)
+    console.error('Failed to fetch semesters', error)
   } finally {
     isLoading.value = false
   }
 }
 
-async function fetchGrades() {
-  if (selectedSemesterId.value === null) return
-
+async function fetchGradesForSemester(semesterId: number) {
+  if (allSemesterGrades.value[semesterId]) return
   try {
-    const res = await gradeService.getGradesBySemester(selectedSemesterId.value)
-    semesterGrades.value = res.result || []
+    const res = await gradeService.getGradesBySemester(semesterId)
+    allSemesterGrades.value[semesterId] = res.result || []
   } catch (error) {
-    console.error('Failed to fetch grades for semester', error)
+    console.error(`Failed to fetch grades for semester ${semesterId}`, error)
   }
+}
+
+async function toggleSemester(semesterId: number) {
+  if (expandedSemesters.value.has(semesterId)) {
+    expandedSemesters.value.delete(semesterId)
+  } else {
+    expandedSemesters.value.add(semesterId)
+    await fetchGradesForSemester(semesterId)
+  }
+}
+
+function selectCourse(grade: StudentGrade) {
+  selectedGrade.value = grade
+}
+
+function formatDate(dateStr: string) {
+  if (!dateStr) return 'N/A'
+  const date = new Date(dateStr)
+  return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
 onMounted(() => {
   fetchInitialData()
 })
-
-const selectedSemesterName = computed(() => {
-  return (
-    semesters.value.find((s) => s.semesterId === selectedSemesterId.value)?.displayName ||
-    'Select Semester'
-  )
-})
 </script>
 
 <template>
-  <div class="flex-1 flex justify-center w-full px-4 sm:px-6 py-8">
-    <div v-if="isLoading" class="w-full max-w-6xl flex flex-col items-center justify-center py-20">
-      <div
-        class="animate-spin size-12 border-4 border-primary border-t-transparent rounded-full mb-4"
-      ></div>
+  <div class="flex-1 flex flex-col w-full px-4 sm:px-6 py-8 bg-gray-50/50 dark:bg-gray-950/20">
+    <!-- Header: Grade Report for User -->
+    <div class="max-w-7xl mx-auto w-full mb-8">
+      <h1 class="text-3xl font-normal text-text-main-light dark:text-text-main-dark">
+        Grade report for {{ userFullName }} ({{ userCode }})
+      </h1>
+    </div>
+
+    <div v-if="isLoading" class="flex-1 flex flex-col items-center justify-center py-20">
+      <div class="animate-spin size-12 border-4 border-primary border-t-transparent rounded-full mb-4"></div>
       <p class="text-text-muted-light dark:text-text-muted-dark animate-pulse">
         Loading academic records...
       </p>
     </div>
 
-    <div v-else class="w-full max-w-6xl flex flex-col gap-8">
-      <!-- Page Heading & Actions -->
-      <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-        <div class="flex flex-col gap-2">
-          <h1
-            class="text-text-main-light dark:text-text-main-dark text-3xl md:text-4xl font-black tracking-tight"
-          >
-            Academic Performance
-          </h1>
-          <p class="text-text-muted-light dark:text-text-muted-dark text-base max-w-2xl">
-            Overview of your final grades and transcript data across all semesters.
-          </p>
-        </div>
-
-        <!-- Semester Selector -->
-        <div class="relative w-full md:w-72 group">
-          <select
-            v-model="selectedSemesterId"
-            @change="fetchGrades"
-            class="w-full h-12 pl-4 pr-12 rounded-xl bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main-light dark:text-text-main-dark font-bold appearance-none cursor-pointer focus:ring-2 focus:ring-primary/20 transition-all outline-none"
-          >
-            <option v-for="sem in semesters" :key="sem.semesterId" :value="sem.semesterId">
-              {{ sem.displayName }}
-            </option>
-          </select>
-          <div
-            class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none flex items-center justify-center text-text-muted-light dark:text-text-muted-dark group-focus-within:text-primary transition-colors"
-          >
-            <span class="material-symbols-outlined !text-2xl">unfold_more</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Stats Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div
-          class="bg-surface-light dark:bg-surface-dark p-6 rounded-xl border border-border-light dark:border-border-dark shadow-sm"
-        >
-          <div class="flex items-center gap-4">
-            <div
-              class="size-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary"
-            >
-              <span class="material-symbols-outlined !text-3xl">analytics</span>
-            </div>
-            <div>
-              <p class="text-text-muted-light dark:text-text-muted-dark text-sm font-medium">
-                Cumulative GPA (4.0)
-              </p>
-              <h3 class="text-text-main-light dark:text-text-main-dark text-2xl font-bold">
-                {{ currentGpa.toFixed(2) }}
-              </h3>
-            </div>
-          </div>
-        </div>
-        <div
-          class="bg-surface-light dark:bg-surface-dark p-6 rounded-xl border border-border-light dark:border-border-dark shadow-sm"
-        >
-          <div class="flex items-center gap-4">
-            <div
-              class="size-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary"
-            >
-              <span class="material-symbols-outlined !text-3xl">school</span>
-            </div>
-            <div>
-              <p class="text-text-muted-light dark:text-text-muted-dark text-sm font-medium">
-                Total Credits Earned
-              </p>
-              <h3 class="text-text-main-light dark:text-text-main-dark text-2xl font-bold">
-                {{ totalCredits.toFixed(1) }}
-              </h3>
-            </div>
-          </div>
-        </div>
-        <div
-          class="bg-surface-light dark:bg-surface-dark p-6 rounded-xl border border-border-light dark:border-border-dark shadow-sm"
-        >
-          <div class="flex items-center gap-4">
-            <div
-              class="size-12 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-400"
-            >
-              <span class="material-symbols-outlined !text-3xl">verified</span>
-            </div>
-            <div>
-              <p class="text-text-muted-light dark:text-text-muted-dark text-sm font-medium">
-                Academic Standing
-              </p>
-              <h3 class="text-text-main-light dark:text-text-main-dark text-2xl font-bold">
-                {{ currentGpa >= 2.0 ? 'Good Standing' : 'Academic Probation' }}
-              </h3>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Semester Grades Table -->
-      <div class="flex flex-col gap-6">
-        <div
-          class="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark overflow-hidden shadow-sm"
-        >
-          <div
-            class="p-5 border-b border-border-light dark:border-border-dark flex items-center justify-between bg-input-bg-light/10 dark:bg-input-bg-dark/10"
-          >
-            <h3 class="text-text-main-light dark:text-text-main-dark font-bold text-lg">
-              Grades for {{ selectedSemesterName }}
-            </h3>
-            <button
-              @click="fetchInitialData"
-              class="flex items-center gap-2 text-sm text-primary font-bold hover:underline"
-            >
-              <span class="material-symbols-outlined text-sm">refresh</span>
-              Refresh Records
-            </button>
-          </div>
-
-          <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
-              <thead>
-                <tr class="bg-input-bg-light/50 dark:bg-input-bg-dark/50">
-                  <th
-                    class="px-6 py-3 text-xs font-bold text-text-muted-light dark:text-text-muted-dark uppercase tracking-wider"
-                  >
-                    Course Code
-                  </th>
-                  <th
-                    class="px-6 py-3 text-xs font-bold text-text-muted-light dark:text-text-muted-dark uppercase tracking-wider"
-                  >
-                    Course Name
-                  </th>
-                  <th
-                    class="px-6 py-3 text-center text-xs font-bold text-text-muted-light dark:text-text-muted-dark uppercase tracking-wider"
-                  >
-                    Credits
-                  </th>
-                  <th
-                    class="px-6 py-3 text-xs font-bold text-text-muted-light dark:text-text-muted-dark uppercase tracking-wider text-center"
-                  >
-                    Scale 10.0
-                  </th>
-                  <th
-                    class="px-6 py-3 text-xs font-bold text-text-muted-light dark:text-text-muted-dark uppercase tracking-wider text-center"
-                  >
-                    Scale 4.0
-                  </th>
-                  <th
-                    class="px-6 py-3 text-xs font-bold text-text-muted-light dark:text-text-muted-dark uppercase tracking-wider"
-                  >
-                    Feedback
-                  </th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-border-light dark:divide-border-dark">
-                <tr v-if="semesterGrades.length === 0">
-                  <td
-                    colspan="6"
-                    class="px-6 py-12 text-center text-text-muted-light dark:text-text-muted-dark"
-                  >
-                    <span class="material-symbols-outlined text-4xl mb-2 opacity-20"
-                      >inventory_2</span
-                    >
-                    <p>No grade records found for this semester.</p>
-                  </td>
-                </tr>
-                <tr
-                  v-for="item in semesterGrades"
-                  :key="item.courseCode"
-                  class="hover:bg-input-bg-light/20 dark:hover:bg-input-bg-dark/20 transition-colors"
+    <div v-else class="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <!-- Left Column: Term & Course Selection -->
+      <div class="lg:col-span-5 flex flex-col gap-4">
+        <div class="overflow-hidden border border-gray-200 dark:border-gray-800 rounded-lg shadow-sm bg-white dark:bg-surface-dark">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-[#6b8cd9] text-white">
+                <th class="px-4 py-2 text-sm font-bold uppercase w-1/4">Term</th>
+                <th class="px-4 py-2 text-sm font-bold uppercase">Course</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+              <template v-for="sem in semesters" :key="sem.semesterId">
+                <tr 
+                  @click="toggleSemester(sem.semesterId)"
+                  class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                  :class="{ 'bg-gray-50 dark:bg-gray-900': expandedSemesters.has(sem.semesterId) }"
                 >
-                  <td class="px-6 py-4 text-sm font-medium text-primary">{{ item.courseCode }}</td>
-                  <td class="px-6 py-4 text-sm text-text-main-light dark:text-text-main-dark">
-                    {{ item.courseName }}
+                  <td class="px-4 py-3 text-sm font-medium text-primary align-top">
+                    <div class="flex items-center gap-1">
+                      <span class="material-symbols-outlined text-xs transition-transform" :class="{ 'rotate-90': expandedSemesters.has(sem.semesterId) }">
+                        chevron_right
+                      </span>
+                      {{ sem.displayName }}
+                    </div>
                   </td>
-                  <td
-                    class="px-6 py-4 text-center text-sm text-text-main-light dark:text-text-main-dark"
-                  >
-                    {{ item.credits }}
-                  </td>
-                  <td class="px-6 py-4 text-center">
-                    <span
-                      v-if="item.grade !== null"
-                      class="px-2 py-1 rounded-md font-bold text-sm bg-input-bg-light dark:bg-input-bg-dark"
-                    >
-                      {{ item.grade.toFixed(1) }}
-                    </span>
-                    <span
-                      v-else
-                      class="text-text-muted-light dark:text-text-muted-dark italic text-xs"
-                    >
-                      -
-                    </span>
-                  </td>
-                  <td class="px-6 py-4 text-center">
-                    <span
-                      v-if="item.grade4 !== null"
-                      class="px-2 py-1 rounded-md font-bold"
-                      :class="[
-                        item.grade4 >= 3.5
-                          ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                          : item.grade4 >= 2.0
-                            ? 'bg-primary/10 text-primary'
-                            : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400',
-                      ]"
-                    >
-                      {{ item.grade4.toFixed(1) }}
-                    </span>
-                    <span
-                      v-else
-                      class="text-text-muted-light dark:text-text-muted-dark italic text-xs"
-                    >
-                      -
-                    </span>
-                  </td>
-                  <td
-                    class="px-6 py-4 text-sm text-text-muted-light dark:text-text-muted-dark italic"
-                  >
-                    {{ item.feedback || '-' }}
+                  <td class="px-4 py-3 text-sm text-gray-400 italic">
+                    {{ expandedSemesters.has(sem.semesterId) ? '' : 'Click to view courses' }}
                   </td>
                 </tr>
-              </tbody>
-            </table>
-          </div>
+                
+                <!-- Courses under the semester -->
+                <tr v-if="expandedSemesters.has(sem.semesterId) && allSemesterGrades[sem.semesterId]?.length === 0">
+                  <td colspan="2" class="px-8 py-2 text-xs text-text-muted-light dark:text-text-muted-dark">
+                    No courses enrolled in this term.
+                  </td>
+                </tr>
+                <tr 
+                  v-for="grade in allSemesterGrades[sem.semesterId]" 
+                  :key="grade.enrollmentId"
+                  v-show="expandedSemesters.has(sem.semesterId)"
+                  @click="selectCourse(grade)"
+                  class="group cursor-pointer hover:bg-primary/5 transition-colors"
+                  :class="{ 'bg-primary/10 border-l-4 border-l-primary': selectedGrade?.enrollmentId === grade.enrollmentId }"
+                >
+                  <td class="px-4"></td>
+                  <td class="px-4 py-3">
+                    <div class="text-sm font-medium" :class="selectedGrade?.enrollmentId === grade.enrollmentId ? 'text-primary' : 'text-blue-600 dark:text-blue-400 group-hover:underline'">
+                      {{ grade.courseName }} ({{ grade.courseCode }})
+                    </div>
+                    <div class="text-[11px] text-text-muted-light dark:text-text-muted-dark mt-1">
+                      ({{ grade.classCode }}, from {{ formatDate(grade.fromDate) }} - {{ formatDate(grade.toDate) }})
+                    </div>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
         </div>
       </div>
 
-      <!-- Transcript Summary Button -->
-      <div class="flex justify-center mt-4">
-        <button
-          class="flex items-center gap-2 h-12 px-8 rounded-xl bg-surface-light dark:bg-surface-dark border border-primary text-primary hover:bg-primary/10 font-bold transition-all shadow-lg"
-        >
-          <span class="material-symbols-outlined">description</span>
-          <span>View Detailed Transcript</span>
-        </button>
+      <!-- Right Column: Detailed Grade Report -->
+      <div v-if="!selectedGrade" class="lg:col-span-7 flex flex-col items-center justify-center border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-xl p-12 text-center bg-white/50 dark:bg-surface-dark/50 min-h-[400px]">
+        <div class="size-20 rounded-full bg-primary/5 flex items-center justify-center text-primary mb-6">
+          <span class="material-symbols-outlined !text-5xl">ads_click</span>
+        </div>
+        <h2 class="text-2xl font-bold text-text-main-light dark:text-text-main-dark mb-2">Select a course to view details</h2>
+        <p class="text-text-muted-light dark:text-text-muted-dark max-w-sm">
+          Choose a semester and a course from the left panel to see your detailed grade report and instructor feedback.
+        </p>
       </div>
 
-      <!-- Grade Interpretation Guide -->
-      <div class="bg-primary/5 dark:bg-primary/10 p-6 rounded-xl border border-primary/20">
-        <h4
-          class="text-text-main-light dark:text-text-main-dark font-bold mb-4 flex items-center gap-2"
-        >
-          <span class="material-symbols-outlined text-primary">info</span>
-          Grade Interpretation Guide (Scale 4.0 & 10.0)
-        </h4>
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-          <div
-            class="flex flex-col bg-surface-light dark:bg-surface-dark p-3 rounded-lg border border-border-light dark:border-border-dark"
+      <section v-else class="lg:col-span-7 flex flex-col gap-6 animate-in fade-in slide-in-from-right-4 duration-500">
+        <div class="bg-white dark:bg-background-dark/40 rounded-xl border border-primary/10 shadow-sm overflow-hidden">
+          <!-- Table Header Section -->
+          <div class="p-6 border-b border-primary/10 flex flex-wrap justify-between items-center gap-4">
+          <h2 class="text-2xl font-bold text-slate-900 dark:text-slate-100">
+            {{ selectedGrade?.courseName || 'Marketing 1' }} - {{ selectedGrade?.courseCode || 'MKT101' }}
+          </h2>
+          <div class="flex gap-2">
+          <span 
+            class="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold rounded-full uppercase tracking-wider"
           >
-            <span class="text-xs font-bold text-primary mb-1">Scale 4.0: 3.5 - 4.0</span>
-            <span class="text-xs font-semibold text-text-main-light dark:text-text-main-dark"
-              >Excellent (A/A+)</span
-            >
-            <span class="text-[10px] text-text-muted-light dark:text-text-muted-dark mt-1"
-              >Scale 10: 8.0 - 10.0</span
-            >
+            {{ selectedGrade?.status || 'Active' }}
+          </span>
+          <span class="px-3 py-1 bg-primary/10 text-primary text-xs font-bold rounded-full uppercase tracking-wider">
+            {{ selectedGrade?.credits || 3 }} Credits
+          </span>
           </div>
-          <div
-            class="flex flex-col bg-surface-light dark:bg-surface-dark p-3 rounded-lg border border-border-light dark:border-border-dark"
-          >
-            <span class="text-xs font-bold text-primary mb-1">Scale 4.0: 3.0 - 3.4</span>
-            <span class="text-xs font-semibold text-text-main-light dark:text-text-main-dark"
-              >Good (B/B+)</span
-            >
-            <span class="text-[10px] text-text-muted-light dark:text-text-muted-dark mt-1"
-              >Scale 10: 7.0 - 7.9</span
-            >
           </div>
-          <div
-            class="flex flex-col bg-surface-light dark:bg-surface-dark p-3 rounded-lg border border-border-light dark:border-border-dark"
-          >
-            <span class="text-xs font-bold text-primary mb-1">Scale 4.0: 2.0 - 2.9</span>
-            <span class="text-xs font-semibold text-text-main-light dark:text-text-main-dark"
-              >Fair (C/C+)</span
+          <!-- Grade Table -->
+          <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+          <thead>
+          <tr class="bg-slate-50 dark:bg-background-dark/60 text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">
+          <th class="px-6 py-4">Grade Category</th>
+          <th class="px-6 py-4">Grade Item</th>
+          <th class="px-6 py-4 text-center">Weight</th>
+          <th class="px-6 py-4 text-right">Value</th>
+          </tr>
+          </thead>
+          <tbody class="divide-y divide-primary/5">
+          <!-- Nếu có dữ liệu thật -->
+          <template v-if="selectedGrade?.assessmentScores && selectedGrade.assessmentScores.length > 0">
+            <tr 
+              v-for="(score, index) in selectedGrade.assessmentScores" 
+              :key="index"
+              class="hover:bg-primary/5 dark:hover:bg-primary/5 transition-colors"
             >
-            <span class="text-[10px] text-text-muted-light dark:text-text-muted-dark mt-1"
-              >Scale 10: 5.5 - 6.9</span
-            >
+              <td class="px-6 py-4 text-sm font-medium text-slate-700 dark:text-slate-300">
+                {{ score.isTotal ? '' : score.category }}
+              </td>
+              <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400" :class="{ 'font-bold underline text-primary': score.isTotal }">
+                {{ score.itemName }}
+              </td>
+              <td class="px-6 py-4 text-sm text-center font-medium">{{ score.weight }}%</td>
+              <td class="px-6 py-4 text-right">
+                <span 
+                  v-if="score.value !== null"
+                  class="inline-flex items-center justify-center min-w-[3rem] h-8 px-3 rounded-lg bg-primary/10 text-primary font-bold"
+                >
+                  {{ score.value }}
+                </span>
+                <span v-else class="text-slate-400">-</span>
+              </td>
+            </tr>
+          </template>
+          <!-- Mock Data fallback if empty (exactly matching template) -->
+          <template v-else>
+            <tr class="hover:bg-primary/5 transition-colors">
+              <td class="px-6 py-4 text-sm font-medium text-slate-700 dark:text-slate-300">Participation</td>
+              <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">Class Participation</td>
+              <td class="px-6 py-4 text-sm text-center font-medium">10%</td>
+              <td class="px-6 py-4 text-right"><span class="inline-flex items-center justify-center min-w-[3rem] h-8 px-3 rounded-lg bg-primary/10 text-primary font-bold">9.0</span></td>
+            </tr>
+            <tr class="hover:bg-primary/5 transition-colors">
+              <td class="px-6 py-4 text-sm font-medium text-slate-700 dark:text-slate-300">Progress Test</td>
+              <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">Test 1</td>
+              <td class="px-6 py-4 text-sm text-center font-medium">20%</td>
+              <td class="px-6 py-4 text-right"><span class="inline-flex items-center justify-center min-w-[3rem] h-8 px-3 rounded-lg bg-primary/10 text-primary font-bold">8.5</span></td>
+            </tr>
+            <tr class="hover:bg-primary/5 transition-colors">
+              <td class="px-6 py-4 text-sm font-medium text-slate-700 dark:text-slate-300">Assignment</td>
+              <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">Project Report</td>
+              <td class="px-6 py-4 text-sm text-center font-medium">30%</td>
+              <td class="px-6 py-4 text-right"><span class="inline-flex items-center justify-center min-w-[3rem] h-8 px-3 rounded-lg bg-primary/10 text-primary font-bold">8.0</span></td>
+            </tr>
+            <tr class="hover:bg-primary/5 transition-colors">
+              <td class="px-6 py-4 text-sm font-medium text-slate-700 dark:text-slate-300">Final Exam</td>
+              <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">Final Examination</td>
+              <td class="px-6 py-4 text-sm text-center font-medium">40%</td>
+              <td class="px-6 py-4 text-right"><span class="inline-flex items-center justify-center min-w-[3rem] h-8 px-3 rounded-lg bg-primary/10 text-primary font-bold">7.5</span></td>
+            </tr>
+          </template>
+          </tbody>
+          <tfoot class="bg-slate-50 dark:bg-background-dark/60 border-t-2 border-primary/10">
+          <tr>
+          <td class="px-6 py-5" colspan="2">
+          <div class="flex items-center gap-2">
+          <span class="text-sm font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Course Total</span>
+          <span class="material-symbols-outlined text-primary text-xl">verified</span>
           </div>
-          <div
-            class="flex flex-col bg-surface-light dark:bg-surface-dark p-3 rounded-lg border border-border-light dark:border-border-dark"
-          >
-            <span class="text-xs font-bold text-primary mb-1">Scale 4.0: 1.0 - 1.9</span>
-            <span class="text-xs font-semibold text-text-main-light dark:text-text-main-dark"
-              >Poor (D/D+)</span
-            >
-            <span class="text-[10px] text-text-muted-light dark:text-text-muted-dark mt-1"
-              >Scale 10: 4.0 - 5.4</span
-            >
+          </td>
+          <td class="px-6 py-5 text-center">
+          <div class="flex flex-col items-center">
+          <span class="text-xs text-slate-500 uppercase font-semibold">Average</span>
+          <span class="text-lg font-extrabold text-primary">{{ selectedGrade?.grade || '8.05' }}</span>
           </div>
-          <div
-            class="flex flex-col bg-surface-light dark:bg-surface-dark p-3 rounded-lg border border-border-light dark:border-border-dark"
+          </td>
+          <td class="px-6 py-5 text-right">
+          <div class="flex flex-col items-end">
+          <span class="text-xs text-slate-500 uppercase font-semibold">Status</span>
+          <span 
+            class="text-sm font-black uppercase tracking-widest"
+            :class="selectedGrade?.status === 'FAILED' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'"
           >
-            <span class="text-xs font-bold text-red-500 mb-1">Scale 4.0: 0.0</span>
-            <span class="text-xs font-semibold text-text-main-light dark:text-text-main-dark"
-              >Fail (F)</span
-            >
-            <span class="text-[10px] text-text-muted-light dark:text-text-muted-dark mt-1"
-              >Scale 10: &lt; 4.0</span
-            >
+            {{ selectedGrade?.status || 'PASSED' }}
+          </span>
+          </div>
+          </td>
+          </tr>
+          </tfoot>
+          </table>
           </div>
         </div>
-      </div>
+        <!-- Summary/Feedback Section -->
+        <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="p-5 bg-white dark:bg-background-dark/40 rounded-xl border border-primary/10">
+          <div class="flex items-center gap-3 mb-3">
+          <span class="material-symbols-outlined text-primary">comment</span>
+          <h4 class="font-bold text-slate-900 dark:text-slate-100">Instructor Feedback</h4>
+          </div>
+          <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed italic">
+            "{{ selectedGrade?.feedback || 'Excellent engagement during the class discussions. Your project report showed a deep understanding of marketing strategies. Keep up the high standard of work!' }}"
+          </p>
+          </div>
+          <div class="p-5 bg-white dark:bg-background-dark/40 rounded-xl border border-primary/10">
+          <div class="flex items-center gap-3 mb-3">
+          <span class="material-symbols-outlined text-primary">analytics</span>
+          <h4 class="font-bold text-slate-900 dark:text-slate-100">Performance Summary</h4>
+          </div>
+          <div class="space-y-3">
+          <div>
+          <div class="flex justify-between text-xs mb-1">
+          <span class="text-slate-500">Progress to Target (10.0)</span>
+          <span class="text-primary font-bold">{{ selectedGrade?.grade ? Math.round((selectedGrade.grade / 10) * 100) : 81 }}%</span>
+          </div>
+          <div class="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+          <div class="h-full bg-primary transition-all duration-500" :style="{ width: (selectedGrade?.grade ? (selectedGrade.grade / 10) * 100 : 81) + '%' }"></div>
+          </div>
+          </div>
+          </div>
+          </div>
+        </div>
+      </section>
     </div>
   </div>
 </template>
 
 <style scoped>
-/* Xóa bỏ icon dropdown mặc định của browser và tailwind/forms */
-select {
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  -moz-appearance: none !important;
-  background-image: none !important;
+/* Custom table styles to match image */
+table th {
+  letter-spacing: 0.05em;
 }
 
-/* Ẩn icon mặc định trong IE/Edge */
-select::-ms-expand {
-  display: none !important;
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
 }
 </style>

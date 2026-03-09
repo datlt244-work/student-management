@@ -4,6 +4,7 @@ import com.newwave.student_management.common.exception.AppException;
 import com.newwave.student_management.common.exception.ErrorCode;
 import com.newwave.student_management.domains.enrollment.dto.response.ClassSessionResponse;
 import com.newwave.student_management.domains.enrollment.dto.response.StudentAvailableClassResponse;
+import com.newwave.student_management.domains.enrollment.dto.response.StudentClassMemberResponse;
 import com.newwave.student_management.domains.enrollment.dto.response.StudentEnrolledClassResponse;
 import com.newwave.student_management.domains.enrollment.entity.ClassSession;
 import com.newwave.student_management.domains.enrollment.entity.Enrollment;
@@ -442,19 +443,15 @@ public class StudentClassServiceImpl implements IStudentClassService {
 
         @Override
         @Transactional(readOnly = true)
-        public List<com.newwave.student_management.domains.enrollment.dto.response.StudentClassMemberResponse> getClassMembers(
-                        Integer classId) {
-                // Find all enrollments for this class ID that are active
-                List<Enrollment> enrollments = enrollmentRepository.findByScheduledClassClassId(classId);
-
-                return enrollments.stream()
-                                .map(enrollment -> com.newwave.student_management.domains.enrollment.dto.response.StudentClassMemberResponse
-                                                .builder()
+        public List<StudentClassMemberResponse> getClassMembers(Integer classId) {
+                return enrollmentRepository.findByScheduledClassClassId(classId).stream()
+                                .map(enrollment -> StudentClassMemberResponse.builder()
                                                 .studentCode(enrollment.getStudent().getStudentCode())
                                                 .firstName(enrollment.getStudent().getFirstName())
                                                 .lastName(enrollment.getStudent().getLastName())
-                                                .email(enrollment.getStudent().getEmail())
+                                                .email(enrollment.getStudent().getUser().getEmail())
                                                 .build())
                                 .collect(Collectors.toList());
         }
+
 }

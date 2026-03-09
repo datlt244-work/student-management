@@ -177,16 +177,16 @@ onMounted(() => {
           <!-- Table Header Section -->
           <div class="p-6 border-b border-primary/10 flex flex-wrap justify-between items-center gap-4">
           <h2 class="text-2xl font-bold text-slate-900 dark:text-slate-100">
-            {{ selectedGrade?.courseName || 'Marketing 1' }} - {{ selectedGrade?.courseCode || 'MKT101' }}
+            {{ selectedGrade?.courseName }} - {{ selectedGrade?.courseCode }}
           </h2>
           <div class="flex gap-2">
           <span 
             class="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold rounded-full uppercase tracking-wider"
           >
-            {{ selectedGrade?.status || 'Active' }}
+            {{ selectedGrade?.status || 'IN PROGRESS' }}
           </span>
           <span class="px-3 py-1 bg-primary/10 text-primary text-xs font-bold rounded-full uppercase tracking-wider">
-            {{ selectedGrade?.credits || 3 }} Credits
+            {{ selectedGrade?.credits }} Credits
           </span>
           </div>
           </div>
@@ -228,30 +228,20 @@ onMounted(() => {
             </tr>
           </template>
           <!-- Mock Data fallback if empty (exactly matching template) -->
+          <!-- Default structure if no detailed assessment data yet -->
           <template v-else>
-            <tr class="hover:bg-primary/5 transition-colors">
-              <td class="px-6 py-4 text-sm font-medium text-slate-700 dark:text-slate-300">Participation</td>
-              <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">Class Participation</td>
-              <td class="px-6 py-4 text-sm text-center font-medium">10%</td>
-              <td class="px-6 py-4 text-right"><span class="inline-flex items-center justify-center min-w-[3rem] h-8 px-3 rounded-lg bg-primary/10 text-primary font-bold">9.0</span></td>
-            </tr>
-            <tr class="hover:bg-primary/5 transition-colors">
-              <td class="px-6 py-4 text-sm font-medium text-slate-700 dark:text-slate-300">Progress Test</td>
-              <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">Test 1</td>
-              <td class="px-6 py-4 text-sm text-center font-medium">20%</td>
-              <td class="px-6 py-4 text-right"><span class="inline-flex items-center justify-center min-w-[3rem] h-8 px-3 rounded-lg bg-primary/10 text-primary font-bold">8.5</span></td>
-            </tr>
-            <tr class="hover:bg-primary/5 transition-colors">
-              <td class="px-6 py-4 text-sm font-medium text-slate-700 dark:text-slate-300">Assignment</td>
-              <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">Project Report</td>
-              <td class="px-6 py-4 text-sm text-center font-medium">30%</td>
-              <td class="px-6 py-4 text-right"><span class="inline-flex items-center justify-center min-w-[3rem] h-8 px-3 rounded-lg bg-primary/10 text-primary font-bold">8.0</span></td>
-            </tr>
-            <tr class="hover:bg-primary/5 transition-colors">
-              <td class="px-6 py-4 text-sm font-medium text-slate-700 dark:text-slate-300">Final Exam</td>
-              <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">Final Examination</td>
-              <td class="px-6 py-4 text-sm text-center font-medium">40%</td>
-              <td class="px-6 py-4 text-right"><span class="inline-flex items-center justify-center min-w-[3rem] h-8 px-3 rounded-lg bg-primary/10 text-primary font-bold">7.5</span></td>
+            <tr v-for="(item, idx) in [
+              { cat: 'Participation', name: 'Class Participation', w: 10 },
+              { cat: 'Progress Test', name: 'Test 1', w: 20 },
+              { cat: 'Assignment', name: 'Project Report', w: 30 },
+              { cat: 'Final Exam', name: 'Final Examination', w: 40 }
+            ]" :key="idx" class="hover:bg-primary/5 dark:hover:bg-primary/5 transition-colors">
+              <td class="px-6 py-4 text-sm font-medium text-slate-700 dark:text-slate-300">{{ item.cat }}</td>
+              <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{{ item.name }}</td>
+              <td class="px-6 py-4 text-sm text-center font-medium">{{ item.w }}%</td>
+              <td class="px-6 py-4 text-right">
+                <span class="text-slate-400 font-medium">-</span>
+              </td>
             </tr>
           </template>
           </tbody>
@@ -265,8 +255,8 @@ onMounted(() => {
           </td>
           <td class="px-6 py-5 text-center">
           <div class="flex flex-col items-center">
-          <span class="text-xs text-slate-500 uppercase font-semibold">Average</span>
-          <span class="text-lg font-extrabold text-primary">{{ selectedGrade?.grade || '8.05' }}</span>
+            <span class="text-xs text-slate-500 uppercase font-semibold">Average</span>
+            <span class="text-lg font-extrabold text-primary">{{ selectedGrade?.grade ?? '-' }}</span>
           </div>
           </td>
           <td class="px-6 py-5 text-right">
@@ -276,7 +266,7 @@ onMounted(() => {
             class="text-sm font-black uppercase tracking-widest"
             :class="selectedGrade?.status === 'FAILED' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'"
           >
-            {{ selectedGrade?.status || 'PASSED' }}
+            {{ selectedGrade?.status || 'IN PROGRESS' }}
           </span>
           </div>
           </td>
@@ -293,7 +283,12 @@ onMounted(() => {
           <h4 class="font-bold text-slate-900 dark:text-slate-100">Instructor Feedback</h4>
           </div>
           <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed italic">
-            "{{ selectedGrade?.feedback || 'Excellent engagement during the class discussions. Your project report showed a deep understanding of marketing strategies. Keep up the high standard of work!' }}"
+            <template v-if="selectedGrade?.feedback">
+              "{{ selectedGrade.feedback }}"
+            </template>
+            <template v-else>
+              No feedback available for this course yet.
+            </template>
           </p>
           </div>
           <div class="p-5 bg-white dark:bg-background-dark/40 rounded-xl border border-primary/10">
@@ -304,11 +299,11 @@ onMounted(() => {
           <div class="space-y-3">
           <div>
           <div class="flex justify-between text-xs mb-1">
-          <span class="text-slate-500">Progress to Target (10.0)</span>
-          <span class="text-primary font-bold">{{ selectedGrade?.grade ? Math.round((selectedGrade.grade / 10) * 100) : 81 }}%</span>
+            <span class="text-slate-500">Progress to Target (10.0)</span>
+            <span class="text-primary font-bold">{{ selectedGrade?.grade ? Math.round((Number(selectedGrade.grade) / 10) * 100) : 0 }}%</span>
           </div>
           <div class="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-          <div class="h-full bg-primary transition-all duration-500" :style="{ width: (selectedGrade?.grade ? (selectedGrade.grade / 10) * 100 : 81) + '%' }"></div>
+            <div class="h-full bg-primary transition-all duration-500" :style="{ width: (selectedGrade?.grade ? (Number(selectedGrade.grade) / 10) * 100 : 0) + '%' }"></div>
           </div>
           </div>
           </div>

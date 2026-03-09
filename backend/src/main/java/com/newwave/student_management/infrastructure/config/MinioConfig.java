@@ -40,7 +40,7 @@ public class MinioConfig {
         log.info("Created MinIO bucket: {}", bucket);
       }
 
-      // Set public download policy for avatar/ prefix
+      // Set public download policy for avatar/ and appeals/ prefixes
       String policy = """
           {
             "Version": "2012-10-17",
@@ -49,18 +49,18 @@ public class MinioConfig {
                 "Effect": "Allow",
                 "Principal": {"AWS": ["*"]},
                 "Action": ["s3:GetObject"],
-                "Resource": ["arn:aws:s3:::%s/avatar/*"]
+                "Resource": ["arn:aws:s3:::%s/avatar/*", "arn:aws:s3:::%s/appeals/*"]
               }
             ]
           }
-          """.formatted(bucket);
+          """.formatted(bucket, bucket);
 
       client.setBucketPolicy(
           SetBucketPolicyArgs.builder()
               .bucket(bucket)
               .config(policy)
               .build());
-      log.info("MinIO bucket '{}' ready with public avatar/ policy", bucket);
+      log.info("MinIO bucket '{}' ready with public avatar/ and appeals/ policy", bucket);
     } catch (Exception ex) {
       log.warn("Could not initialize MinIO bucket: {}", ex.getMessage());
     }

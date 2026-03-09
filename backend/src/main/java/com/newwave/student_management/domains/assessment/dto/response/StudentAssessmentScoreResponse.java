@@ -1,5 +1,6 @@
 package com.newwave.student_management.domains.assessment.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -17,5 +18,6 @@ public class StudentAssessmentScoreResponse {
     private BigDecimal weight;
     private BigDecimal value;
     private String comment;
+    @JsonProperty("isTotal")
     private boolean isTotal;
 }

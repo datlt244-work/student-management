@@ -1,5 +1,6 @@
 package com.newwave.student_management.domains.assessment.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
 import java.time.LocalDate;
@@ -28,6 +29,7 @@ public class ExamResponse {
     private LocalDate semesterEndDate;
 
     // Eligibility status
+    @JsonProperty("isEligible")
     private boolean isEligible;
     private Integer totalAbsent;
     private Double absentPercentage;

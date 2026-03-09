@@ -142,6 +142,30 @@ public class SmtpMailService implements IMailService {
         }
     }
 
+    @Override
+    @Async
+    public void sendMail(String toEmail, String subject, String content, boolean isHtml) {
+        if (isHtml) {
+            sendEmail(toEmail, subject, content);
+        } else {
+            try {
+                MimeMessage message = mailSender.createMimeMessage();
+                MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
+
+                helper.setFrom(fromEmail);
+                helper.setTo(toEmail);
+                helper.setSubject(subject);
+                helper.setText(content, false);
+
+                mailSender.send(message);
+                log.info("Plain text email sent to: {} with subject: {}", toEmail, subject);
+            } catch (MessagingException ex) {
+                log.error("Failed to send plain text email to {}: {}", toEmail, ex.getMessage());
+                throw new RuntimeException("Failed to send email", ex);
+            }
+        }
+    }
+
     private String buildPasswordResetEmailHtml(String fullName, String resetLink) {
         String currentYear = Year.now().toString();
         return """

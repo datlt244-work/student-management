@@ -7,7 +7,8 @@ import org.springframework.stereotype.Service;
 
 /**
  * Kế hoạch dự phòng khi SmtpMailService không được tạo (mail chưa cấu hình).
- * Tránh xung đột điều kiện với @ConditionalOnProperty khi spring.mail.username="false".
+ * Tránh xung đột điều kiện với @ConditionalOnProperty khi
+ * spring.mail.username="false".
  */
 @Slf4j
 @Service
@@ -22,7 +23,8 @@ public class NoOpMailService implements IMailService {
 
     @Override
     @Async
-    public void sendWelcomeEmail(String toEmail, String firstName, String lastName, String plainPassword, String activationToken) {
+    public void sendWelcomeEmail(String toEmail, String firstName, String lastName, String plainPassword,
+            String activationToken) {
         log.debug("[No-op] Welcome email would be sent to: {}", toEmail);
     }
 
@@ -30,5 +32,11 @@ public class NoOpMailService implements IMailService {
     @Async
     public void sendEmail(String toEmail, String subject, String htmlContent) {
         log.debug("[No-op] Email would be sent to: {} subject: {}", toEmail, subject);
+    }
+
+    @Override
+    @Async
+    public void sendMail(String toEmail, String subject, String content, boolean isHtml) {
+        log.debug("[No-op] {} email would be sent to: {} subject: {}", isHtml ? "HTML" : "Plain", toEmail, subject);
     }
 }

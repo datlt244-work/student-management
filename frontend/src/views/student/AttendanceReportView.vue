@@ -18,6 +18,16 @@
       class="p-4 rounded-xl border border-red-200 bg-red-50 text-red-600 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-400 font-bold shadow-sm"
     >
       {{ error }}
+      <button @click="error = ''" class="ml-2 hover:underline">Dismiss</button>
+    </div>
+
+    <!-- Success State -->
+    <div
+      v-if="success"
+      class="p-4 rounded-xl border border-green-200 bg-green-50 text-green-600 dark:border-green-900/50 dark:bg-green-900/20 dark:text-green-400 font-bold shadow-sm"
+    >
+      {{ success }}
+      <button @click="success = ''" class="ml-2 hover:underline">Dismiss</button>
     </div>
 
     <!-- Main Content Layout -->
@@ -149,17 +159,37 @@
                         <td class="p-4 border-r border-border-light dark:border-border-dark">{{ cls.teacherName }}</td>
                         <td class="p-4 border-r border-border-light dark:border-border-dark font-mono text-xs">{{ cls.className }}</td>
                         <td class="p-4 font-bold">
-                           <span v-if="new Date(cls.date) > new Date()" class="text-text-muted-light dark:text-text-muted-dark italic font-normal text-xs">Future</span>
-                           <span v-else-if="!getAttendanceStatus(cls.date)" class="text-text-muted-light dark:text-text-muted-dark italic font-normal text-xs">-</span>
-                           <span v-else :class="{
-                              'text-green-600': getAttendanceStatus(cls.date) === 'ATTENDED',
-                              'text-red-600': getAttendanceStatus(cls.date) === 'ABSENT'
-                           }">
-                              {{ getAttendanceStatus(cls.date) }}
-                              <span v-if="getAttendanceStatus(cls.date) === 'ABSENT' && !classAttendances[cls.classId]?.some(r => r.date === cls.date)" class="text-[10px] italic opacity-60 block font-normal text-text-muted-light dark:text-text-muted-dark leading-tight">
-                                 (System auto)
-                              </span>
-                           </span>
+                           <div class="flex items-center justify-between gap-4">
+                              <div>
+                                 <span v-if="new Date(cls.date) > new Date()" class="text-text-muted-light dark:text-text-muted-dark italic font-normal text-xs">Future</span>
+                                 <span v-else-if="!getAttendanceStatus(cls.date)" class="text-text-muted-light dark:text-text-muted-dark italic font-normal text-xs">-</span>
+                                 <span v-else :class="{
+                                    'text-green-600': getAttendanceStatus(cls.date) === 'ATTENDED',
+                                    'text-red-600 text-[16px]': getAttendanceStatus(cls.date) === 'ABSENT'
+                                 }">
+                                    {{ getAttendanceStatus(cls.date) }}
+                                    <span v-if="getAttendanceStatus(cls.date) === 'ABSENT' && !classAttendances[cls.classId]?.some(r => r.date === cls.date)" class="text-[10px] italic opacity-60 block font-normal text-text-muted-light dark:text-text-muted-dark leading-tight">
+                                       (System auto)
+                                    </span>
+                                 </span>
+                              </div>
+                              
+                              <div v-if="getAttendanceStatus(cls.date) === 'ABSENT' && new Date(cls.date) <= new Date()" class="flex flex-col items-end shrink-0">
+                                 <button 
+                                   v-if="!getAppealForSession(cls.classId, cls.date)"
+                                   @click="openAppealModal(cls)"
+                                   class="text-[10px] uppercase font-black bg-red-600 hover:bg-red-700 text-white px-2 py-1.5 rounded transition-all shadow-md active:scale-95 flex items-center gap-1.5"
+                                 >
+                                    <span class="material-symbols-outlined !text-[14px]">report_problem</span>
+                                    Khiếu nại
+                                 </button>
+                                 <div v-else class="flex flex-col items-end">
+                                    <span class="text-[9px] uppercase font-black px-2 py-1 rounded-full border-2 tracking-tight" :class="getAppealStatusClass(getAppealForSession(cls.classId, cls.date)?.status || '')">
+                                       {{ getAppealForSession(cls.classId, cls.date)?.status }}
+                                    </span>
+                                 </div>
+                              </div>
+                           </div>
                         </td>
                      </tr>
                      <tr v-if="occurrencesOfSelectedCourse.length === 0">
@@ -172,13 +202,112 @@
         </div>
       </div>
     </div>
+
+    <!-- Appeal Modal -->
+    <div v-if="isAppealModalOpen" class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+       <div class="bg-surface-light dark:bg-surface-dark w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden border border-border-light dark:border-border-dark flex flex-col border-white/10">
+          <div class="p-6 border-b border-border-light dark:border-border-dark bg-stone-50/50 dark:bg-stone-900/50 flex justify-between items-center">
+             <div class="flex items-center gap-3">
+                <div class="p-2 bg-red-100 text-red-600 rounded-xl">
+                   <span class="material-symbols-outlined block">report_problem</span>
+                </div>
+                <div>
+                   <h3 class="font-black text-xl text-text-main-light dark:text-text-main-dark">Khiếu nại điểm danh</h3>
+                   <p class="text-xs font-bold text-text-muted-light dark:text-text-muted-dark uppercase tracking-widest mt-0.5">Yêu cầu xem xét lại</p>
+                </div>
+             </div>
+             <button @click="isAppealModalOpen = false" class="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors">
+                <span class="material-symbols-outlined text-text-muted-light">close</span>
+             </button>
+          </div>
+          
+          <div class="p-8 space-y-6">
+             <!-- Context summary -->
+             <div class="bg-black/5 dark:bg-white/5 p-4 rounded-2xl border border-border-light dark:border-border-dark space-y-1">
+                <div class="flex justify-between text-xs">
+                   <span class="text-text-muted-light font-bold uppercase tracking-wider">Môn học:</span>
+                   <span class="text-text-main-light dark:text-text-main-dark font-black">{{ currentAppealTarget?.courseName }}</span>
+                </div>
+                <div class="flex justify-between text-xs">
+                   <span class="text-text-muted-light font-bold uppercase tracking-wider">Ngày học:</span>
+                   <span class="text-text-main-light dark:text-text-main-dark font-black">{{ formatPrettyDate(currentAppealTarget?.date || '') }}</span>
+                </div>
+                <div class="flex justify-between text-xs">
+                   <span class="text-text-muted-light font-bold uppercase tracking-wider">Thời gian:</span>
+                   <span class="text-text-main-light dark:text-text-main-dark font-black">{{ formatTime(currentAppealTarget?.startTime) }} - {{ formatTime(currentAppealTarget?.endTime) }}</span>
+                </div>
+             </div>
+
+             <div class="space-y-4">
+                <div>
+                   <label class="block text-xs font-black text-text-muted-light dark:text-text-muted-dark uppercase tracking-widest mb-2 px-1">Lý do khiếu nại <span class="text-red-500">*</span></label>
+                   <textarea 
+                     v-model="appealForm.reason"
+                     rows="4"
+                     placeholder="Ví dụ: Em có mặt đầy đủ nhưng thầy chưa điểm danh em ạ..."
+                     class="w-full bg-black/5 dark:bg-white/5 border border-border-light dark:border-border-dark rounded-2xl p-4 text-sm focus:ring-2 focus:ring-red-500 outline-none transition-all resize-none shadow-inner"
+                   ></textarea>
+                </div>
+
+                <div>
+                   <label class="block text-xs font-black text-text-muted-light dark:text-text-muted-dark uppercase tracking-widest mb-2 px-1">Minh chứng (Hình ảnh) <span class="text-red-500">*</span></label>
+                   <div 
+                      @click="fileInput?.click()"
+                      class="border-2 border-dashed border-border-light dark:border-border-dark rounded-2xl p-6 text-center hover:border-red-500 hover:bg-red-50/10 transition-all cursor-pointer group relative overflow-hidden h-32 flex items-center justify-center"
+                   >
+                      <input type="file" ref="fileInput" class="hidden" accept="image/*" @change="handleFileChange" />
+                      
+                      <div v-if="!tempEvidenceUrl && !isUploadingFile" class="flex flex-col items-center">
+                         <span class="material-symbols-outlined text-text-muted-light group-hover:text-red-500 transition-colors !text-3xl">add_photo_alternate</span>
+                         <p class="text-xs font-bold text-text-muted-light mt-2">Nhấn để tải lên ảnh minh chứng</p>
+                      </div>
+                      
+                      <div v-else-if="isUploadingFile" class="flex flex-col items-center">
+                         <span class="material-symbols-outlined animate-spin text-red-600">progress_activity</span>
+                         <p class="text-xs font-bold text-red-600 mt-2">Đang tải lên...</p>
+                      </div>
+
+                      <div v-else class="absolute inset-0">
+                         <img :src="tempEvidenceUrl" class="w-full h-full object-cover opacity-80" />
+                         <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <span class="text-white text-xs font-black uppercase tracking-widest">Thay đổi ảnh</span>
+                         </div>
+                      </div>
+                   </div>
+                   <p v-if="appealForm.evidenceUrl" class="text-[10px] text-green-600 font-bold mt-2 flex items-center gap-1">
+                      <span class="material-symbols-outlined !text-[14px]">check_circle</span>
+                      Đã tải lên minh chứng thành công
+                   </p>
+                </div>
+             </div>
+          </div>
+
+          <div class="p-6 border-t border-border-light dark:border-border-dark bg-stone-50/50 dark:bg-stone-900/50 flex gap-3">
+             <button 
+                @click="isAppealModalOpen = false"
+                class="flex-1 px-6 py-3 rounded-xl border border-border-light dark:border-border-dark text-sm font-black text-text-muted-light hover:bg-black/5 dark:hover:bg-white/5 transition-all"
+             >
+                Hủy bỏ
+             </button>
+             <button 
+                @click="submitAppeal"
+                :disabled="isSubmitting || isUploadingFile || !appealForm.reason.trim() || !appealForm.evidenceUrl"
+                class="flex-[2] px-6 py-3 rounded-xl bg-red-600 text-white text-sm font-black shadow-lg shadow-red-500/20 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 active:scale-95"
+             >
+                <span v-if="isSubmitting" class="material-symbols-outlined animate-spin !text-[18px]">progress_activity</span>
+                Gửi khiếu nại ngay
+             </button>
+          </div>
+       </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, reactive } from 'vue'
 import { semesterService, type SemesterResponse } from '@/services/semesterService'
 import { getMySchedule, getClassAttendances, type StudentSchedule, type AttendanceRecordResponse } from '@/services/scheduleService'
+import { submitAttendanceAppeal, uploadAppealEvidence, getStudentAppeals, type AttendanceAppealResponse } from '@/services/attendanceAppealService'
 
 const days = [
   { name: 'Mon', index: 1 },
@@ -195,10 +324,24 @@ const selectedSemesterId = ref<number | null>(null)
 const scheduleData = ref<StudentSchedule[]>([])
 const isLoadingSchedule = ref(false)
 const error = ref('')
+const success = ref('')
 
 const selectedCourseCode = ref<string | null>(null)
 const classAttendances = ref<Record<number, AttendanceRecordResponse[]>>({}) // mapping classId -> attendances
 const isLoadingAttendances = ref(false)
+
+// Appeal feature
+const isAppealModalOpen = ref(false)
+const isSubmitting = ref(false)
+const isUploadingFile = ref(false)
+const existingAppeals = ref<AttendanceAppealResponse[]>([])
+const currentAppealTarget = ref<ScheduleOccurrence | null>(null)
+const tempEvidenceUrl = ref('')
+const fileInput = ref<HTMLInputElement | null>(null)
+const appealForm = reactive({
+   reason: '',
+   evidenceUrl: ''
+})
 
 onMounted(async () => {
   try {
@@ -210,8 +353,12 @@ onMounted(async () => {
     } else if (semesters.value.length > 0) {
       selectedSemesterId.value = semesters.value[0]?.semesterId || null
     }
+
+    // Load existing appeals
+    const appeals = await getStudentAppeals()
+    existingAppeals.value = appeals
   } catch (err: unknown) {
-    error.value = (err as Error).message || 'Failed to initialize semesters'
+    error.value = (err as Error).message || 'Failed to initialize data'
   }
 })
 
@@ -366,13 +513,81 @@ function getAttendanceStatus(dateStr: string) {
    return null
 }
 
+function getAppealForSession(classId: number, date: string) {
+   return existingAppeals.value.find(a => a.classId === classId && a.attendanceDate === date)
+}
+
+function getAppealStatusClass(status: string) {
+   switch (status) {
+      case 'PENDING': return 'bg-amber-100 text-amber-700 border-amber-300'
+      case 'APPROVED': return 'bg-green-100 text-green-700 border-green-300'
+      case 'REJECTED': return 'bg-red-100 text-red-700 border-red-300'
+      default: return 'bg-stone-100 text-stone-700 border-stone-300'
+   }
+}
+
+function openAppealModal(cls: ScheduleOccurrence) {
+   currentAppealTarget.value = cls
+   appealForm.reason = ''
+   appealForm.evidenceUrl = ''
+   tempEvidenceUrl.value = ''
+   isAppealModalOpen.value = true
+}
+
+async function handleFileChange(event: Event) {
+   const input = event.target as HTMLInputElement
+   if (input.files && input.files[0]) {
+      const file = input.files[0]
+      isUploadingFile.value = true
+      error.value = ''
+      try {
+         // Preview
+         tempEvidenceUrl.value = URL.createObjectURL(file)
+         
+         // Upload
+         const url = await uploadAppealEvidence(file)
+         appealForm.evidenceUrl = url
+      } catch (err: any) {
+         error.value = 'Failed to upload image: ' + err.message
+         tempEvidenceUrl.value = ''
+         appealForm.evidenceUrl = ''
+      } finally {
+         isUploadingFile.value = false
+      }
+   }
+}
+
+async function submitAppeal() {
+   if (!currentAppealTarget.value) return
+   if (!appealForm.reason.trim() || !appealForm.evidenceUrl) {
+      error.value = 'Vui lòng cung cấp lý do và hình ảnh minh chứng.'
+      return
+   }
+   
+   isSubmitting.value = true
+   try {
+      const res = await submitAttendanceAppeal({
+         classId: currentAppealTarget.value.classId,
+         attendanceDate: currentAppealTarget.value.date,
+         reason: appealForm.reason,
+         evidenceUrl: appealForm.evidenceUrl
+      })
+      
+      existingAppeals.value.push(res)
+      success.value = 'Đã gửi khiếu nại thành công đến giảng viên!'
+      isAppealModalOpen.value = false
+   } catch (err: any) {
+      error.value = err.message || 'Lỗi khi gửi khiếu nại'
+   } finally {
+      isSubmitting.value = false
+   }
+}
+
 const totalSessionsCount = computed(() => occurrencesOfSelectedCourse.value.length)
 
 const maxAllowedAbsent = computed(() => {
    return Math.floor(totalSessionsCount.value * 0.2)
 })
-
-
 
 const totalAbsent = computed(() => {
    let count = 0
@@ -390,6 +605,7 @@ const absentPercentage = computed(() => {
 })
 
 function formatPrettyDate(dateStr: string) {
+   if (!dateStr) return ''
   const parts = dateStr.split('-')
   if (parts.length !== 3) return dateStr
   return `${parts[2]}/${parts[1]}/${parts[0]}`
@@ -400,3 +616,19 @@ function formatTime(time: string | undefined) {
   return time.substring(0, 5)
 }
 </script>
+
+<style scoped>
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+}
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+}
+</style>

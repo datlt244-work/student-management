@@ -181,6 +181,11 @@ const router = createRouter({
           component: () => import('@/views/student/AttendanceReportView.vue'),
         },
         {
+          path: 'exams',
+          name: 'student-exams',
+          component: () => import('@/views/student/ExamScheduleView.vue'),
+        },
+        {
           path: 'profile',
           name: 'student-profile',
           component: () => import('@/views/student/ProfileView.vue'),

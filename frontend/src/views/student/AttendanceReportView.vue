@@ -156,6 +156,9 @@
                               'text-red-600': getAttendanceStatus(cls.date) === 'ABSENT'
                            }">
                               {{ getAttendanceStatus(cls.date) }}
+                              <span v-if="getAttendanceStatus(cls.date) === 'ABSENT' && !classAttendances[cls.classId]?.some(r => r.date === cls.date)" class="text-[10px] italic opacity-60 block font-normal text-text-muted-light dark:text-text-muted-dark leading-tight">
+                                 (System auto)
+                              </span>
                            </span>
                         </td>
                      </tr>
@@ -347,7 +350,20 @@ function getAttendanceStatus(dateStr: string) {
    
    const recordsForClass = classAttendances.value[occurrence.classId] || []
    const record = recordsForClass.find(r => r.date === dateStr)
-   return record ? record.status : null
+   
+   if (record) return record.status
+
+   // Requirement: If session has passed and no data, auto-mark as ABSENT after 00:00 next day
+   const sessionDate = new Date(dateStr)
+   sessionDate.setHours(0, 0, 0, 0)
+   const todayDate = new Date()
+   todayDate.setHours(0, 0, 0, 0)
+   
+   if (sessionDate < todayDate) {
+      return 'ABSENT'
+   }
+   
+   return null
 }
 
 const totalSessionsCount = computed(() => occurrencesOfSelectedCourse.value.length)

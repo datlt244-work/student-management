@@ -181,7 +181,10 @@ onMounted(() => {
           </h2>
           <div class="flex gap-2">
           <span 
-            class="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold rounded-full uppercase tracking-wider"
+            class="px-3 py-1 text-xs font-bold rounded-full uppercase tracking-wider"
+            :class="selectedGrade?.status === 'PASSED' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 
+                    selectedGrade?.status === 'NOT PASSED' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' : 
+                    'bg-slate-100 dark:bg-slate-900/30 text-slate-700 dark:text-slate-400'"
           >
             {{ selectedGrade?.status || 'IN PROGRESS' }}
           </span>
@@ -264,7 +267,7 @@ onMounted(() => {
           <span class="text-xs text-slate-500 uppercase font-semibold">Status</span>
           <span 
             class="text-sm font-black uppercase tracking-widest"
-            :class="selectedGrade?.status === 'FAILED' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'"
+            :class="selectedGrade?.status === 'NOT PASSED' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'"
           >
             {{ selectedGrade?.status || 'IN PROGRESS' }}
           </span>

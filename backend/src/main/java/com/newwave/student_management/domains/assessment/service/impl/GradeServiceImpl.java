@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -81,12 +82,19 @@ public class GradeServiceImpl implements IGradeService {
         Map<String, List<AssessmentItem>> itemsByCategory = assessmentItems.stream()
                 .collect(Collectors.groupingBy(AssessmentItem::getCategory));
 
-        BigDecimal totalWeight = BigDecimal.ZERO;
-        boolean hasFinalScore = false;
+        // Defined Category Order
+        List<String> categoryOrder = List.of("Participation", "Progress Test", "Assignment", "Final Exam");
 
-        for (Map.Entry<String, List<AssessmentItem>> entry : itemsByCategory.entrySet()) {
-            String category = entry.getKey();
-            List<AssessmentItem> items = entry.getValue();
+        BigDecimal totalWeight = BigDecimal.ZERO;
+
+        // Logic ẩn điểm nếu chưa kết thúc học kỳ
+        LocalDate today = LocalDate.now();
+        boolean isSemesterOver = enrollment.getScheduledClass().getSemester().getEndDate().isBefore(today);
+
+        for (String category : categoryOrder) {
+            List<AssessmentItem> items = itemsByCategory.get(category);
+            if (items == null || items.isEmpty())
+                continue;
 
             BigDecimal categoryWeightTotal = BigDecimal.ZERO;
             BigDecimal categoryValueTotal = BigDecimal.ZERO;
@@ -94,14 +102,19 @@ public class GradeServiceImpl implements IGradeService {
 
             for (AssessmentItem item : items) {
                 StudentScore score = scoreMap.get(item.getItemId());
-                BigDecimal value = (score != null) ? score.getScoreValue() : null;
+                BigDecimal value = null;
+
+                // Only show scores if semester is over
+                if (isSemesterOver) {
+                    value = (score != null) ? score.getScoreValue() : null;
+                }
 
                 detailedScores.add(StudentAssessmentScoreResponse.builder()
                         .category(category)
                         .itemName(item.getName())
                         .weight(item.getWeight())
                         .value(value)
-                        .comment((score != null) ? score.getComment() : null)
+                        .comment((score != null && isSemesterOver) ? score.getComment() : null)
                         .isTotal(false)
                         .build());
 
@@ -110,9 +123,6 @@ public class GradeServiceImpl implements IGradeService {
                     hasAtLeastOneScore = true;
                     categoryValueTotal = categoryValueTotal.add(value.multiply(item.getWeight())
                             .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP));
-                    if (category.toLowerCase().contains("final exam")) {
-                        hasFinalScore = true;
-                    }
                 }
             }
 
@@ -129,14 +139,17 @@ public class GradeServiceImpl implements IGradeService {
         }
 
         BigDecimal finalGrade = (grade != null) ? grade.getGradeValue() : null;
-        // Nếu chưa có điểm cuối kỳ hoặc chưa kết thúc môn -> Giấu điểm TB theo yêu cầu
-        if (!hasFinalScore && finalGrade == null) {
-            finalGrade = null;
-        }
-
         String feedback = (grade != null) ? grade.getFeedback() : null;
-        String status = (finalGrade != null && finalGrade.compareTo(BigDecimal.valueOf(5.0)) >= 0) ? "PASSED"
-                : (finalGrade != null ? "FAILED" : null);
+
+        String status;
+        if (!isSemesterOver) {
+            finalGrade = null;
+            feedback = null;
+            status = "IN_PROGRESS";
+        } else {
+            status = (finalGrade != null && finalGrade.compareTo(BigDecimal.valueOf(5.0)) >= 0) ? "PASSED"
+                    : (finalGrade != null ? "NOT PASSED" : "IN_PROGRESS");
+        }
 
         return StudentGradeResponse.builder()
                 .enrollmentId(enrollment.getEnrollmentId())
@@ -191,7 +204,7 @@ public class GradeServiceImpl implements IGradeService {
                 .grade4(grade.getGradeValue() != null ? convertToScale4(grade.getGradeValue()) : null)
                 .status((grade.getGradeValue() != null && grade.getGradeValue().compareTo(BigDecimal.valueOf(5.0)) >= 0)
                         ? "PASSED"
-                        : "FAILED")
+                        : "NOT PASSED")
                 .feedback(grade.getFeedback())
                 .build();
     }

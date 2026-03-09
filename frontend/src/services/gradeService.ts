@@ -27,7 +27,7 @@ export interface StudentGrade {
   credits: number
   grade: number | null
   grade4: number | null
-  status: 'PASSED' | 'FAILED' | 'IN_PROGRESS'
+  status: 'PASSED' | 'NOT PASSED' | 'IN_PROGRESS'
   feedback: string | null
   assessmentScores: StudentAssessmentScore[]
 }

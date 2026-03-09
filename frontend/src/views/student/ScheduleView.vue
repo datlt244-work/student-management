@@ -664,7 +664,13 @@ const currentWeekDates = computed(() => {
                     <td class="py-4">
                        <span v-if="isLoadingAttendance">Loading...</span>
                        <span v-else-if="new Date(selectedActivity.date) > new Date()" class="text-text-muted-light dark:text-text-muted-dark italic font-medium">Future</span>
-                       <span v-else-if="!currentActivityAttendance" class="text-text-muted-light dark:text-text-muted-dark font-medium">Not yet taken</span>
+                       <span v-else-if="!currentActivityAttendance">
+                          <template v-if="new Date(selectedActivity.date + 'T00:00:00').getTime() < new Date().setHours(0,0,0,0)">
+                             <span class="text-red-600 font-bold">ABSENT</span>
+                             <span class="text-[10px] italic opacity-60 ml-1">(System auto)</span>
+                          </template>
+                          <span v-else class="text-text-muted-light dark:text-text-muted-dark font-medium">Not yet taken</span>
+                       </span>
                        <span v-else :class="{
                           'text-green-600 font-bold': currentActivityAttendance.status === 'ATTENDED',
                           'text-red-600 font-bold': currentActivityAttendance.status === 'ABSENT'

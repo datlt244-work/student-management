@@ -173,7 +173,7 @@ onMounted(async () => {
       } else if (semesters.value.length > 0) {
          selectedSemesterId.value = semesters.value[0]?.semesterId || null
       }
-   } catch (err: any) {
+   } catch {
       error.value = 'Không thể tải thông tin học kỳ.'
    }
 })
@@ -184,7 +184,7 @@ watch(selectedSemesterId, async (newVal) => {
    exams.value = []
    try {
       exams.value = await getStudentExams(newVal)
-   } catch (err: any) {
+   } catch {
       error.value = 'Không thể tải lịch thi.'
    } finally {
       isLoading.value = false

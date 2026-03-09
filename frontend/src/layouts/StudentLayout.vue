@@ -22,8 +22,9 @@ const navigation = [
   { name: 'Dashboard', routeName: 'student-dashboard', icon: 'dashboard' },
   { name: 'Course', routeName: 'student-courses', icon: 'how_to_reg' },
   { name: 'Schedule', routeName: 'student-schedule', icon: 'calendar_month' },
-  { name: 'Attendance Report', routeName: 'student-attendance', icon: 'fact_check' },
+  { name: 'Attendance', routeName: 'student-attendance', icon: 'fact_check' },
   { name: 'Grades', routeName: 'student-grades', icon: 'school' },
+  { name: 'Exams', routeName: 'student-exams', icon: 'history_edu' },
   { name: 'Profile', routeName: 'student-profile' },
 ]
 

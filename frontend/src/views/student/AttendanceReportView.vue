@@ -547,8 +547,8 @@ async function handleFileChange(event: Event) {
          // Upload
          const url = await uploadAppealEvidence(file)
          appealForm.evidenceUrl = url
-      } catch (err: any) {
-         error.value = 'Failed to upload image: ' + err.message
+      } catch (err) {
+         error.value = 'Failed to upload image: ' + (err as Error).message
          tempEvidenceUrl.value = ''
          appealForm.evidenceUrl = ''
       } finally {
@@ -576,8 +576,8 @@ async function submitAppeal() {
       existingAppeals.value.push(res)
       success.value = 'Đã gửi khiếu nại thành công đến giảng viên!'
       isAppealModalOpen.value = false
-   } catch (err: any) {
-      error.value = err.message || 'Lỗi khi gửi khiếu nại'
+   } catch (err) {
+      error.value = (err as Error).message || 'Lỗi khi gửi khiếu nại'
    } finally {
       isSubmitting.value = false
    }
